@@ -46,13 +46,14 @@ const MARK_CSS = `
 .bm-hex { stroke-dasharray: 1; stroke-dashoffset: 1; fill-opacity: 0; animation: bm-draw 380ms ease-out forwards, bm-fill 220ms ease-out 380ms forwards; }
 .bm-b { opacity: 0; animation: bm-fill 220ms ease-out 420ms forwards; }
 .bm-live { animation: bm-breathe 2.4s ease-in-out infinite; }
-@keyframes bm-draw { to { stroke-dashoffset: 0; } }
+@keyframes bm-draw { 99% { stroke-dashoffset: 0; stroke-dasharray: 1; } to { stroke-dashoffset: 0; stroke-dasharray: none; } }
 @keyframes bm-fill { to { fill-opacity: 1; opacity: 1; } }
 @keyframes bm-breathe { 0%, 100% { filter: drop-shadow(0 0 0 rgb(60 80 220 / 0)); } 50% { filter: drop-shadow(0 0 5px rgb(60 80 220 / 0.55)); } }
-@media (prefers-reduced-motion: reduce) { .bm-hex, .bm-b { animation: none; stroke-dashoffset: 0; fill-opacity: 1; opacity: 1; } .bm-live { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .bm-hex, .bm-b { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; fill-opacity: 1; opacity: 1; } .bm-live { animation: none; } }
 `;
 
-// The Blast mark (public/brand/mark.svg): draws in on load, breathes while a hire runs.
+// The Blast mark (public/brand/mark.svg): draws in on load, breathes while a hire runs. The dash is dropped
+// once drawn, or the stroke's start and end leave a notch at the top corner.
 export function BlastMark({ className = "size-6", live = false }: { className?: string; live?: boolean }) {
   return (
     <svg viewBox="0 0 100 100" role="img" aria-label="Blast" className={`${className} ${live ? "bm-live" : ""}`}>
