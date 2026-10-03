@@ -10,7 +10,7 @@ export default async function HubPage({ searchParams }: PageProps<"/hub">) {
   const one = (v: string | string[] | undefined) => (typeof v === "string" && v ? v : null);
   const r = one(role);
   return (
-    <div style={ACCENT} className="flex min-h-full flex-1 flex-col">
+    <div style={ACCENT} className="flex min-h-full flex-1 flex-col bg-[oklch(0.975_0.008_75)]">
       <Header active="/hub" />
       <Hub initialRole={r && ROLES.includes(r as Role) ? (r as Role) : null} highlight={one(fresh)} setupUrl={one(setup)} />
     </div>

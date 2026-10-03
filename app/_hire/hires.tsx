@@ -149,7 +149,7 @@ function HireRow({ need: n, builder }: { need: Row; builder?: string }) {
 }
 
 // The standing approval: lets Claude Code hire within one hold without asking.
-function Policy() {
+export function Policy({ compact = false }: { compact?: boolean }) {
   const [cents, setCents] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -191,7 +191,7 @@ function Policy() {
   }
 
   return (
-    <div className="mt-5 flex items-start gap-3 rounded-xl border bg-card p-4">
+    <div className={compact ? "flex max-w-sm items-start gap-3 rounded-2xl bg-white px-4 py-3 text-sm shadow-[0_1px_2px_rgb(70_50_30/0.06),0_8px_24px_-14px_rgb(70_50_30/0.2)]" : "mt-5 flex items-start gap-3 rounded-xl border bg-card p-4"}>
       <button
         type="button"
         role="switch"

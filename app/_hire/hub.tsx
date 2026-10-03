@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { MarketAgent, Role } from "@/lib/market/types";
 import { modelName, money, ROLE_LABEL, runsIn } from "./format";
+import { labOf, Logo } from "./logos";
 
 export type Listing = Omit<MarketAgent, "system_prompt"> & {
   created_at: string;
@@ -121,11 +122,24 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
 
       {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
 
-      <div className="mt-5 grid grid-cols-[repeat(auto-fill,minmax(min(100%,270px),1fr))] gap-3">
-        {data && (q ? data.agents : data.agents.toSorted((a, b) => ROLES.indexOf(a.role) - ROLES.indexOf(b.role))).map((a) => (
-          <Card key={a.id} agent={a} now={data.now} isNew={a.id === highlight} setupUrl={a.id === highlight ? setupUrl : null} />
-        ))}
-      </div>
+      {data
+        ? (q ? [{ role: null as Role | null, agents: data.agents }] : ROLES.map((r) => ({ role: r as Role | null, agents: data.agents.filter((a) => a.role === r) })))
+            .filter((g) => g.agents.length)
+            .map((g) => (
+              <section key={g.role ?? "results"} className="mt-8">
+                {g.role ? (
+                  <h2 className="text-lg font-semibold tracking-tight text-stone-900">
+                    {ROLE_LABEL[g.role] ?? g.role} <span className="font-normal text-stone-500 tabular-nums">{g.agents.length}</span>
+                  </h2>
+                ) : null}
+                <div className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(min(100%,270px),1fr))] gap-3">
+                  {g.agents.map((a) => (
+                    <Card key={a.id} agent={a} now={data.now} isNew={a.id === highlight} setupUrl={a.id === highlight ? setupUrl : null} />
+                  ))}
+                </div>
+              </section>
+            ))
+        : null}
       {data && !data.agents.length && !error ? <p className="mt-6 text-sm text-muted-foreground">No specialists match.</p> : null}
     </main>
   );
@@ -136,7 +150,7 @@ function Card({ agent: a, now, isNew, setupUrl }: { agent: Listing; now: number;
   return (
     <article
       id={`agent-${a.id}`}
-      className={`flex flex-col rounded-xl border bg-card p-3.5 text-sm ${isNew ? "border-(--hire) shadow-[0_0_0_1px_var(--hire)]" : ""}`}
+      className={`flex flex-col rounded-2xl bg-white p-4 text-sm shadow-[0_1px_2px_rgb(70_50_30/0.06),0_12px_32px_-16px_rgb(70_50_30/0.18)] ${isNew ? "ring-2 ring-(--hire)" : ""}`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -151,12 +165,15 @@ function Card({ agent: a, now, isNew, setupUrl }: { agent: Listing; now: number;
       {a.description ? <p className="mt-2 line-clamp-2 text-muted-foreground">{a.description}</p> : null}
       <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-xs">
         <dt className="text-muted-foreground">Model</dt>
-        <dd className="truncate">{modelName(a.model)}</dd>
+        <dd className="flex min-w-0 items-center gap-1.5">
+          {labOf(a.model) ? <Logo brand={labOf(a.model)!} className="size-3.5 shrink-0" /> : null}
+          <span className="truncate">{modelName(a.model)}</span>
+        </dd>
         <dt className="text-muted-foreground">Runs</dt>
         <dd className="truncate">{runsIn(a.runs_in).replace(/^Runs /, "")}</dd>
         <dt className="text-muted-foreground">Price</dt>
         <dd className="tabular-nums">
-          {money(a.price_month_cents)}/mo · {money(a.price_action_cents)}/action
+          <span className="font-medium">{money(a.price_action_cents)}</span> per job
         </dd>
         <dt className="text-muted-foreground">Record</dt>
         <dd className="tabular-nums">
