@@ -1,12 +1,14 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
+import { BlastMark } from "./logos";
 import { Nav } from "./nav";
 
 export function Header() {
   return (
     <header className="border-b">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:gap-6">
-        <Link href="/" className="text-[15px] font-semibold tracking-tight text-primary">
+        <Link href="/" className="flex items-center gap-2 text-[17px] font-semibold tracking-[-0.02em]">
+          <BlastMark className="size-7" />
           Blast
         </Link>
         <Nav />

@@ -6,10 +6,9 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 const LINKS = [
-  { href: "/hires", label: "My hires" },
+  { href: "/", label: "Dashboard" },
   { href: "/hub", label: "Hub" },
-  { href: "/", label: "Hire a specialist" },
-  { href: "/post", label: "Post your specialist" },
+  { href: "/hire", label: "Hire from the web" },
 ];
 
 // One track holding every tab; the white tile slides to the tab that was pressed.

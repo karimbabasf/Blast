@@ -30,7 +30,7 @@ export type Estimate = {
 
 export type Claim = { payer: string; icd10: string[]; cpt: { code: string; modifiers?: string[] }[] };
 
-export type Result = { agent_id: string; agent_name: string; reply: string; output: Estimate | Claim | null };
+export type Result = { agent_id: string; agent_name: string; reply: string; summary?: string; output: Estimate | Claim | null };
 
 export type Usage = { input_tokens?: number; output_tokens?: number; cost_usd?: number };
 
@@ -156,7 +156,7 @@ export function HoldStrip({ hold }: { hold: Hold | null | undefined }) {
   );
 }
 
-function isEstimate(o: Estimate | Claim): o is Estimate {
+export function isEstimate(o: Estimate | Claim): o is Estimate {
   return "parts" in o || "total_cents" in o;
 }
 
@@ -173,12 +173,12 @@ export function ResultCard({ result }: { result: Result | null | undefined }) {
         {result.reply ? <SpeakButton text={result.reply} /> : null}
       </div>
       {result.reply ? <p className="mt-3 max-w-3xl text-lg leading-relaxed whitespace-pre-line">{result.reply.replace(/\*\*|`|^#+\s*/gm, "")}</p> : null}
-      {out ? (isEstimate(out) ? <EstimateTable e={out} /> : <ClaimCodes c={out} />) : null}
+      {out ? isEstimate(out) ? <EstimateTable e={out} /> : "icd10" in out ? <ClaimCodes c={out} /> : null : null}
     </section>
   );
 }
 
-function EstimateTable({ e }: { e: Estimate }) {
+export function EstimateTable({ e }: { e: Estimate }) {
   return (
     <div className="mt-5">
       <p className="text-lg">
@@ -218,7 +218,7 @@ function EstimateTable({ e }: { e: Estimate }) {
   );
 }
 
-function ClaimCodes({ c }: { c: Claim }) {
+export function ClaimCodes({ c }: { c: Claim }) {
   return (
     <dl className="mt-5 grid max-w-3xl grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-6 gap-y-3 text-base">
       <dt className="text-sm text-muted-foreground">Payer</dt>

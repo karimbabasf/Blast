@@ -8,6 +8,7 @@ import { AgentAvatar } from "../_components/agent-avatar";
 import { LogoFactory } from "../_components/agent-logo";
 import { scoreTone } from "../_components/score-tone";
 import { modelName, money, ROLE_LABEL, ROLE_TOOLS, toolLabel } from "./format";
+import { labOf, Logo } from "./logos";
 
 export type Listing = Omit<MarketAgent, "system_prompt"> & {
   created_at: string;
@@ -140,7 +141,7 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
               <th scope="col" className="w-20 py-2.5 text-right font-normal">Score</th>
               <th scope="col" className="w-20 py-2.5 text-right font-normal">Tryouts</th>
               <th scope="col" className="w-16 py-2.5 text-right font-normal">Hires</th>
-              <th scope="col" className="w-20 py-2.5 pr-4 text-right font-normal">Per mo</th>
+              <th scope="col" className="w-20 py-2.5 pr-4 text-right font-normal">Per job</th>
             </tr>
           </thead>
           <tbody>
@@ -219,8 +220,9 @@ function Row({
                 {isNew ? <span className="rounded-full bg-success px-2 py-px text-xs font-medium text-white">Just posted</span> : null}
                 {!a.auditionable ? <span className="rounded-full bg-muted px-2 py-px text-xs text-muted-foreground">Listed only</span> : null}
               </div>
-              <p className="truncate text-xs text-muted-foreground">
-                {handle(a.builder)} · {modelName(a.model)}
+              <p className="flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+                {handle(a.builder)} ·{labOf(a.model) ? <Logo brand={labOf(a.model)!} className="size-3 shrink-0" /> : null}
+                {modelName(a.model)}
               </p>
             </div>
           </div>
@@ -250,7 +252,7 @@ function Row({
         </td>
         <td className="py-2.5 text-right">{tr?.tryouts ?? 0}</td>
         <td className={`py-2.5 text-right ${tr?.hires ? "font-semibold text-success" : "text-muted-foreground"}`}>{tr?.hires ?? 0}</td>
-        <td className="py-2.5 pr-4 text-right font-medium">{money(a.price_month_cents)}</td>
+        <td className="py-2.5 pr-4 text-right font-medium">{money(a.price_action_cents)}</td>
       </tr>
       {isNew ? (
         <tr className="bg-success/8">

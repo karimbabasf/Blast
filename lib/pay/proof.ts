@@ -6,7 +6,8 @@ import { Mppx, Store, stripe } from "mppx/server";
 // is only a hold. Blast captures the winner's price after its work passed the checks, pays the builder
 // through Connect, and releases everything when no specialist passed. Sandbox only.
 
-export const HOLD_CENTS = 4000;
+export const HOLD_CENTS = 100;
+const STRIPE_MIN_CENTS = 50;
 const BUILDER_SHARE = 0.8;
 
 function testKey() {
@@ -68,9 +69,9 @@ export type Hold = {
 // Capture the winner's price and pay its builder, or release the hold.
 export async function settle(hold: Hold, winner: { id: string; price_cents: number; stripe_account: string | null } | null): Promise<Hold> {
   const s = new StripeClient(testKey());
-  if (!winner) {
+  if (!winner || winner.price_cents < STRIPE_MIN_CENTS) {
     await s.paymentIntents.cancel(hold.payment_intent).catch(() => null);
-    return { ...hold, status: "released" };
+    return { ...hold, status: "released", agent_id: winner?.id };
   }
   const amount = Math.min(winner.price_cents, hold.amount_cents);
   const pi = await s.paymentIntents.capture(hold.payment_intent, { amount_to_capture: amount, expand: ["latest_charge"] });

@@ -114,3 +114,20 @@ alter table public.spend_policy enable row level security;
 create policy "spend_policy anon read" on public.spend_policy for select to anon using (true);
 insert into public.spend_policy (id, auto_approve_cents) values (1, 4000) on conflict (id) do nothing;
 alter publication supabase_realtime add table public.spend_policy;
+
+-- Web design specialists (scripted demo runs) and prices in cents per job; the hold is $1.00.
+alter table public.market_agents drop constraint if exists market_agents_role_check;
+alter table public.market_agents add constraint market_agents_role_check
+  check (role = any (array['calendar', 'email', 'auto_repair', 'medical_billing', 'web_design', 'coding', 'research']));
+insert into public.market_agents
+  (id, name, builder, role, description, model, system_prompt, tools, price_month_cents, price_action_cents, runs_in, auditionable, stripe_account, created_at)
+values
+  ('design-ines', 'Ines', 'Studio North', 'web_design', 'Senior brand and web designer agent. Brand library of 12,000 palettes, licensed type, contrast and mobile checks. Hands back a finished, live landing page.', 'anthropic/claude-sonnet-5.5', 'You are Ines, a senior web designer.', '{read_brief,pick_palette,pick_type,compose_layout,check_contrast,deliver_design}', 0, 90, 'sandbox', true, 'acct_1UMa7OEtu1uS3KER', now() - interval '15 days'),
+  ('design-tile', 'Tile', 'Pixelmill', 'web_design', 'Fast landing pages from a template set.', 'openai/gpt-5-mini', 'You are Tile, a template designer.', '{read_brief,pick_palette,compose_layout,deliver_design}', 0, 50, 'builder_url', true, 'acct_1UMa7TEtu1RWuYHA', now() - interval '6 days'),
+  ('design-generalist', 'Generalist', 'Baseline (no tools)', 'web_design', 'A general model with no design tools: what your own agent would do alone. Here for comparison.', 'anthropic/claude-haiku-4.5', 'You are a helpful general assistant.', '{deliver_design}', 0, 0, 'blast', true, null, now() - interval '20 days')
+on conflict (id) do nothing;
+update public.market_agents set price_action_cents = 60 where id = 'auto-torque';
+update public.market_agents set price_action_cents = 50 where id = 'auto-lugnut';
+update public.market_agents set price_action_cents = 75 where id = 'med-codi';
+update public.market_agents set price_action_cents = 50 where id = 'med-billbot';
+update public.spend_policy set auto_approve_cents = 100, updated_at = now() where id = 1;

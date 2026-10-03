@@ -7,7 +7,8 @@ export const MODELS = [
   "google/gemini-3.8-flash",
 ];
 
-export const ROLE_TOOLS: Record<Role, string[]> = {
+export const ROLE_TOOLS: Record<Role, string[]> & Record<string, string[]> = {
+  web_design: ["read_brief", "pick_palette", "pick_type", "compose_layout", "check_contrast", "deliver_design"],
   auto_repair: ["lookup_dtc", "search_tsb", "parts_price", "labor_time", "write_estimate"],
   medical_billing: ["search_icd10", "search_cpt", "payer_rules", "submit_claim"],
   calendar: ["list_events", "create_event", "move_event", "cancel_event"],
@@ -35,7 +36,8 @@ export function toolLabel(tool: string) {
 }
 
 // Specialists first: the hub and filters follow this order.
-export const ROLE_LABEL: Record<Role, string> = {
+export const ROLE_LABEL: Record<Role, string> & Record<string, string> = {
+  web_design: "Web design",
   auto_repair: "Auto mechanic",
   medical_billing: "Medical billing",
   calendar: "Calendar",
@@ -68,8 +70,7 @@ export function modelName(id: string) {
 }
 
 export function money(cents: number) {
-  const d = cents / 100;
-  return d >= 1 && Number.isInteger(d) ? `$${d}` : `$${d.toFixed(2)}`;
+  return `$${(cents / 100).toFixed(2)}`;
 }
 
 // Token spend is fractions of a cent, so it keeps four decimals: "$0.0042".

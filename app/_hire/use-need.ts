@@ -50,7 +50,7 @@ export function useNeed(needId: string | null) {
       .on("postgres_changes", { event: "*", schema: "public", table: "tryouts", filter: `need_id=eq.${needId}` }, refresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "needs", filter: `id=eq.${needId}` }, refresh)
       .subscribe();
-    const timer = window.setInterval(refresh, 2500);
+    const timer = window.setInterval(refresh, 2000);
     refresh();
 
     return () => {

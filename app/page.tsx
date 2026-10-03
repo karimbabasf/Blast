@@ -1,12 +1,12 @@
+import { Dashboard } from "./_hire/dashboard";
 import { ACCENT, Header } from "./_hire/header";
-import { Request } from "./_hire/request";
 
 export default async function Home({ searchParams }: PageProps<"/">) {
-  const { need, watch } = await searchParams;
+  const { need } = await searchParams;
   return (
     <div style={ACCENT} className="flex min-h-full flex-1 flex-col">
       <Header />
-      <Request initialNeed={typeof need === "string" ? need : null} watch={watch === "1"} />
+      <Dashboard initialNeed={typeof need === "string" ? need : null} />
     </div>
   );
 }

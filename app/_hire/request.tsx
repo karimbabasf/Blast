@@ -64,7 +64,7 @@ export function Request({ initialNeed, watch = false }: { initialNeed: string | 
     setListed(null);
     setTags([]);
     setNeedId(id);
-    window.history.replaceState(null, "", `/?need=${id}&watch=1`);
+    window.history.replaceState(null, "", `/hire?need=${id}&watch=1`);
   }, []);
   useWatch(watch, follow);
 
@@ -101,7 +101,7 @@ export function Request({ initialNeed, watch = false }: { initialNeed: string | 
       setTags(picked);
       setQuestions(null);
       setNeedId(res.need.id);
-      window.history.replaceState(null, "", `/?need=${res.need.id}`);
+      window.history.replaceState(null, "", `/hire?need=${res.need.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not post the request");
     } finally {
@@ -398,7 +398,7 @@ const CARD_HEIGHT = "h-[19rem]";
 
 const SHORT_MODEL = /^(Claude|Gemini) /;
 
-function Candidate({
+export function Candidate({
   agent,
   rank,
   tryout,
@@ -415,9 +415,10 @@ function Candidate({
   steps: TryoutStep[];
   winner: boolean;
   leading: boolean;
-  hiring: boolean;
-  closed: boolean;
-  onHire: () => void;
+  hiring?: boolean;
+  closed?: boolean;
+  // Without it the card has no button: agents hire over MCP, nobody clicks.
+  onHire?: () => void;
 }) {
   const status = tryout?.status;
   const checks = tryout?.checks ?? [];
@@ -429,7 +430,7 @@ function Candidate({
   return (
     <article
       title={tryout?.reason ?? undefined}
-      className={`${CARD_HEIGHT} relative flex flex-col gap-3 overflow-hidden rounded-2xl p-3.5 text-card-foreground ring-1 transition-[box-shadow,background-color] duration-200 ease-out ${
+      className={`${onHire ? CARD_HEIGHT : "h-[15.5rem]"} relative flex flex-col gap-3 overflow-hidden rounded-2xl p-3.5 text-card-foreground ring-1 transition-[box-shadow,background-color] duration-200 ease-out ${
         winner ? "bg-card ring-3 ring-success" : "bg-card ring-foreground/5"
       }`}
     >
@@ -480,7 +481,7 @@ function Candidate({
           tone={checks.length ? (failed ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success") : ""}
           value={checks.length ? `${passed}/${checks.length}` : null}
         />
-        <Stat label="Per mo" tone="" value={money(agent.price_month_cents)} />
+        <Stat label="Per job" tone="" value={money(agent.price_action_cents)} />
       </dl>
 
       {/* What it brings to the job: the role's tools, the ones it lacks struck out. */}
@@ -527,6 +528,7 @@ function Candidate({
         )}
       </p>
 
+      {onHire ? (
       <Button
         onClick={onHire}
         disabled={hiring || closed || status !== "scored"}
@@ -536,6 +538,7 @@ function Candidate({
         {hiring ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
         {closed && winner ? "Hired" : `Hire ${agent.name}`}
       </Button>
+      ) : null}
     </article>
   );
 }

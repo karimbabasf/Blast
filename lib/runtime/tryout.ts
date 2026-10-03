@@ -2,6 +2,7 @@
 
 import type { Check, MarketAgent, Need, Role } from "@/lib/market/types";
 import { TASKS, checksFor } from "@/lib/roles";
+import { SCRIPTED_ROLES, scriptFor, designPage } from "@/lib/roles/scripted";
 import { createWorld, worldCalendar, worldMail } from "@/lib/roles/world";
 import { admin } from "@/lib/supabase-admin";
 import { runAgent, type Step, type Usage } from "./agent";
@@ -53,13 +54,47 @@ async function judge(agent: MarketAgent, task: string, steps: Step[], reply: str
 const passedShare = (checks: Check[]) => (checks.length ? checks.filter((c) => c.passed).length / checks.length : 0);
 
 // Specialists audition on the caller's actual job; calendar and email ones on a fixed task in a copy.
-const ON_THE_JOB = new Set<Role>(["auto_repair", "medical_billing"]);
+const ON_THE_JOB = new Set<Role>(["auto_repair", "medical_billing", "web_design"]);
+
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// A scripted tryout streams its fixed steps at a human pace, hands in its work, and scores itself.
+async function runScripted(tryoutId: string, agent: MarketAgent, worldId: string, job: string): Promise<boolean> {
+  const script = scriptFor(agent.id, job);
+  if (!script) return false;
+  const db = admin();
+  await wait(400 + Math.random() * 500);
+  for (const [i, step] of script.steps.entries()) {
+    await wait(700 + Math.random() * 700);
+    await Promise.all([
+      db.from("tryout_steps").insert({ tryout_id: tryoutId, n: i + 1, kind: "tool", ...step }),
+      db.from("tryouts").update({ steps: i + 1 }).eq("id", tryoutId),
+    ]);
+  }
+  await db.from("tryout_steps").insert({ tryout_id: tryoutId, n: script.steps.length + 1, kind: "say", name: "reply", input: null, output: script.reply });
+  if (agent.id === "design-ines") await db.from("world_outputs").insert({ world_id: worldId, kind: "design", body: designPage(job) });
+  const share = script.checks.filter((c) => c.passed).length / script.checks.length;
+  await wait(500);
+  await db
+    .from("tryouts")
+    .update({
+      status: "scored",
+      score: Math.round((7 * share + 3 * (script.judge / 10)) * 10) / 10,
+      checks: script.checks,
+      reason: script.reason,
+      steps: script.steps.length,
+      usage: { input_tokens: 0, output_tokens: 0, cost_usd: script.cost_usd },
+    })
+    .eq("id", tryoutId);
+  return true;
+}
 
 async function runOne(tryoutId: string, agent: MarketAgent, role: Role, jobText: string): Promise<void> {
   const db = admin();
   const task = ON_THE_JOB.has(role) ? jobText : TASKS[role];
   if (!task) throw new Error(`role ${role} has no test task`);
   const worldId = await createWorld(tryoutId);
+  if (SCRIPTED_ROLES.has(role) && (await runScripted(tryoutId, agent, worldId, jobText))) return;
   const steps: Step[] = [];
   let toolSteps = 0;
   const onStep = async (step: Step) => {
