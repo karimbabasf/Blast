@@ -228,6 +228,7 @@ function Story({
 
   return (
     <div className={`${CARD} min-w-0 px-5 pt-6 pb-5 sm:px-7`}>
+      <div className="flex h-14 items-start sm:h-[4.5rem]">
       <AnimatePresence mode="wait" initial={false}>
         <motion.h1
           key={title}
@@ -235,11 +236,12 @@ function Story({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.2, ease: OUT }}
-          className="text-2xl leading-[1.15] font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-3xl"
+          className="line-clamp-2 text-2xl leading-[1.15] font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-3xl"
         >
           {title}
         </motion.h1>
       </AnimatePresence>
+      </div>
       <p className="mt-2 text-sm text-muted-foreground">
         {need.source === "claude-code" ? "Claude Code asked over MCP" : "Asked on the web"} at <span className="tabular-nums">{clock(need.created_at)}</span>
         <span className="mx-1.5 text-muted-foreground/70">/</span>
@@ -257,7 +259,7 @@ function Story({
       </button>
 
       <ol className="mt-6">
-        <Step state={search} title="Search the Hub" brand="supabase" by="pgvector">
+        <Step state={search} title="Search the Hub" brand="supabase" by="pgvector" reserve="min-h-12">
           {need.search ? (
             <>
               Matched the job against <Num>{need.search.listings}</Num> specialists.{" "}
@@ -280,19 +282,17 @@ function Story({
             "Each pick does this exact job in its own sandbox, then gets checked and scored."
           ) : (
             <>
-              {running ? (
-                <span className="tabular-nums">
-                  {running} of {tryouts.length} still working, {calls} tool calls so far.
-                </span>
-              ) : null}
+              <span className="block h-6 truncate tabular-nums">
+                {running ? `${running} of ${tryouts.length} still working, ${calls} tool calls so far.` : `All ${tryouts.length} finished after ${calls} tool calls.`}
+              </span>
               <Board tryouts={tryouts} agents={agents} winnerId={phase === "tryout" ? null : winnerId} />
             </>
           )}
         </Step>
-        <Step state={pay} title="Pay on proof" brand="stripe" by="MPP">
+        <Step state={pay} title="Pay on proof" brand="stripe" by="MPP" reserve="min-h-[4.75rem]">
           <Payment hold={h} builder={winner?.builder} released={released} />
         </Step>
-        <Step state={deliver} title="Deliver" last>
+        <Step state={deliver} title="Deliver" last reserve="min-h-6">
           {released ? (
             "Nothing to deliver."
           ) : need.result ? (
@@ -323,7 +323,24 @@ function Num({ children }: { children: React.ReactNode }) {
   return <span className="font-semibold text-foreground tabular-nums">{children}</span>;
 }
 
-function Step({ state, title, brand, by, last, children }: { state: StepState; title: string; brand?: Brand; by?: string; last?: boolean; children: React.ReactNode }) {
+function Step({
+  state,
+  title,
+  brand,
+  by,
+  last,
+  reserve = "",
+  children,
+}: {
+  state: StepState;
+  title: string;
+  brand?: Brand;
+  by?: string;
+  last?: boolean;
+  // Space held for the tallest text this step can show.
+  reserve?: string;
+  children: React.ReactNode;
+}) {
   return (
     <li className="relative grid grid-cols-[28px_minmax(0,1fr)] gap-x-3.5">
       <div className="flex flex-col items-center">
@@ -340,7 +357,7 @@ function Step({ state, title, brand, by, last, children }: { state: StepState; t
             </span>
           ) : null}
         </div>
-        <div className={`mt-0.5 text-sm leading-relaxed text-pretty ${state === "todo" ? "text-muted-foreground/70" : "text-muted-foreground"}`}>{children}</div>
+        <div className={`mt-0.5 text-sm leading-relaxed text-pretty ${reserve} ${state === "todo" ? "text-muted-foreground/70" : "text-muted-foreground"}`}>{children}</div>
       </div>
     </li>
   );
@@ -403,9 +420,9 @@ function BoardRow({ tryout: t, agent, win }: { tryout: LiveTryout; agent?: Marke
       >
         <span className="flex min-w-0 items-center gap-2">
           <AgentDot id={t.agent_id} className="size-5" />
-          <span className="truncate text-sm font-medium text-foreground">{agent?.name ?? "Specialist"}</span>
+          <span className="max-w-[9rem] shrink-0 truncate text-sm font-medium text-foreground">{agent?.name ?? "Specialist"}</span>
           {lab ? <Logo brand={lab} className="size-3.5 shrink-0" /> : null}
-          <span className="hidden truncate text-sm text-muted-foreground/70 sm:inline">{agent?.builder}</span>
+          <span className="hidden min-w-0 truncate text-sm text-muted-foreground/70 sm:inline">{agent?.builder}</span>
           {win ? <span className="shrink-0 rounded-md bg-(--hire) px-1.5 py-px text-xs font-semibold text-white">Hired</span> : null}
         </span>
         <span className="hidden h-1.5 overflow-hidden rounded-full bg-secondary sm:block">
