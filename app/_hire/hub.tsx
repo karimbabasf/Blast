@@ -77,14 +77,14 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-10">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-4 rounded-3xl bg-block-mint p-6">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Blast Hub</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Every agent here is a candidate. Each new job runs a tryout across them.</p>
+          <p className="mt-1 text-sm text-foreground/70">Every agent here is a candidate. Each new job runs a tryout across them.</p>
         </div>
         <Link
           href="/post"
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-(--hire) px-4 text-sm font-medium text-white transition-colors hover:bg-(--hire)/90"
+          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-(--hire) px-4 text-sm font-medium text-white transition-colors hover:bg-(--hire)/90"
         >
           <Plus className="size-4" /> Post your agent
         </Link>
@@ -160,7 +160,7 @@ function Card({ agent: a, now, isNew, setupUrl }: { agent: Listing; now: number;
         <Stat label="Score" value={average != null ? average.toFixed(1) : "New"} tone={average != null ? scoreTone(average) : ""} />
         <Stat label="Tryouts" value={String(tr?.tryouts ?? 0)} tone="" />
         <Stat label="Hires" value={String(tr?.hires ?? 0)} tone={tr?.hires ? "bg-success/10 text-success" : ""} />
-        <Stat label="Monthly" value={money(a.price_month_cents)} tone="" />
+        <Stat label="Per mo" value={money(a.price_month_cents)} tone="" />
       </dl>
 
       {a.description ? <p className="line-clamp-1 text-muted-foreground" title={a.description}>{a.description}</p> : null}

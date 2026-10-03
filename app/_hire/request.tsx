@@ -111,7 +111,7 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
   const phase = !needId ? (busy || questions ? 0 : -1) : !view.tryouts.length ? 1 : running ? 2 : 3;
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 py-6">
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-4 py-5">
       <form onSubmit={submit} className="relative mx-auto w-full max-w-2xl">
         <label htmlFor="need" className="text-2xl font-semibold tracking-tight">
           Describe the Agent You Need
@@ -133,7 +133,7 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
             className="block w-full resize-none rounded-t-xl bg-transparent px-4 pt-3 pb-1 text-base outline-none"
           />
           <div className="flex items-center px-3 pb-3">
-            <Button type="submit" disabled={busy || !text.trim()} className="ml-auto h-9 w-32">
+            <Button type="submit" disabled={busy || !text.trim()} className="ml-auto h-9 w-32 rounded-full">
               {busy ? (
                 <>
                   <Loader2 aria-hidden="true" className="animate-spin" />
@@ -279,19 +279,19 @@ function Candidates({
             : "No Agent Passed";
 
   return (
-    <section aria-label="Tryouts" className="flex flex-col gap-3">
+    <section aria-label="Tryouts" className="flex flex-col gap-3 rounded-3xl bg-block-lime p-5">
       <div className="flex h-12 items-start justify-between gap-6">
         <div className="min-w-0">
           <h2 className="flex items-center gap-2 text-base leading-6 font-semibold">
             {need ? `${ROLE_LABEL[need.role]} Agents` : "Candidates"}
             <span className="font-normal text-muted-foreground tabular-nums">{field.length || ""}</span>
             {tags.map((t) => (
-              <span key={t.id} title={t.question} className="rounded-full bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
+              <span key={t.id} title={t.question} className="rounded-full bg-background/70 px-2 py-0.5 text-xs font-normal text-foreground/70">
                 {t.answer}
               </span>
             ))}
           </h2>
-          <p className="truncate text-sm text-muted-foreground" title={task}>
+          <p className="truncate text-sm text-foreground/70" title={task}>
             {error ? (
               <span className="text-destructive">{error}</span>
             ) : task ? (
@@ -304,8 +304,8 @@ function Candidates({
           </p>
         </div>
         <span
-          className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${
-            winnerId ? "border-transparent bg-success/10 text-success" : "text-muted-foreground"
+          className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+            winnerId ? "bg-success text-white" : "bg-background/70 text-foreground/70"
           } ${running ? "animate-pulse" : ""}`}
         >
           {status}
@@ -339,14 +339,14 @@ function Candidates({
         {Array.from({ length: empty }, (_, index) => (
           <li
             key={`slot-${index}`}
-            className={`${CARD_HEIGHT} flex items-center justify-center rounded-2xl bg-muted/50 text-sm text-muted-foreground/70`}
+            className={`${CARD_HEIGHT} flex items-center justify-center rounded-2xl bg-background/50 text-sm text-foreground/50`}
           >
             Waiting for a candidate
           </li>
         ))}
       </ul>
 
-      <p className="h-5 text-sm text-muted-foreground">
+      <p className="h-5 text-sm text-foreground/70">
         {need ? (
           <>
             Candidates come from{" "}
@@ -362,7 +362,7 @@ function Candidates({
 }
 
 // Every card and every empty slot is this tall, so nothing below ever moves.
-const CARD_HEIGHT = "h-[17.5rem]";
+const CARD_HEIGHT = "h-[16rem]";
 
 const SHORT_MODEL = /^(Claude|Gemini) /;
 
@@ -396,7 +396,7 @@ function Candidate({
     <article
       title={tryout?.reason ?? undefined}
       className={`${CARD_HEIGHT} relative flex flex-col gap-3 overflow-hidden rounded-2xl p-3.5 ring-1 transition-[box-shadow,background-color] duration-200 ease-out ${
-        winner ? "bg-success/5 ring-2 ring-success" : "bg-card ring-foreground/10"
+        winner ? "bg-card ring-3 ring-success" : "bg-card ring-foreground/5"
       }`}
     >
       {rank ? (
@@ -446,7 +446,7 @@ function Candidate({
           tone={checks.length ? (failed ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success") : ""}
           value={checks.length ? `${passed}/${checks.length}` : null}
         />
-        <Stat label="Monthly" tone="" value={money(agent.price_month_cents)} />
+        <Stat label="Per mo" tone="" value={money(agent.price_month_cents)} />
       </dl>
 
       {/* One line, always present: what the agent is doing, or how it ended. */}
@@ -479,7 +479,7 @@ function Candidate({
         onClick={onHire}
         disabled={hiring || status !== "scored"}
         variant={winner ? "default" : "outline"}
-        className={`mt-auto h-9 w-full shrink-0 ${winner ? "bg-success text-white hover:bg-success/90" : ""}`}
+        className={`mt-auto h-9 w-full shrink-0 rounded-full ${winner ? "bg-success text-white hover:bg-success/90" : "bg-background"}`}
       >
         {hiring ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
         Hire {agent.name}
@@ -637,7 +637,7 @@ function Questions({
       </ol>
       <div className="mt-4 flex items-center justify-end gap-3">
         <span className="hidden text-xs text-muted-foreground sm:inline">Number keys pick, Enter sends</span>
-        <Button type="button" onClick={onDone} disabled={busy} className="h-9 w-32">
+        <Button type="button" onClick={onDone} disabled={busy} className="h-9 w-32 rounded-full">
           {busy ? (
             <>
               <Loader2 aria-hidden="true" className="animate-spin" />
