@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { TrendingUp } from "lucide-react";
 import {
   RUN_BUDGET_CENTS,
   RUN_PRICE_CENTS,
@@ -32,6 +33,7 @@ export function Summary({
   payments,
   cards,
   onApprove,
+  onReject,
   className,
 }: {
   run: Run | null;
@@ -41,6 +43,7 @@ export function Summary({
   payments: Payment[];
   cards: AgentCard[];
   onApprove: () => void;
+  onReject: () => void;
   className?: string;
 }) {
   const status = run?.status ?? null;
@@ -64,10 +67,12 @@ export function Summary({
 
   const script = jobs.find((job) => job.skill === "script");
   const voice = jobs.find((job) => job.skill === "voice");
-  const canApprove = status === "waiting" && mode === "approve";
+  // Auto mode only needs the owner when the winners cost more than the budget.
+  const canApprove =
+    status === "waiting" && (mode === "approve" || planned > budget);
 
   const button =
-    mode === "auto"
+    mode === "auto" && !canApprove
       ? "Auto Hiring On"
       : status === "hiring"
         ? "Hiring…"
@@ -124,15 +129,31 @@ export function Summary({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Button
-          size="lg"
-          disabled={!canApprove}
-          onClick={onApprove}
-          className="h-11 w-full text-sm"
+        <div className="flex gap-2">
+          <Button
+            variant="destructive"
+            size="lg"
+            disabled={!canApprove}
+            onClick={onReject}
+            className="h-11 w-24 text-sm"
+          >
+            Reject
+          </Button>
+          <Button
+            size="lg"
+            disabled={!canApprove}
+            onClick={onApprove}
+            className="h-11 flex-1 bg-success text-sm text-white hover:bg-success/90"
+          >
+            {button}
+          </Button>
+        </div>
+        <p
+          className={cn(
+            "text-center text-xs text-muted-foreground tabular-nums",
+            planned > budget && "font-medium text-destructive",
+          )}
         >
-          {button}
-        </Button>
-        <p className="text-center text-xs text-muted-foreground tabular-nums">
           {money(planned)} of your {money(budget)} budget
         </p>
       </div>
@@ -148,7 +169,10 @@ export function Summary({
         </div>
         <div className="flex justify-between gap-4 font-semibold">
           <dt>Margin</dt>
-          <dd>{money(price - spent)}</dd>
+          <dd className="flex items-center gap-1 text-success">
+            <TrendingUp aria-hidden="true" className="size-3.5" />
+            {money(price - spent)}
+          </dd>
         </div>
       </dl>
 

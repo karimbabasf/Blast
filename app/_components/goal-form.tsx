@@ -5,11 +5,13 @@ export function GoalForm({
   defaultGoal,
   busy,
   done,
+  error,
   onStart,
 }: {
   defaultGoal: string;
   busy: boolean;
   done: boolean;
+  error: string | null;
   onStart: (goal: string) => void;
 }) {
   return (
@@ -38,6 +40,9 @@ export function GoalForm({
           {busy ? "Working…" : done ? "Run Again" : "Start Auditions"}
         </Button>
       </div>
+      <p aria-live="polite" className="h-4 truncate text-xs text-destructive">
+        {error}
+      </p>
     </form>
   );
 }

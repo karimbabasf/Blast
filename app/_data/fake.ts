@@ -1,35 +1,11 @@
-import type { AgentCard, Skill } from "@/lib/types";
-import imagePixel from "@/agents/cards/image-pixel.json";
-import musicTempo from "@/agents/cards/music-tempo.json";
-import scriptDex from "@/agents/cards/script-dex.json";
-import scriptLex from "@/agents/cards/script-lex.json";
-import scriptMara from "@/agents/cards/script-mara.json";
-import scriptQuill from "@/agents/cards/script-quill.json";
-import translatePolyglot from "@/agents/cards/translate-polyglot.json";
-import videoReel from "@/agents/cards/video-reel.json";
-import voiceAria from "@/agents/cards/voice-aria.json";
-import voiceBram from "@/agents/cards/voice-bram.json";
-import voiceKit from "@/agents/cards/voice-kit.json";
-import voiceNova from "@/agents/cards/voice-nova.json";
+import type { Skill } from "@/lib/types";
+import { CARDS } from "@/lib/agents/cards";
 
-// Stand-in results for chunk 1. Replaced by the API routes.
+// Canned results for the no-backend demo. See use-fake-run.ts.
 
 export const DEFAULT_GOAL = "Make me a 15 second radio ad for Xochitl Coffee.";
 
-export const CARDS = [
-  scriptQuill,
-  scriptMara,
-  scriptDex,
-  scriptLex,
-  voiceAria,
-  voiceBram,
-  voiceKit,
-  voiceNova,
-  musicTempo,
-  imagePixel,
-  videoReel,
-  translatePolyglot,
-] as AgentCard[];
+export { CARDS };
 
 export const FAKE_BRIEFS: Record<Skill, string> = {
   script: "Write a 15 second radio script for Xochitl Coffee.",

@@ -16,6 +16,13 @@ export const POP = {
   transition: { duration: 0.25, ease: [0.23, 1, 0.32, 1] as const },
 };
 
+// Green for a strong score, amber for a middling one, red for a weak one.
+function scoreTone(score: number) {
+  if (score >= 8) return "bg-success/10 text-success";
+  if (score >= 5) return "bg-warning/15 text-warning";
+  return "bg-destructive/10 text-destructive";
+}
+
 export function EmptySlot() {
   return (
     <div
@@ -79,13 +86,13 @@ export function AuditionCard({
       className={cn(
         CARD_HEIGHT,
         "flex flex-col gap-3 overflow-hidden rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-shadow duration-200 ease-out",
-        hired && "ring-2 ring-foreground",
+        hired && "ring-2 ring-success",
       )}
     >
       <div className="flex items-start gap-3">
         <AgentAvatar
           card={card}
-          status={scored ? undefined : "working"}
+          status={audition.status === "running" ? "working" : undefined}
           verified={hired}
         />
         <div className="min-w-0 flex-1">
@@ -96,8 +103,10 @@ export function AuditionCard({
             {scored && audition.audio_url && (
               <PlayButton src={audition.audio_url} label={`${card.name} sample`} />
             )}
-            {hired && <Badge>Hired</Badge>}
-            {top && !hired && <Badge variant="secondary">Top Score</Badge>}
+            {hired && <Badge className="bg-success text-white">Hired</Badge>}
+            {top && !hired && (
+              <Badge className="bg-success/10 text-success">Top Score</Badge>
+            )}
           </div>
           <p className="truncate text-sm text-muted-foreground">
             {card.description}
@@ -105,21 +114,25 @@ export function AuditionCard({
         </div>
 
         <div className="flex w-14 shrink-0 flex-col items-end">
-          <div className="flex h-6 items-end">
+          <div className="flex h-7 items-center">
             {scored ? (
               <motion.p
                 {...POP}
-                className="text-2xl leading-none font-semibold tabular-nums"
+                className={cn(
+                  "rounded-md px-1.5 py-0.5 text-lg leading-none font-semibold tabular-nums",
+                  scoreTone(Number(audition.score)),
+                )}
               >
-                {audition.score}
-                <span className="text-sm font-normal text-muted-foreground">
-                  /10
-                </span>
+                {Number(audition.score)}
+                <span className="text-xs font-normal opacity-70">/10</span>
               </motion.p>
+            ) : audition.status === "failed" ? (
+              <p className="rounded-md bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive">
+                Failed
+              </p>
             ) : (
               <p className="animate-pulse text-sm text-muted-foreground">
-                {audition.status === "failed" ? "Failed" : "…"}
-                <span className="sr-only">Auditioning</span>
+                …<span className="sr-only">Auditioning</span>
               </p>
             )}
           </div>

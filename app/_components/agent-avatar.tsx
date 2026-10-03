@@ -62,7 +62,6 @@ export function AgentAvatar({
       title={card.name}
       className={cn(
         "relative inline-flex shrink-0 items-center justify-center rounded-full bg-muted text-foreground ring-1 ring-foreground/10 transition-colors duration-200 ease-out",
-        verified && "bg-foreground text-background",
         s.box,
         className,
       )}
@@ -83,7 +82,7 @@ export function AgentAvatar({
       {verified && (
         <span
           aria-hidden="true"
-          className="absolute -right-0.5 -bottom-0.5 flex size-4 items-center justify-center rounded-full bg-background text-foreground ring-1 ring-foreground/20"
+          className="absolute -right-0.5 -bottom-0.5 flex size-4 items-center justify-center rounded-full bg-success text-white ring-2 ring-card"
         >
           <Check className="size-2.5" strokeWidth={3} />
         </span>

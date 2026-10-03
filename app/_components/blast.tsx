@@ -14,7 +14,8 @@ import { Summary } from "./summary";
 // Every region is laid out before the first click. A run fills the regions
 // in place, so nothing appears, disappears or pushes the page around.
 export function Blast() {
-  const { run, jobs, auditions, payments, cards, start, approve } = useRun();
+  const { run, jobs, auditions, payments, cards, error, start, approve, reject } =
+    useRun();
   const [mode, setMode] = useState<RunMode>("approve");
   const busy = run !== null && run.status !== "done";
 
@@ -37,6 +38,7 @@ export function Blast() {
           defaultGoal={DEFAULT_GOAL}
           busy={busy}
           done={run?.status === "done"}
+          error={error}
           onStart={(goal) => start(goal, mode)}
         />
 
@@ -52,6 +54,7 @@ export function Blast() {
             payments={payments}
             cards={cards}
             onApprove={approve}
+            onReject={reject}
             className="lg:sticky lg:top-6"
           />
         </div>

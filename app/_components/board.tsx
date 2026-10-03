@@ -8,11 +8,11 @@ import { SKILL_LABEL } from "./format";
 export const SKILLS: Skill[] = ["script", "voice"];
 const SLOTS = 3;
 
-const JOB_BADGE: Record<Job["status"], string> = {
-  auditioning: "Auditioning…",
-  waiting: "Scored",
-  hired: "Hired",
-  done: "Done",
+const JOB_BADGE: Record<Job["status"], { label: string; tone: string }> = {
+  auditioning: { label: "Auditioning…", tone: "animate-pulse" },
+  waiting: { label: "Scored", tone: "" },
+  hired: { label: "Hiring…", tone: "border-transparent bg-success/10 text-success" },
+  done: { label: "Done", tone: "border-transparent bg-success/10 text-success" },
 };
 
 // Both columns, their slots and the skipped strip are on screen from the
@@ -51,8 +51,11 @@ export function Board({
                   {job?.brief ?? "Waiting for a goal."}
                 </p>
               </div>
-              <Badge variant="outline">
-                {job ? JOB_BADGE[job.status] : "Idle"}
+              <Badge
+                variant="outline"
+                className={job ? JOB_BADGE[job.status].tone : "text-muted-foreground"}
+              >
+                {job ? JOB_BADGE[job.status].label : "Idle"}
               </Badge>
             </div>
 
