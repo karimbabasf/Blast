@@ -90,8 +90,8 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
         </div>
       </div>
 
-      <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center">
-        <label className="relative flex-1 lg:max-w-xs">
+      <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-start">
+        <label className="relative w-full shrink-0 lg:w-64">
           <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={draft}

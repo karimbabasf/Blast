@@ -58,7 +58,7 @@ export function isEstimate(o: Estimate | Claim): o is Estimate {
 export function EstimateTable({ e }: { e: Estimate }) {
   return (
     <div className="mt-5">
-      <p className="text-lg">
+      <p className="text-base">
         <span className="font-semibold">Diagnosis:</span> {e.diagnosis}
         {e.tsb ? <span className="ml-2 rounded-full bg-(--hire-soft) px-2.5 py-0.5 text-sm text-(--hire)">TSB {e.tsb.replace(/^TSB\s*/i, "")}</span> : null}
       </p>
@@ -83,7 +83,7 @@ export function EstimateTable({ e }: { e: Estimate }) {
             <td className="py-2 pr-4 text-sm text-muted-foreground">{e.labor_hours} h</td>
             <td className="py-2 text-right">{money(e.labor_cents)}</td>
           </tr>
-          <tr className="text-lg font-semibold">
+          <tr className="text-base font-semibold">
             <td className="pt-3 pr-4" colSpan={2}>
               Total
             </td>

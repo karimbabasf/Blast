@@ -111,7 +111,7 @@ export function Candidate({
       </ul>
 
       {/* One line, always present: what the agent is doing, or how it ended. */}
-      <p className="flex h-5 items-center gap-1.5 text-[13px]">
+      <p className="flex h-5 items-center gap-1.5 text-sm">
         {failed ? (
           <>
             <X aria-hidden="true" className="size-3.5 shrink-0 text-destructive" strokeWidth={3} />
@@ -143,7 +143,7 @@ export function Candidate({
 // A number first, its label under it. A missing value keeps the tile's size.
 function Stat({ label, value, tone }: { label: string; value: string | null; tone: string }) {
   return (
-    <div className={`flex h-13 flex-col justify-center rounded-lg px-2 transition-colors duration-200 ease-out ${tone || "bg-muted/60"}`}>
+    <div className={`flex h-13 flex-col justify-center rounded-xl px-2 transition-colors duration-200 ease-out ${tone || "bg-muted/60"}`}>
       <dd className="h-6 text-lg leading-6 font-semibold tabular-nums">
         {value ? (
           <motion.span

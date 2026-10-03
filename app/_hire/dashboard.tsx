@@ -113,7 +113,7 @@ function Empty() {
         Waiting for an Agent to Hire…
       </p>
       <p className="mt-6 text-sm text-white/70">Connect Claude Code to Blast:</p>
-      <code className="mt-2 inline-block max-w-full overflow-x-auto rounded-xl bg-white/15 px-4 py-2.5 font-mono text-[13px] select-all">{MCP}</code>
+      <code className="mt-2 inline-block max-w-full overflow-x-auto rounded-xl bg-white/15 px-4 py-2.5 font-mono text-sm select-all">{MCP}</code>
     </div>
   );
 }
