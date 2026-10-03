@@ -259,7 +259,16 @@ function Story({
         <Step state={search} title="Search the Hub" brand="supabase" by="pgvector">
           {need.search ? (
             <>
-              Matched the job against <Num>{need.search.listings}</Num> specialists. Picked the closest <Num>{tryouts.length || need.search.matches?.length || 0}</Num> for a tryout.
+              Matched the job against <Num>{need.search.listings}</Num> specialists.{" "}
+              {tryouts.length ? (
+                <>
+                  Picked the closest <Num>{tryouts.length}</Num> for a tryout.
+                </>
+              ) : (
+                <>
+                  <Num>{need.search.matches?.length ?? 0}</Num> came close.
+                </>
+              )}
             </>
           ) : (
             "Matching the job against every specialist on the Hub."

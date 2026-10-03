@@ -424,7 +424,7 @@ function Lane({ tryout: t, agent, steps, now, state }: { tryout: LiveTryout; age
                 >
                   <Check className="size-3.5 shrink-0 text-(--st-green)" strokeWidth={3} />
                   <span className="font-mono text-[11.5px] text-(--st-green)">{s.name}</span>
-                  <span className="min-w-0 truncate text-(--st-1)">{summarize(s.name, s.input)}</span>
+                  <span className="min-w-0 truncate text-(--st-1)">{buildLine(s)}</span>
                 </motion.li>
               ))}
             </AnimatePresence>
@@ -459,6 +459,18 @@ function Lane({ tryout: t, agent, steps, now, state }: { tryout: LiveTryout; age
       </footer>
     </motion.article>
   );
+}
+
+// One plain line for a step of the real job: "6 photos placed".
+function buildLine(s: TryoutStep) {
+  const o = (s.output ?? {}) as Record<string, unknown>;
+  if (Array.isArray(o.sections)) return `${o.sections.length} sections, one file`;
+  if (typeof o.placed === "number") return `${o.placed} photos placed`;
+  if (typeof o.headline === "string") return o.headline;
+  if (o.status === "live") return "Live";
+  const rest = { ...((s.input ?? {}) as Record<string, unknown>) };
+  delete rest.phase;
+  return summarize(s.name, rest);
 }
 
 // Supabase Realtime, as it lands: every tool call is a row.
