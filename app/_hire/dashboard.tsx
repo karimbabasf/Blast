@@ -7,7 +7,7 @@ import type { MarketAgent, TryoutStep } from "@/lib/market/types";
 import { AgentDot } from "../_components/agent-dot";
 import { db } from "./db";
 import { clock, money, ROLE_LABEL } from "./format";
-import { type Brand, labOf, Logo } from "./logos";
+import { type Brand, Logo } from "./logos";
 import { capturedCents, type LiveNeed, type LiveTryout, stripeLinks, workLine } from "./proof";
 import { bestTryout, DeliveredStage, isDelivery, isSite, LiveStage, phaseOf, type Phase, StageFrame, useCountUp, useHubAgents, useNow } from "./stage";
 import { useNeed } from "./use-need";
@@ -252,10 +252,10 @@ function Story({
         type="button"
         onClick={() => setJobOpen((o) => !o)}
         aria-expanded={jobOpen}
-        className="mt-4 block w-full rounded-2xl bg-muted px-4 py-3 text-left ring-1 ring-border transition-[background-color,transform] duration-150 ease-out hover:bg-secondary active:scale-[0.99]"
+        className="mt-4 flex w-full items-baseline gap-2 rounded-lg bg-muted px-3 py-2 text-left text-sm transition-[background-color,transform] duration-150 ease-out hover:bg-secondary active:scale-[0.99]"
       >
-        <span className="block text-xs font-medium text-muted-foreground">The job</span>
-        <span className={`mt-1 text-sm leading-relaxed text-pretty text-foreground ${jobOpen ? "block" : "line-clamp-3"}`}>{need.text}</span>
+        <span className="shrink-0 text-xs font-medium text-muted-foreground">The job</span>
+        <span className={`min-w-0 leading-relaxed text-foreground ${jobOpen ? "text-pretty" : "truncate"}`}>{need.text}</span>
       </button>
 
       <ol className="mt-6">
@@ -282,10 +282,13 @@ function Story({
             "Each pick does this exact job in its own sandbox, then gets checked and scored."
           ) : (
             <>
-              <span className="block h-6 truncate tabular-nums">
-                {running ? `${running} of ${tryouts.length} still working, ${calls} tool calls so far.` : `All ${tryouts.length} finished after ${calls} tool calls.`}
-              </span>
-              <Board tryouts={tryouts} agents={agents} winnerId={phase === "tryout" ? null : winnerId} />
+              {running ? (
+                <span className="block h-6 truncate tabular-nums">
+                  {running} of {tryouts.length} still working, {calls} tool calls so far.
+                </span>
+              ) : (
+                <Scores tryouts={tryouts} agents={agents} winnerId={phase === "tryout" ? null : winnerId} />
+              )}
             </>
           )}
         </Step>
@@ -384,95 +387,18 @@ function StepIcon({ state }: { state: StepState }) {
   );
 }
 
-function Board({ tryouts, agents, winnerId }: { tryouts: LiveTryout[]; agents: Map<string, MarketAgent>; winnerId: string | null }) {
-  const rows = [...tryouts].sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+// Every candidate and its score on one line, best first; the hired one in black.
+function Scores({ tryouts, agents, winnerId }: { tryouts: LiveTryout[]; agents: Map<string, MarketAgent>; winnerId: string | null }) {
+  const order = [...tryouts].sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
   return (
-    <ul className="mt-2.5 -mx-2">
-      {rows.map((t) => (
-        <motion.li key={t.id} layout transition={{ type: "spring", stiffness: 380, damping: 32 }}>
-          <BoardRow tryout={t} agent={agents.get(t.agent_id)} win={t.agent_id === winnerId} />
-        </motion.li>
+    <span className="flex h-6 items-center gap-x-4 overflow-hidden tabular-nums">
+      {order.map((t) => (
+        <span key={t.id} className={`flex shrink-0 items-center gap-1.5 ${t.agent_id === winnerId ? "font-semibold text-foreground" : ""}`}>
+          <AgentDot id={t.agent_id} className="size-3.5" />
+          {agents.get(t.agent_id)?.name ?? "Specialist"} {t.score != null ? t.score.toFixed(1) : "failed"}
+        </span>
       ))}
-    </ul>
-  );
-}
-
-// The reason repeats the failed checks before the judges' note; the list above already shows those.
-function judged(reason: string | null | undefined) {
-  const at = reason?.indexOf("Judges") ?? -1;
-  return at >= 0 ? reason!.slice(at) : (reason ?? "");
-}
-
-function BoardRow({ tryout: t, agent, win }: { tryout: LiveTryout; agent?: MarketAgent; win: boolean }) {
-  const [open, setOpen] = useState(false);
-  const score = useCountUp(t.status === "scored" ? t.score : null);
-  const lab = agent ? labOf(agent.model) : null;
-  const checks = t.checks ?? [];
-  const passed = checks.filter((c) => c.passed).length;
-  return (
-    <div className={`rounded-xl transition-colors duration-200 ease-out ${open ? "bg-muted" : ""}`}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        disabled={!checks.length}
-        className="grid w-full grid-cols-[minmax(0,1fr)_4.5rem] items-center gap-3 rounded-xl px-2 py-2 text-left enabled:hover:bg-muted disabled:cursor-default sm:grid-cols-[minmax(0,1fr)_minmax(48px,96px)_4.5rem]"
-      >
-        <span className="flex min-w-0 items-center gap-2">
-          <AgentDot id={t.agent_id} className="size-5" />
-          <span className="max-w-[9rem] shrink-0 truncate text-sm font-medium text-foreground">{agent?.name ?? "Specialist"}</span>
-          {lab ? <Logo brand={lab} className="size-3.5 shrink-0" /> : null}
-          <span className="hidden min-w-0 truncate text-sm text-muted-foreground/70 sm:inline">{agent?.builder}</span>
-          {win ? <span className="shrink-0 rounded-md bg-(--hire) px-1.5 py-px text-xs font-semibold text-white">Hired</span> : null}
-        </span>
-        <span className="hidden h-1.5 overflow-hidden rounded-full bg-secondary sm:block">
-          <span
-            className={`block h-full rounded-full transition-[width] duration-500 ease-out ${win ? "bg-(--hire)" : passed === checks.length && checks.length ? "bg-foreground" : "bg-muted-foreground/60"}`}
-            style={{ width: `${t.status === "scored" ? Math.max(4, score * 10) : 0}%` }}
-          />
-        </span>
-        <span className="flex items-baseline justify-end gap-1.5 tabular-nums">
-          {t.status === "running" ? (
-            <Loader2 className="size-3.5 animate-spin text-(--hire)" />
-          ) : t.status === "scored" ? (
-            <>
-              <span className="text-base font-semibold text-foreground">{score.toFixed(1)}</span>
-              <span className="text-xs text-muted-foreground/70">
-                {passed}/{checks.length}
-              </span>
-            </>
-          ) : (
-            <span className="text-sm text-muted-foreground">Failed</span>
-          )}
-        </span>
-      </button>
-      <AnimatePresence initial={false}>
-        {open && checks.length ? (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: OUT }}
-            className="overflow-hidden"
-          >
-            <div className="pt-0.5 pr-2 pb-3 pl-9">
-              <ul className="text-sm">
-                {checks.map((c) => (
-                  <li key={c.name} className={`flex h-6 items-center gap-2 ${c.passed ? "text-muted-foreground" : "font-medium text-foreground"}`}>
-                    {c.passed ? <Check aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={2.5} /> : <X aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={3} />}
-                    <span className="truncate" title={c.name}>
-                      {c.name}
-                    </span>
-                    <span className="sr-only">{c.passed ? "passed" : "failed"}</span>
-                  </li>
-                ))}
-              </ul>
-              {judged(t.reason) ? <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">{judged(t.reason)}</p> : null}
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-    </div>
+    </span>
   );
 }
 

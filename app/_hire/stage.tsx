@@ -278,25 +278,14 @@ function Field({ hub, need, picked, settled }: { hub: HubAgent[]; need: LiveNeed
   );
 }
 
-// The field folded into one line once the tryouts start: every listing a cell, the picked ones lit.
+// The search in one line once the tryouts start.
 function Strip({ hub, need, picked }: { hub: HubAgent[]; need: LiveNeed; picked: Set<string> }) {
-  const matched = new Set((need.search?.matches ?? []).map((m) => m.id));
-  const order = [...hub].sort((a, b) => hash(a.id + need.id) - hash(b.id + need.id));
-  if (!order.length) return null;
+  const searched = need.search?.listings ?? hub.length;
+  if (!searched) return null;
   return (
-    <div className="mt-4 flex items-center gap-3">
-      <div className="flex min-w-0 flex-1 flex-wrap gap-[3px]" aria-label={`${order.length} listings searched, ${picked.size} picked`}>
-        {order.map((a) => (
-          <span
-            key={a.id}
-            className={`h-2.5 w-2.5 rounded-[3px] ${picked.has(a.id) ? "bg-(--st-blue)" : matched.has(a.id) ? "bg-white/45" : "bg-white/12"}`}
-          />
-        ))}
-      </div>
-      <span className="shrink-0 text-xs text-(--st-2) tabular-nums">
-        {need.search?.listings ?? order.length} searched, {picked.size} picked
-      </span>
-    </div>
+    <p className="mt-4 text-xs text-(--st-3) tabular-nums">
+      {searched} searched, {picked.size} picked
+    </p>
   );
 }
 
