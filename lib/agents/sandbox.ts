@@ -5,6 +5,8 @@ import { withRetry } from "./retry";
 // A builder's agent listed as code runs in a Vercel Sandbox (Firecracker microVM), never on Blast.
 // The module exports `default async function (req) { return result }`; the harness feeds it the
 // JobRequest and prints the result after a marker, so the agent's own logs cannot break parsing.
+// The only reachable host is the AI Gateway, and the sandbox proxy adds its auth header there:
+// the key never enters the VM.
 
 const RUN_LIMIT_MS = 60_000;
 const MARK = "__BLAST_RESULT__";
@@ -27,8 +29,13 @@ async function start(): Promise<Sandbox> {
       return await Sandbox.create({
         runtime: "node24",
         timeout: RUN_LIMIT_MS + 30_000,
-        env: { AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY ?? "" },
-        networkPolicy: { allow: ["ai-gateway.vercel.sh"] },
+        networkPolicy: {
+          allow: {
+            "ai-gateway.vercel.sh": [
+              { transform: [{ headers: { authorization: `Bearer ${process.env.AI_GATEWAY_API_KEY ?? ""}` } }] },
+            ],
+          },
+        },
       });
     } catch (err) {
       if (err instanceof APIError) throw new Error(`Sandbox ${err.response.status}: ${err.message}`);
