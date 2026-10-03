@@ -166,7 +166,7 @@ function Focus({ id, fallback, hub }: { id: string; fallback: LiveNeed | null; h
               <DeliveredStage result={need.result} onReplay={() => setReplayFrom(Date.now())} />
             </motion.div>
           ) : (
-            <motion.div key={`live-${replayFrom ?? "now"}`} exit={{ opacity: 0, filter: "blur(6px)" }} transition={{ duration: 0.3, ease: OUT }}>
+            <motion.div key={`live-${replayFrom ?? "now"}`} exit={{ opacity: 0, filter: "blur(4px)" }} transition={{ duration: 0.2, ease: OUT }}>
               <LiveStage
                 need={need}
                 tryouts={tryouts}
@@ -234,7 +234,7 @@ function Story({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.3, ease: OUT }}
+          transition={{ duration: 0.2, ease: OUT }}
           className="text-2xl leading-[1.15] font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-3xl"
         >
           {title}
@@ -250,7 +250,7 @@ function Story({
         type="button"
         onClick={() => setJobOpen((o) => !o)}
         aria-expanded={jobOpen}
-        className="mt-4 block w-full rounded-2xl bg-muted px-4 py-3 text-left ring-1 ring-border transition-colors hover:bg-muted"
+        className="mt-4 block w-full rounded-2xl bg-muted px-4 py-3 text-left ring-1 ring-border transition-[background-color,transform] duration-150 ease-out hover:bg-secondary active:scale-[0.99]"
       >
         <span className="block text-xs font-medium text-muted-foreground">The job</span>
         <span className={`mt-1 text-sm leading-relaxed text-pretty text-foreground ${jobOpen ? "block" : "line-clamp-3"}`}>{need.text}</span>
@@ -328,7 +328,7 @@ function Step({ state, title, brand, by, last, children }: { state: StepState; t
     <li className="relative grid grid-cols-[28px_minmax(0,1fr)] gap-x-3.5">
       <div className="flex flex-col items-center">
         <StepIcon state={state} />
-        {!last ? <span className={`my-1.5 w-0.5 flex-1 rounded-full transition-colors duration-500 ${state === "done" ? "bg-muted-foreground" : "bg-secondary"}`} /> : null}
+        {!last ? <span className={`my-1.5 w-0.5 flex-1 rounded-full transition-colors duration-300 ease-out ${state === "done" ? "bg-muted-foreground" : "bg-secondary"}`} /> : null}
       </div>
       <div className={`min-w-0 ${last ? "" : "pb-5"}`}>
         <div className="flex min-h-7 items-center justify-between gap-3">
@@ -352,10 +352,10 @@ function StepIcon({ state }: { state: StepState }) {
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.span
           key={state}
-          initial={{ scale: 0.4, opacity: 0 }}
+          initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.4, opacity: 0 }}
-          transition={{ type: "spring", stiffness: 520, damping: 26 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          transition={{ type: "spring", duration: 0.3, bounce: 0.15 }}
           className={`absolute inset-0 grid place-items-center rounded-full ${
             state === "done" ? "bg-foreground text-white" : state === "now" ? "bg-(--hire-soft) text-(--hire) ring-1 ring-(--hire)/30" : state === "off" ? "bg-secondary text-muted-foreground" : "ring-[1.5px] ring-border ring-inset"
           }`}
@@ -410,7 +410,7 @@ function BoardRow({ tryout: t, agent, win }: { tryout: LiveTryout; agent?: Marke
         </span>
         <span className="hidden h-1.5 overflow-hidden rounded-full bg-secondary sm:block">
           <span
-            className={`block h-full rounded-full transition-[width] duration-700 ease-out ${win ? "bg-(--hire)" : passed === checks.length && checks.length ? "bg-foreground" : "bg-muted-foreground/60"}`}
+            className={`block h-full rounded-full transition-[width] duration-500 ease-out ${win ? "bg-(--hire)" : passed === checks.length && checks.length ? "bg-foreground" : "bg-muted-foreground/60"}`}
             style={{ width: `${t.status === "scored" ? Math.max(4, score * 10) : 0}%` }}
           />
         </span>
@@ -435,7 +435,7 @@ function BoardRow({ tryout: t, agent, win }: { tryout: LiveTryout; agent?: Marke
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.28, ease: OUT }}
+            transition={{ duration: 0.2, ease: OUT }}
             className="overflow-hidden"
           >
             <div className="pt-0.5 pr-2 pb-3 pl-9">

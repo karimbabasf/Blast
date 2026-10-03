@@ -4,6 +4,7 @@ import { Check, ExternalLink, Loader2, RotateCcw, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MarketAgent, TryoutStep } from "@/lib/market/types";
+import { AgentDot } from "../_components/agent-dot";
 import { db } from "./db";
 import { modelName, outcome, summarize } from "./format";
 import { labOf, Logo } from "./logos";
@@ -144,9 +145,9 @@ export function LiveStage({
           <motion.div
             key="lanes"
             className="flex flex-1 flex-col"
-            initial={{ opacity: 0, y: 16, filter: "blur(6px)" }}
+            initial={{ opacity: 0, y: 8, filter: "blur(4px)" }}
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            transition={{ duration: 0.55, ease: OUT }}
+            transition={{ duration: 0.3, ease: OUT }}
           >
             <Strip hub={hub} need={need} picked={picked} />
             <Lanes tryouts={tryouts} steps={steps} agents={agents} now={now} phase={phase} winnerId={winnerId} />
@@ -160,8 +161,8 @@ export function LiveStage({
           <motion.div
             key="field"
             className="flex-1"
-            exit={{ opacity: 0, scale: 0.97, filter: "blur(8px)" }}
-            transition={{ duration: 0.4, ease: OUT }}
+            exit={{ opacity: 0, scale: 0.97, filter: "blur(4px)" }}
+            transition={{ duration: 0.2, ease: OUT }}
           >
             <Field hub={hub} need={need} picked={picked} settled={settled} />
           </motion.div>
@@ -247,7 +248,7 @@ function Field({ hub, need, picked, settled }: { hub: HubAgent[]; need: LiveNeed
                 scale: settled && on ? 1.03 : 1,
               }}
               transition={{ ...SPRING, delay: settled ? (i % 9) * 0.035 : Math.min(i, 60) * 0.008 }}
-              className={`flex h-9 min-w-0 items-center gap-1.5 rounded-[10px] px-2.5 text-xs ring-1 transition-colors duration-500 ${
+              className={`flex h-9 min-w-0 items-center gap-1.5 rounded-[10px] px-2.5 text-xs ring-1 transition-colors duration-200 ease-out ${
                 settled && on
                   ? "bg-(--st-blue-soft) text-white ring-(--st-blue)"
                   : lit
@@ -338,8 +339,8 @@ function Lane({ tryout: t, agent, steps, now, state }: { tryout: LiveTryout; age
   return (
     <motion.article
       animate={{ opacity: state === "lost" ? 0.5 : 1 }}
-      transition={{ duration: 0.5, ease: OUT }}
-      className={`flex h-full flex-col rounded-2xl p-3.5 ring-1 transition-[box-shadow,background-color] duration-500 ${
+      transition={{ duration: 0.3, ease: OUT }}
+      className={`flex h-full flex-col rounded-2xl p-3.5 ring-1 transition-[box-shadow,background-color] duration-200 ease-out ${
         state === "won"
           ? "bg-(--st-blue-soft) ring-(--st-blue)"
           : "bg-white/[0.045] ring-white/[0.08]"
@@ -348,14 +349,15 @@ function Lane({ tryout: t, agent, steps, now, state }: { tryout: LiveTryout; age
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
+            <AgentDot id={t.agent_id} className="size-5" />
             <span className="truncate text-base font-semibold text-white">{agent?.name ?? "Specialist"}</span>
             <AnimatePresence>
               {state === "won" ? (
                 <motion.span
-                  initial={{ opacity: 0, scale: 0.6 }}
+                  initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ type: "spring", stiffness: 520, damping: 22 }}
-                  className="rounded-md bg-(--st-blue) px-1.5 py-0.5 text-xs font-semibold text-white"
+                  transition={{ type: "spring", duration: 0.3, bounce: 0.15 }}
+                  className="rounded-md bg-(--st-blue) px-1.5 py-0.5 text-xs font-semibold text-(--st-bg)"
                 >
                   Hired
                 </motion.span>
@@ -390,10 +392,10 @@ function Lane({ tryout: t, agent, steps, now, state }: { tryout: LiveTryout; age
             <motion.li
               key={s.id}
               layout="position"
-              initial={{ opacity: 0, y: 10, backgroundColor: INSERT }}
+              initial={{ opacity: 0, y: 6, backgroundColor: INSERT }}
               animate={{ opacity: 1, y: 0, backgroundColor: "rgb(255 255 255 / 0)" }}
               exit={{ opacity: 0, transition: { duration: 0.15 } }}
-              transition={{ duration: 0.35, ease: OUT, backgroundColor: { duration: 1.4, ease: "easeOut" } }}
+              transition={{ duration: 0.2, ease: OUT, backgroundColor: { duration: 1.2, ease: "easeOut" } }}
               className="rounded-lg px-2 py-1 text-xs leading-snug"
             >
               <span className="font-mono text-xs text-(--st-green)">{s.name}</span>
@@ -419,7 +421,7 @@ function Lane({ tryout: t, agent, steps, now, state }: { tryout: LiveTryout; age
                   key={s.id}
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.35, ease: OUT }}
+                  transition={{ duration: 0.2, ease: OUT }}
                   className="flex items-center gap-2 text-xs text-white"
                 >
                   <Check className="size-3.5 shrink-0 text-(--st-green)" strokeWidth={3} />
@@ -520,7 +522,7 @@ export function isSite(o: unknown): o is Site {
 export function DeliveredStage({ result, onReplay }: { result: NonNullable<LiveNeed["result"]>; onReplay?: () => void }) {
   const out = result.output as Estimate | Claim | Site | null;
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: OUT }} className="p-4 sm:p-5">
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: OUT }} className="p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="flex min-w-0 items-center gap-2 text-lg font-semibold tracking-[-0.01em] text-white">
           <Check className="size-4 shrink-0 text-(--st-green)" strokeWidth={3} />
@@ -530,7 +532,7 @@ export function DeliveredStage({ result, onReplay }: { result: NonNullable<LiveN
           <button
             type="button"
             onClick={onReplay}
-            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm text-(--st-2) ring-1 ring-white/10 transition-colors hover:bg-white/[0.06] hover:text-white"
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm text-(--st-2) ring-1 ring-white/10 transition-[background-color,color,transform] duration-150 ease-out hover:bg-white/[0.06] hover:text-white active:scale-[0.97]"
           >
             <RotateCcw className="size-3.5" /> Replay the tryout
           </button>

@@ -121,7 +121,7 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
       {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
 
       {data
-        ? (q ? [{ role: null as Role | null, agents: data.agents }] : ROLES.map((r) => ({ role: r as Role | null, agents: data.agents.filter((a) => a.role === r) })))
+        ? (q ? [{ role: null as Role | null, agents: data.agents }] : ROLES.map((r) => ({ role: r as Role | null, agents: ranked(data.agents.filter((a) => a.role === r)) })))
             .filter((g) => g.agents.length)
             .map((g) => (
               <section key={g.role ?? "results"} className="mt-10">
@@ -132,7 +132,7 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
                 ) : null}
                 <div className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-3">
                   {g.agents.map((a) => (
-                    <Card key={a.id} agent={a} now={data.now} isNew={a.id === highlight} setupUrl={a.id === highlight ? setupUrl : null} />
+                    <Card key={a.id} agent={a} rank={g.role && a.track_record?.avg_score != null ? g.agents.indexOf(a) + 1 : null} now={data.now} isNew={a.id === highlight} setupUrl={a.id === highlight ? setupUrl : null} />
                   ))}
                 </div>
               </section>
@@ -143,7 +143,14 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
   );
 }
 
-function Card({ agent: a, now, isNew, setupUrl }: { agent: Listing; now: number; isNew: boolean; setupUrl: string | null }) {
+// A leaderboard inside each category: best average score first, then the agents that can be
+// tried out but have no score yet, then the listed-only ones.
+function ranked(agents: Listing[]) {
+  const key = (a: Listing) => a.track_record?.avg_score ?? (a.auditionable ? -1 : -2);
+  return [...agents].sort((a, b) => key(b) - key(a));
+}
+
+function Card({ agent: a, rank, now, isNew, setupUrl }: { agent: Listing; rank: number | null; now: number; isNew: boolean; setupUrl: string | null }) {
   const tr = a.track_record;
   return (
     <article
@@ -152,7 +159,19 @@ function Card({ agent: a, now, isNew, setupUrl }: { agent: Listing; now: number;
       className={`flex h-44 flex-col rounded-xl border p-4 ${a.auditionable ? "bg-card" : "bg-muted/50"} ${isNew ? "h-auto ring-2 ring-(--hire)" : ""}`}
     >
       <div className="flex items-center gap-3">
-        <AgentDot id={a.id} className="size-10" />
+        <span className="relative shrink-0">
+          <AgentDot id={a.id} className="block size-10" />
+          {rank ? (
+            <span
+              aria-label={`Rank ${rank}`}
+              className={`absolute -top-1.5 -left-1.5 flex size-5 items-center justify-center rounded-full text-xs font-semibold tabular-nums ring-2 ring-card ${
+                rank === 1 ? "bg-foreground text-background" : "bg-secondary text-foreground"
+              }`}
+            >
+              {rank}
+            </span>
+          ) : null}
+        </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h3 className="truncate text-base leading-5 font-semibold text-foreground">{a.name}</h3>
