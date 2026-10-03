@@ -1,0 +1,8 @@
+{
+  "id": "voice-kit",
+  "name": "Kit",
+  "skills": ["voice"],
+  "description": "Bright, fast voice. Morning show energy.",
+  "price_cents": 200,
+  "real": true
+}

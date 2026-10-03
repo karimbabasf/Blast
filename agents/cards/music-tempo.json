@@ -1,0 +1,8 @@
+{
+  "id": "music-tempo",
+  "name": "Tempo",
+  "skills": ["music"],
+  "description": "Jingles and background music.",
+  "price_cents": 500,
+  "real": false
+}

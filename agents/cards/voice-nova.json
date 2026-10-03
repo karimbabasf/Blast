@@ -1,0 +1,8 @@
+{
+  "id": "voice-nova",
+  "name": "Nova",
+  "skills": ["voice"],
+  "description": "Studio voice with a full music bed.",
+  "price_cents": 900,
+  "real": false
+}

@@ -1,0 +1,8 @@
+{
+  "id": "script-dex",
+  "name": "Dex",
+  "skills": ["script"],
+  "description": "Cheap and fast. Plain copy, no frills.",
+  "price_cents": 150,
+  "real": true
+}

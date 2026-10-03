@@ -1,0 +1,8 @@
+{
+  "id": "voice-aria",
+  "name": "Aria",
+  "skills": ["voice"],
+  "description": "Warm, upbeat radio voice.",
+  "price_cents": 300,
+  "real": true
+}
