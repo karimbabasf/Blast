@@ -2,6 +2,8 @@ import { Bot, Check, ExternalLink, Lock, RotateCcw } from "lucide-react";
 import type { Need, Tryout } from "@/lib/market/types";
 import { modelName, money } from "./format";
 
+const STRIPE = "https://dashboard.stripe.com/test";
+
 // Columns the lead adds to needs. All three are absent on old rows.
 export type Hold = {
   status: "held" | "captured" | "released";
@@ -9,6 +11,7 @@ export type Hold = {
   amount_cents: number;
   via: "mpp" | "card";
   spt?: string;
+  captured_cents?: number;
   transfer?: string;
   builder_cents?: number;
   blast_cents?: number;
@@ -32,9 +35,60 @@ export type Usage = { input_tokens?: number; output_tokens?: number; cost_usd?: 
 
 export type LiveTryout = Tryout & { usage?: Usage | null };
 
-export type LiveNeed = Need & { source?: string | null; hold?: Hold | null; result?: Result | null };
+export type Search = {
+  listings: number;
+  query: string;
+  matches: { id: string; name: string; builder: string; role: string; similarity: number }[];
+};
 
-const STRIPE = "https://dashboard.stripe.com/test";
+export type LiveNeed = Need & { source?: string | null; hold?: Hold | null; result?: Result | null; search?: Search | null };
+
+export function SearchBlock({ search, auditioned }: { search: Search | null | undefined; auditioned: Set<string> }) {
+  if (!search?.matches?.length) return null;
+  return (
+    <section className="mt-6 rounded-xl border bg-card p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h3 className="font-semibold">Found by semantic search</h3>
+        <p className="text-sm text-muted-foreground tabular-nums">pgvector over {search.listings} Hub listings</p>
+      </div>
+      {search.query ? <p className="mt-1 text-sm text-muted-foreground">&ldquo;{search.query}&rdquo;</p> : null}
+      <ol className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(min(100%,220px),1fr))] gap-2 text-sm">
+        {search.matches.map((m) => {
+          const tried = auditioned.has(m.id);
+          return (
+            <li key={m.id} className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${tried ? "border-(--hire)/40 bg-(--hire-soft)" : ""}`}>
+              <span className="min-w-0">
+                <span className="block truncate font-medium">{m.name}</span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {m.builder}
+                  {tried ? <span className="text-(--hire)"> · auditioned</span> : null}
+                </span>
+              </span>
+              <span className="shrink-0 font-mono tabular-nums">{m.similarity.toFixed(2)}</span>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
+export function capturedCents(h: Hold) {
+  return h.captured_cents ?? (h.builder_cents != null || h.blast_cents != null ? (h.builder_cents ?? 0) + (h.blast_cents ?? 0) : h.amount_cents);
+}
+
+// One line of the work: "Estimate $214.40: misfire, cyl 1 coil" or "I10 R51.9 / 99213-25".
+export function workLine(out: Estimate | Claim | null | undefined) {
+  if (!out) return "";
+  if (isEstimate(out)) return [out.total_cents != null ? `Estimate ${money(out.total_cents)}` : "", out.diagnosis].filter(Boolean).join(": ");
+  const cpt = (out.cpt ?? []).map((c) => [c.code, ...(c.modifiers ?? [])].join("-")).join(" ");
+  return [(out.icd10 ?? []).join(" "), cpt].filter(Boolean).join(" / ");
+}
+
+export const stripeLinks = {
+  payment: (pi: string) => `${STRIPE}/payments/${pi}`,
+  transfer: (tr: string) => `${STRIPE}/connect/transfers/${tr}`,
+};
 
 function Id({ href, children }: { href?: string; children: string }) {
   const cls = "font-mono text-[0.85em] break-all";

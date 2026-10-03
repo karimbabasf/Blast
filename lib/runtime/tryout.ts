@@ -52,9 +52,12 @@ async function judge(agent: MarketAgent, task: string, steps: Step[], reply: str
 
 const passedShare = (checks: Check[]) => (checks.length ? checks.filter((c) => c.passed).length / checks.length : 0);
 
-async function runOne(tryoutId: string, agent: MarketAgent, role: Role): Promise<void> {
+// Specialists audition on the caller's actual job; calendar and email ones on a fixed task in a copy.
+const ON_THE_JOB = new Set<Role>(["auto_repair", "medical_billing"]);
+
+async function runOne(tryoutId: string, agent: MarketAgent, role: Role, jobText: string): Promise<void> {
   const db = admin();
-  const task = TASKS[role];
+  const task = ON_THE_JOB.has(role) ? jobText : TASKS[role];
   if (!task) throw new Error(`role ${role} has no test task`);
   const worldId = await createWorld(tryoutId);
   const steps: Step[] = [];
@@ -82,7 +85,7 @@ async function runOne(tryoutId: string, agent: MarketAgent, role: Role): Promise
   } catch (err) {
     runError = err instanceof Error ? err.message : String(err);
   }
-  const checks = await checksFor(role, worldId);
+  const checks = await checksFor(role, worldId, task);
   if (runError) {
     await db.from("tryouts").update({ status: "failed", checks, reason: runError, steps: toolSteps }).eq("id", tryoutId);
     return;
@@ -112,14 +115,19 @@ export async function createTryouts(need: Need, agents: MarketAgent[]): Promise<
   return data;
 }
 
-export async function runTryouts(need: Need, agents: MarketAgent[], tryouts: { id: string; agent_id: string }[]): Promise<void> {
+export async function runTryouts(
+  need: Need,
+  agents: MarketAgent[],
+  tryouts: { id: string; agent_id: string }[],
+  after: Need["status"] = "waiting",
+): Promise<void> {
   const db = admin();
   await Promise.allSettled(
     tryouts.map(async (t) => {
       const agent = agents.find((a) => a.id === t.agent_id);
       if (!agent) return;
       try {
-        await runOne(t.id, agent, need.role);
+        await runOne(t.id, agent, need.role, need.text);
       } catch (err) {
         await db
           .from("tryouts")
@@ -128,5 +136,5 @@ export async function runTryouts(need: Need, agents: MarketAgent[], tryouts: { i
       }
     }),
   );
-  await db.from("needs").update({ status: "waiting" }).eq("id", need.id);
+  await db.from("needs").update({ status: after }).eq("id", need.id);
 }

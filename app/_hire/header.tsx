@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 
 const LINKS = [
+  { href: "/hires", label: "My hires" },
   { href: "/hub", label: "Hub" },
   { href: "/", label: "Hire a specialist" },
   { href: "/post", label: "Post your specialist" },

@@ -168,10 +168,10 @@ async function emailChecks(worldId: string): Promise<Check[]> {
   ];
 }
 
-export function checksFor(role: Role, worldId: string): Promise<Check[]> {
+export function checksFor(role: Role, worldId: string, task = ""): Promise<Check[]> {
   if (role === "calendar") return calendarChecks(worldId);
   if (role === "email") return emailChecks(worldId);
-  if (role === "auto_repair") return autoChecks(worldId);
+  if (role === "auto_repair") return autoChecks(worldId, task);
   if (role === "medical_billing") return medicalChecks(worldId);
   return Promise.resolve([]);
 }

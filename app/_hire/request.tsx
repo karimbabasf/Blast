@@ -4,10 +4,10 @@ import { Check, Loader2, Mic, MousePointerClick, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import type { Capability, MarketAgent, Need, Role, Tryout, TryoutStep } from "@/lib/market/types";
+import type { Capability, MarketAgent, Need, Tryout, TryoutStep } from "@/lib/market/types";
 import { postJson } from "./db";
 import { modelName, money, outcome, tokenCost, replyText, ROLE_LABEL, runsIn, summarize } from "./format";
-import { HoldStrip, type LiveNeed, type LiveTryout, ResultCard, RunsOn, SourceBadge } from "./proof";
+import { HoldStrip, type LiveNeed, type LiveTryout, ResultCard, RunsOn, SearchBlock, SourceBadge } from "./proof";
 import { useNeed } from "./use-need";
 import { useWatch, Waiting } from "./watch";
 
@@ -40,11 +40,6 @@ async function clarify(text: string): Promise<Question[] | null> {
     window.clearTimeout(timer);
   }
 }
-
-const TASKS: Partial<Record<Role, string>> = {
-  calendar: "Book a 30 minute call titled 'Rakha sync' with rakha@xochitl.coffee next Tuesday afternoon. Do not double book.",
-  email: "Clean up the inbox: archive the newsletters, label the investor email 'Important', and draft a reply to Grace confirming Thursday at 3pm.",
-};
 
 export function Request({ initialNeed, watch = false }: { initialNeed: string | null; watch?: boolean }) {
   const [text, setText] = useState(EXAMPLES[0].text);
@@ -250,7 +245,7 @@ function Candidates({
     }
   }
 
-  const task = need ? (TASKS[need.role] ?? need.text) : undefined;
+  const task = need?.text;
 
   return (
     <section className="mt-12">
@@ -281,8 +276,9 @@ function Candidates({
           <span className="text-foreground">The job:</span> {task}
         </p>
       ) : null}
-      <HoldStrip hold={need?.hold} />
       <ResultCard result={need?.result} />
+      <HoldStrip hold={need?.hold} />
+      <SearchBlock search={need?.search} auditioned={new Set(tryouts.map((t) => t.agent_id))} />
       {tags.length ? (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {tags.map((t) => (
@@ -382,7 +378,7 @@ function Candidate({
       </dl>
 
       {!agent.auditionable ? (
-        <p className="mt-4 text-sm text-muted-foreground">Listed only. Blast cannot test this role yet.</p>
+        <p className="mt-4 text-sm text-muted-foreground">Listed only. Blast cannot try out this role yet.</p>
       ) : (
         <>
           <ol className="mt-4 max-h-80 space-y-1.5 overflow-y-auto rounded-lg bg-muted/60 p-3 font-mono text-sm leading-relaxed">

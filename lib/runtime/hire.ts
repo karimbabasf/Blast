@@ -4,9 +4,8 @@
 import type { Check, MarketAgent, Need, Role } from "@/lib/market/types";
 import { settle, type Hold } from "@/lib/pay/proof";
 import { lastOutput } from "@/lib/roles/specialists";
-import { createWorld, worldCalendar, worldMail } from "@/lib/roles/world";
 import { admin } from "@/lib/supabase-admin";
-import { runAgent, type Usage } from "./agent";
+import type { Usage } from "./agent";
 import { pickCandidates } from "./catalog";
 import { mapRole } from "./route-role";
 import { createTryouts, runTryouts } from "./tryout";
@@ -33,10 +32,12 @@ export async function startNeed(job: string, source: "claude-code" | "web", hold
 
 export async function hireOnProof(need: Need, hold: Hold | null) {
   const db = admin();
-  const { picked } = await pickCandidates(need.role, need.text);
+  const { picked, matches, listings } = await pickCandidates(need.role, need.text);
   if (!picked.length) throw new Error(`no specialists listed for ${need.role}`);
+  const search = { listings, query: need.text, matches };
+  await db.from("needs").update({ search }).eq("id", need.id);
   const tryouts = await createTryouts(need, picked);
-  await runTryouts(need, picked, tryouts);
+  await runTryouts(need, picked, tryouts, "checkout");
 
   const { data } = await db.from("tryouts").select("agent_id, score, status, checks, usage").eq("need_id", need.id);
   const rows = (data ?? []) as TryoutRow[];
@@ -44,23 +45,21 @@ export async function hireOnProof(need: Need, hold: Hold | null) {
   const best = rows.filter(passedAll).sort((a, b) => Number(b.score) - Number(a.score))[0];
   const winner = best ? picked.find((a) => a.id === best.agent_id) ?? null : null;
 
+  // The winner's audition was the caller's own job, so its hand-in is the finished work.
   let result: { agent_id: string; agent_name: string; reply: string; output: unknown } | null = null;
-  if (winner) {
-    await db.from("needs").update({ status: "checkout" }).eq("id", need.id);
-    try {
-      const worldId = await createWorld(null);
-      const run = await runAgent(
-        winner,
-        need.text,
-        { calendar: worldCalendar(worldId), mail: worldMail(worldId), worldId, builder: winner.builder },
-        async () => {},
-      );
-      const kind = OUTPUT_KIND[need.role];
-      result = { agent_id: winner.id, agent_name: winner.name, reply: run.reply, output: kind ? await lastOutput(worldId, kind) : null };
-    } catch (err) {
-      result = null;
-      await db.from("needs").update({ result: { error: err instanceof Error ? err.message : String(err) } }).eq("id", need.id);
-    }
+  if (winner && best) {
+    const tryoutId = tryouts.find((t) => t.agent_id === winner.id)?.id;
+    const [{ data: world }, { data: said }] = await Promise.all([
+      db.from("worlds").select("id").eq("tryout_id", tryoutId).maybeSingle(),
+      db.from("tryout_steps").select("output").eq("tryout_id", tryoutId).eq("kind", "say").order("n", { ascending: false }).limit(1),
+    ]);
+    const kind = OUTPUT_KIND[need.role];
+    result = {
+      agent_id: winner.id,
+      agent_name: winner.name,
+      reply: String(said?.[0]?.output ?? ""),
+      output: kind && world ? await lastOutput(world.id, kind) : null,
+    };
   }
 
   const paid = hold ? await settle(hold, result && winner ? { id: winner.id, price_cents: winner.price_action_cents, stripe_account: winner.stripe_account } : null) : null;
@@ -69,7 +68,7 @@ export async function hireOnProof(need: Need, hold: Hold | null) {
     .update({ status: result ? "hired" : "waiting", result, hold: paid })
     .eq("id", need.id);
 
-  return summary(need, picked, rows, winner, result, paid);
+  return { ...summary(need, picked, rows, winner, result, paid), found_by: { method: "pgvector semantic search", ...search } };
 }
 
 function summary(

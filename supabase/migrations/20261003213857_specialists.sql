@@ -100,3 +100,6 @@ on conflict (id) do nothing;
 
 -- Tokens and list-price cost of each tryout run.
 alter table public.tryouts add column if not exists usage jsonb;
+
+-- What semantic search found for a need: listings searched, top matches with similarity.
+alter table public.needs add column if not exists search jsonb;

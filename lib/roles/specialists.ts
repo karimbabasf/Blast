@@ -140,8 +140,11 @@ export async function lastOutput(worldId: string, kind: string): Promise<Args | 
 
 type Part = { part_number?: string; name?: string; price_cents?: number };
 
-export async function autoChecks(worldId: string): Promise<Check[]> {
+export async function autoChecks(worldId: string, task: string): Promise<Check[]> {
   const e = await lastOutput(worldId, "estimate");
+  // The misfiring cylinder comes from the job's code (P0301 is cylinder 1).
+  const cyl = task.match(/P030([1-8])/i)?.[1] ?? "3";
+  const cylWords: Record<string, string> = { "1": "one", "2": "two", "3": "three", "4": "four" };
   const parts = (Array.isArray(e?.parts) ? e.parts : []) as Part[];
   const text = `${s(e?.diagnosis)} ${s(e?.tsb)}`;
   const partsSum = parts.reduce((a, p) => a + Number(p.price_cents ?? 0), 0);
@@ -149,7 +152,10 @@ export async function autoChecks(worldId: string): Promise<Check[]> {
   const hours = Number(e?.labor_hours ?? NaN);
   return [
     { name: "Estimate handed in", passed: !!e },
-    { name: "Finds the ignition coil on cylinder 3", passed: /coil/i.test(text) && /(cyl\w*\s*#?\s*3|#3|\b3\b|three)/i.test(text) },
+    {
+      name: `Finds the ignition coil on cylinder ${cyl}`,
+      passed: /coil/i.test(text) && new RegExp(`(cyl\\w*\\s*#?\\s*${cyl}\\b|#${cyl}\\b|\\b${cylWords[cyl] ?? cyl}\\b)`, "i").test(text),
+    },
     { name: "Cites service bulletin TSB 15-047", passed: /15-047/.test(text) },
     { name: "OEM coil 30520-R1A-A01 on the estimate", passed: parts.some((p) => /30520-R1A-A01/i.test(s(p.part_number))) },
     {
