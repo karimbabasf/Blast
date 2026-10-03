@@ -4,6 +4,7 @@ import { Check, ExternalLink, Loader2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import type { MarketAgent, TryoutStep } from "@/lib/market/types";
+import { AgentDot } from "../_components/agent-dot";
 import { db } from "./db";
 import { clock, money, ROLE_LABEL } from "./format";
 import { type Brand, labOf, Logo } from "./logos";
@@ -395,8 +396,9 @@ function BoardRow({ tryout: t, agent, win }: { tryout: LiveTryout; agent?: Marke
         className="grid w-full grid-cols-[minmax(0,1fr)_4.5rem] items-center gap-3 rounded-xl px-2 py-2 text-left enabled:hover:bg-muted disabled:cursor-default sm:grid-cols-[minmax(0,1fr)_minmax(48px,96px)_4.5rem]"
       >
         <span className="flex min-w-0 items-center gap-2">
-          {lab ? <Logo brand={lab} className="size-3.5 shrink-0" /> : null}
+          <AgentDot id={t.agent_id} className="size-5" />
           <span className="truncate text-sm font-medium text-foreground">{agent?.name ?? "Specialist"}</span>
+          {lab ? <Logo brand={lab} className="size-3.5 shrink-0" /> : null}
           <span className="hidden truncate text-sm text-muted-foreground/70 sm:inline">{agent?.builder}</span>
           {win ? <span className="shrink-0 rounded-md bg-(--hire) px-1.5 py-px text-xs font-semibold text-white">Hired</span> : null}
         </span>
