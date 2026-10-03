@@ -2,7 +2,7 @@
 
 import { Check, Loader2, Mic, MousePointerClick, X } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { Capability, MarketAgent, Need, Role, Tryout, TryoutStep } from "@/lib/market/types";
 import { postJson } from "./db";
@@ -22,6 +22,30 @@ const EXAMPLES: { label: string; text: string; caps: Capability[] }[] = [
   },
 ];
 
+type Question = { id: string; question: string; options: string[] };
+type Answer = { id: string; question: string; answer: string };
+
+// Clarifying questions are optional: any failure or an answer slower than 8 s skips them.
+async function clarify(text: string): Promise<Question[] | null> {
+  const ctl = new AbortController();
+  const timer = window.setTimeout(() => ctl.abort(), 8000);
+  try {
+    const res = await fetch("/api/needs/clarify", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text }),
+      signal: ctl.signal,
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { questions?: Question[] };
+    return (data.questions ?? []).filter((q) => q.id && q.question && q.options?.length);
+  } catch {
+    return null;
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
 const TASKS: Partial<Record<Role, string>> = {
   calendar: "Book a 30 minute call titled 'Rakha sync' with rakha@xochitl.coffee next Tuesday afternoon. Do not double book.",
   email: "Clean up the inbox: archive the newsletters, label the investor email 'Important', and draft a reply to Grace confirming Thursday at 3pm.",
@@ -35,6 +59,9 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
   const [listed, setListed] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<Question[] | null>(null);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [tags, setTags] = useState<Answer[]>([]);
   const view = useNeed(needId);
 
   const toggle = (c: Capability) =>
@@ -43,12 +70,35 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!text.trim() || busy) return;
+    if (questions) return findAgents(questions);
+    setBusy(true);
+    setError(null);
+    const asked = await clarify(text);
+    if (asked?.length) {
+      setAnswers({});
+      setQuestions(asked);
+      setBusy(false);
+      return;
+    }
+    await findAgents([]);
+  }
+
+  async function findAgents(qs: Question[]) {
+    const picked: Answer[] = qs
+      .filter((q) => answers[q.id])
+      .map((q) => ({ id: q.id, question: q.question, answer: answers[q.id] }));
     setBusy(true);
     setError(null);
     try {
-      const res = await postJson<{ need: Need; agents?: MarketAgent[]; listed?: MarketAgent[] }>("/api/needs", { text, capabilities: caps });
+      const res = await postJson<{ need: Need; agents?: MarketAgent[]; listed?: MarketAgent[] }>("/api/needs", {
+        text,
+        capabilities: caps,
+        answers: picked,
+      });
       setPosted(res.agents ?? []);
       setListed(res.listed?.length ?? null);
+      setTags(picked);
+      setQuestions(null);
       setNeedId(res.need.id);
       window.history.replaceState(null, "", `/?need=${res.need.id}`);
     } catch (err) {
@@ -75,7 +125,10 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
           <textarea
             id="need"
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+              setQuestions(null);
+            }}
             rows={3}
             className="block w-full resize-none rounded-t-xl bg-transparent px-4 pt-4 pb-2 text-base outline-none"
           />
@@ -88,10 +141,23 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
             </Toggle>
             <Button type="submit" disabled={busy || !text.trim()} className="ml-auto h-9 bg-(--hire) px-4 hover:bg-(--hire)/90">
               {busy ? <Loader2 className="animate-spin" /> : null}
-              Find agents
+              {busy && !questions ? "Reading" : "Find agents"}
             </Button>
           </div>
         </div>
+        {questions ? (
+          <Questions
+            questions={questions}
+            answers={answers}
+            busy={busy}
+            onPick={(id, a) => setAnswers((cur) => ({ ...cur, [id]: cur[id] === a ? "" : a }))}
+            onSkip={() => {
+              setAnswers({});
+              void findAgents([]);
+            }}
+            onDone={() => void findAgents(questions)}
+          />
+        ) : null}
         <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span>Try</span>
           {EXAMPLES.map((ex) => (
@@ -101,6 +167,7 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
               onClick={() => {
                 setText(ex.text);
                 setCaps(ex.caps);
+                setQuestions(null);
               }}
               className="rounded-full border px-3 py-1 text-foreground transition-colors hover:bg-muted"
             >
@@ -111,7 +178,7 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
         {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
       </form>
 
-      {needId ? <Candidates needId={needId} need={view.need} agents={agents} listed={listed ?? view.agents.length} tryouts={view.tryouts} steps={view.steps} /> : null}
+      {needId ? <Candidates needId={needId} need={view.need} agents={agents} tags={tags} listed={listed ?? view.agents.length} tryouts={view.tryouts} steps={view.steps} /> : null}
     </main>
   );
 }
@@ -136,6 +203,7 @@ function Candidates({
   needId,
   need,
   agents,
+  tags,
   listed,
   tryouts,
   steps,
@@ -143,6 +211,7 @@ function Candidates({
   needId: string;
   need: Need | null;
   agents: MarketAgent[];
+  tags: Answer[];
   listed: number;
   tryouts: Tryout[];
   steps: TryoutStep[];
@@ -192,6 +261,15 @@ function Candidates({
         <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
           <span className="text-foreground">The task:</span> {task}
         </p>
+      ) : null}
+      {tags.length ? (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {tags.map((t) => (
+            <span key={t.id} title={t.question} className="rounded-full bg-(--hire-soft) px-2.5 py-0.5 text-xs text-(--hire)">
+              {t.answer}
+            </span>
+          ))}
+        </div>
       ) : null}
       {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
 
@@ -350,6 +428,90 @@ function Score({ tryout, auditionable }: { tryout: Tryout | null; auditionable: 
     <div className="shrink-0 text-right">
       <div className="text-2xl font-semibold tabular-nums leading-none">{tryout.score.toFixed(1)}</div>
       <div className="mt-1 text-xs text-muted-foreground">of 10</div>
+    </div>
+  );
+}
+
+function Questions({
+  questions,
+  answers,
+  busy,
+  onPick,
+  onSkip,
+  onDone,
+}: {
+  questions: Question[];
+  answers: Record<string, string>;
+  busy: boolean;
+  onPick: (id: string, answer: string) => void;
+  onSkip: () => void;
+  onDone: () => void;
+}) {
+  const current = questions.find((q) => !answers[q.id]) ?? null;
+
+  // Number keys answer the first open question; Enter sends.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (busy || e.metaKey || e.ctrlKey || e.altKey || t?.closest("textarea, input, select")) return;
+      if (e.key === "Enter" && !t?.closest("button")) {
+        e.preventDefault();
+        onDone();
+        return;
+      }
+      const n = Number(e.key);
+      if (!current || !Number.isInteger(n) || n < 1 || n > current.options.length) return;
+      e.preventDefault();
+      onPick(current.id, current.options[n - 1]);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [busy, current, onDone, onPick]);
+
+  return (
+    <div className="mt-3 rounded-xl border bg-card p-4 animate-in fade-in slide-in-from-top-1 duration-200">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-sm font-medium">A few quick questions</h2>
+        <button type="button" onClick={onSkip} disabled={busy} className="text-sm text-muted-foreground hover:text-foreground">
+          Skip
+        </button>
+      </div>
+      <ol className="mt-3 space-y-4">
+        {questions.map((q) => (
+          <li key={q.id}>
+            <p className="text-sm">{q.question}</p>
+            <div role="radiogroup" aria-label={q.question} className="mt-2 flex flex-wrap gap-1.5">
+              {q.options.map((o, i) => {
+                const on = answers[q.id] === o;
+                return (
+                  <button
+                    key={o}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => onPick(q.id, o)}
+                    className={`inline-flex h-8 items-center gap-2 rounded-full border px-3 text-sm transition-colors ${
+                      on ? "border-(--hire) bg-(--hire) text-white" : "hover:bg-muted"
+                    }`}
+                  >
+                    {q === current ? (
+                      <kbd className="font-mono text-[11px] text-muted-foreground">{i + 1}</kbd>
+                    ) : null}
+                    {o}
+                  </button>
+                );
+              })}
+            </div>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-4 flex items-center justify-end gap-3">
+        <span className="hidden text-xs text-muted-foreground sm:inline">Number keys pick, Enter sends</span>
+        <Button type="button" onClick={onDone} disabled={busy} className="h-9 bg-(--hire) px-4 hover:bg-(--hire)/90">
+          {busy ? <Loader2 className="animate-spin" /> : null}
+          Find agents
+        </Button>
+      </div>
     </div>
   );
 }
