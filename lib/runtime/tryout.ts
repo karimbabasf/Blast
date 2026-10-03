@@ -86,7 +86,8 @@ async function runOne(tryoutId: string, agent: MarketAgent, role: Role, jobText:
     runError = err instanceof Error ? err.message : String(err);
   }
   const checks = await checksFor(role, worldId, task);
-  if (runError) {
+  // Work already handed in still counts when the agent ran out of time before its final reply.
+  if (runError && !checks[0]?.passed) {
     await db.from("tryouts").update({ status: "failed", checks, reason: runError, steps: toolSteps }).eq("id", tryoutId);
     return;
   }

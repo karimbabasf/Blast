@@ -6,7 +6,7 @@ import { nowLine } from "@/lib/roles/seed";
 
 const URL = "https://ai-gateway.vercel.sh/v1/chat/completions";
 const MAX_TURNS = 10;
-const BUDGET_MS = 60_000;
+const BUDGET_MS = 90_000;
 
 export type Step = { kind: "tool" | "say"; name: string; input: unknown; output: unknown };
 
@@ -59,7 +59,7 @@ export async function runAgent(
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
     const left = deadline - Date.now();
-    if (left <= 0) throw new Error("ran out of time (60 s)");
+    if (left <= 0) throw new Error("ran out of time (90 s)");
     const res = await fetch(URL, {
       method: "POST",
       headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
