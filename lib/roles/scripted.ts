@@ -2,7 +2,7 @@
 // demo is instant and the same every time. Web design is the first.
 
 import type { Check, Role } from "@/lib/market/types";
-import { SITE_FONTS, SITE_PALETTE, xochitlSite } from "./site-template";
+import { SITE_FONTS, SITE_PALETTE, selectSite } from "./site-template";
 
 type ScriptStep = { name: string; input: unknown; output: unknown };
 export type Script = { steps: ScriptStep[]; checks: Check[]; judge: number; reason: string; reply: string; cost_usd: number };
@@ -76,5 +76,5 @@ export function scriptFor(agentId: string, job: string): Script | null {
 
 export function designPage(job: string) {
   const name = businessName(job);
-  return { title: `${name} website`, palette: SITE_PALETTE, fonts: SITE_FONTS, html: xochitlSite(name) };
+  return { title: `${name} website`, palette: SITE_PALETTE, fonts: SITE_FONTS, html: selectSite(name) };
 }

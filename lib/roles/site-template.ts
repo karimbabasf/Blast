@@ -4,7 +4,7 @@ export const SITE_PALETTE: string[] = ["#24160F", "#F5ECDF", "#B8482A", "#E9A23B
 
 export const SITE_FONTS = { display: "Bricolage Grotesque", body: "DM Sans" };
 
-const IMG = "https://gqpsujsmjuuqfkvfklmr.supabase.co/storage/v1/object/public/media/xochitl/";
+const IMG = "https://gqpsujsmjuuqfkvfklmr.supabase.co/storage/v1/object/public/media/select-coffee/";
 
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -33,7 +33,7 @@ function rows(items: [string, string, string][]): string {
     .join("");
 }
 
-export function xochitlSite(name: string = "Select Coffee"): string {
+export function selectSite(name: string = "Select Coffee"): string {
   const full = esc(name.trim() || "Select Coffee");
   const mark = esc((name.trim() || "Select").split(/\s+/)[0]);
   return `<!doctype html>
