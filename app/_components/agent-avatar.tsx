@@ -1,12 +1,21 @@
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAgentLogo } from "./agent-logo";
+
+// A fixed set of agent colours, so a screen full of agents never looks random.
+const COLORS = ["#7f5e3c", "#ce383d", "#ed712e", "#f19d38", "#43975d", "#49a393", "#3472d9", "#ce3d86", "#777777"];
+
+// The same agent always gets the same colour. The seed was picked so the agents of one role differ.
+function colorOf(id: string) {
+  let h = 6910;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619) >>> 0;
+  return COLORS[h % COLORS.length];
+}
 
 const SIZES = {
-  xs: { box: "size-6", icon: "size-3", text: "text-[0.625rem]" },
-  sm: { box: "size-8", icon: "size-3.5", text: "text-xs" },
-  md: { box: "size-10", icon: "size-4.5", text: "text-sm" },
-  lg: { box: "size-12", icon: "size-5", text: "text-base" },
+  xs: { box: "size-6" },
+  sm: { box: "size-8" },
+  md: { box: "size-10" },
+  lg: { box: "size-12" },
 };
 
 export function AgentAvatar({
@@ -22,7 +31,6 @@ export function AgentAvatar({
   verified?: boolean;
   className?: string;
 }) {
-  const logo = useAgentLogo(card.id);
   const s = SIZES[size];
 
   return (
@@ -30,26 +38,13 @@ export function AgentAvatar({
       role="img"
       aria-label={card.name}
       title={card.name}
+      style={{ backgroundColor: colorOf(card.id) }}
       className={cn(
-        "relative inline-flex shrink-0 items-center justify-center rounded-full bg-muted text-foreground ring-1 ring-foreground/10 transition-colors duration-200 ease-out",
+        "relative inline-flex shrink-0 rounded-full",
         s.box,
         className,
       )}
     >
-      {logo ? (
-        // eslint-disable-next-line @next/next/no-img-element -- a generated data URL
-        <img
-          src={logo}
-          alt=""
-          width={64}
-          height={64}
-          className="absolute inset-0 size-full rounded-full object-cover"
-        />
-      ) : (
-        <span aria-hidden="true" className={cn("font-semibold", s.text)}>
-          {card.name.slice(0, 1)}
-        </span>
-      )}
       {status === "working" && (
         <span
           aria-hidden="true"

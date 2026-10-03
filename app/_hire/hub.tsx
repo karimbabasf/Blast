@@ -4,7 +4,6 @@ import { Loader2, Search } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
 import type { MarketAgent, Role } from "@/lib/market/types";
 import { AgentAvatar } from "../_components/agent-avatar";
-import { LogoFactory } from "../_components/agent-logo";
 import { scoreTone } from "../_components/score-tone";
 import { modelName, money, ROLE_LABEL, ROLE_TOOLS, toolLabel } from "./format";
 import { labOf, Logo } from "./logos";
@@ -117,7 +116,7 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
             </button>
           ))}
         </div>
-        <span className="flex h-5 w-28 items-center text-sm text-muted-foreground tabular-nums lg:ml-auto lg:justify-end">
+        <span className="flex h-8 w-32 shrink-0 items-center text-sm whitespace-nowrap text-muted-foreground tabular-nums lg:ml-auto lg:justify-end">
           {loading ? <Loader2 aria-label="Loading" className="size-4 animate-spin" /> : `${data.agents.length} specialists`}
         </span>
       </div>
@@ -163,7 +162,6 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
         </table>
       </div>
       {data && !data.agents.length && !error ? <p className="mt-6 text-sm text-muted-foreground">No specialists match.</p> : null}
-      <LogoFactory ids={data?.agents.map((a) => a.id) ?? []} />
     </main>
   );
 }

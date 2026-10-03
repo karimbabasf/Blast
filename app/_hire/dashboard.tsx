@@ -4,7 +4,6 @@ import { ArrowRight, ExternalLink } from "lucide-react";
 import { TabTrack } from "./tab-track";
 import { useEffect, useState } from "react";
 import { AgentAvatar } from "../_components/agent-avatar";
-import { LogoFactory } from "../_components/agent-logo";
 import { Candidate } from "./candidate";
 import { db } from "./db";
 import { clock, money, ROLE_LABEL, ROLE_TOOLS } from "./format";
@@ -212,7 +211,6 @@ function Focus({ id, fallback, tab, onTab }: { id: string; fallback: LiveNeed | 
           </section>
         </Panel>
       </div>
-      <LogoFactory ids={[...field.map((a) => a.id), ...(need.search?.matches ?? []).slice(0, 6).map((m) => m.id)]} />
     </article>
   );
 }
@@ -281,7 +279,7 @@ function Summary({
         <div className="col-span-3 flex h-10 min-w-0 items-center gap-3 sm:mr-auto">
           {need.result ? (
             <>
-              <AgentAvatar card={{ id: need.result.agent_id, name: need.result.agent_name }} size="md" />
+              <AgentAvatar card={{ id: need.result.agent_id, name: need.result.agent_name }} size="md" className="ring-2 ring-white" />
               <span className="truncate text-base font-semibold" translate="no">
                 {need.result.agent_name} won
               </span>
@@ -594,7 +592,6 @@ function History({ needs, focus, onPick }: { needs: LiveNeed[]; focus: string; o
           );
         })}
       </ul>
-      <LogoFactory ids={[...new Set(needs.map((n) => n.result?.agent_id).filter((x): x is string => !!x))]} />
     </section>
   );
 }
