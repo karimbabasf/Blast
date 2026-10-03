@@ -1,4 +1,4 @@
-import { CARDS, cardById } from "@/lib/agents/cards";
+import { loadCards } from "@/lib/agents/cards";
 import { judgeResult, runAgent } from "@/lib/agents";
 import { pay } from "@/lib/pay";
 import { admin } from "@/lib/supabase-admin";
@@ -32,10 +32,10 @@ function clampScore(score: number) {
   return Math.round(Math.min(10, Math.max(0, Number(score) || 0)) * 10) / 10;
 }
 
-async function audition(job: Job, row: Audition) {
+async function audition(job: Job, row: Audition, cards: AgentCard[]) {
   const db = admin();
   try {
-    const card = cardById(row.agent_id);
+    const card = cards.find((c) => c.id === row.agent_id);
     if (!card) throw new Error(`unknown agent ${row.agent_id}`);
     const req: JobRequest = {
       job_id: job.id,
@@ -68,7 +68,8 @@ export async function auditionJob(jobId: string): Promise<PipelineResult> {
   if (error) return { status: 500, body: { error: error.message } };
   if (!job) return { status: 404, body: { error: "job not found" } };
 
-  const rows = CARDS.map((card) => {
+  const cards = await loadCards();
+  const rows = cards.map((card) => {
     const hasSkill = card.skills.includes(job.skill);
     const plays = hasSkill && card.real;
     return {
@@ -88,7 +89,7 @@ export async function auditionJob(jobId: string): Promise<PipelineResult> {
 
   if (inserted?.length) {
     const running = inserted.filter((row: Audition) => row.status === "running");
-    await Promise.allSettled(running.map((row: Audition) => audition(job as Job, row)));
+    await Promise.allSettled(running.map((row: Audition) => audition(job as Job, row, cards)));
 
     await db.from("jobs").update({ status: "waiting" }).eq("id", jobId).eq("status", "auditioning");
     const { data: jobs } = await db.from("jobs").select("status").eq("run_id", job.run_id);
@@ -110,13 +111,14 @@ async function loadJob(jobId: string): Promise<Job> {
 
 // Best score first; on a tie the cheaper agent wins.
 async function ranked(jobId: string): Promise<{ audition: Audition; card: AgentCard }[]> {
+  const cards = await loadCards();
   const { data } = await admin()
     .from("auditions")
     .select("*")
     .eq("job_id", jobId)
     .eq("status", "scored");
   return ((data ?? []) as Audition[])
-    .map((audition) => ({ audition, card: cardById(audition.agent_id) }))
+    .map((audition) => ({ audition, card: cards.find((c) => c.id === audition.agent_id) }))
     .filter((c): c is { audition: Audition; card: AgentCard } => Boolean(c.card))
     .sort(
       (a, b) =>

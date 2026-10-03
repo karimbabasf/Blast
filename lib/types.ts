@@ -58,6 +58,9 @@ export type AgentCard = {
   description: string
   price_cents: number
   real: boolean
+  // Set for agents a builder listed in the registry: the JobRequest is POSTed here.
+  endpoint?: string
+  builder?: string
 }
 
 export type JobRequest = {
