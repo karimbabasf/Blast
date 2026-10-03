@@ -103,7 +103,7 @@ async function handIn(worldId: string | undefined, kind: string, body: Args, bui
     kind === "estimate"
       ? {
           quote_id: `GW-Q-${n}`,
-          shop: builder === "GarageWorks" ? "GarageWorks Mission, 2299 Mission St, San Francisco, CA 94110, (415) 555-0147" : `${builder} partner shop`,
+          shop: builder === "GarageWorks" ? "GarageWorks Mission, Mission St, San Francisco (GarageWorks partner shop network)" : `${builder} partner shop`,
           firm_until: valid,
           first_open_slot: "Monday 8:30 AM drop-off, ready same day",
         }
