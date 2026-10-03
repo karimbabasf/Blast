@@ -190,16 +190,9 @@ export function Policy({ compact = false }: { compact?: boolean }) {
     }
   }
 
-  const explain =
-    cents == null
-      ? "Loading"
-      : on
-        ? `Claude Code hires within ${cap} without asking you. Stripe caps its payment token at the same ${cap}.`
-        : "Claude Code asks you before every hire.";
-
   if (compact)
     return (
-      <div title={explain} className="flex items-center gap-2.5 rounded-full bg-white py-1.5 pr-4 pl-1.5 text-sm shadow-[0_1px_2px_rgb(70_50_30/0.06),0_8px_24px_-14px_rgb(70_50_30/0.2)]">
+      <div className="flex items-center gap-2.5 rounded-full bg-white py-1.5 pr-4 pl-1.5 text-sm shadow-[0_1px_2px_rgb(70_50_30/0.06),0_8px_24px_-14px_rgb(70_50_30/0.2)]">
         <button
           type="button"
           role="switch"
@@ -239,7 +232,6 @@ export function Policy({ compact = false }: { compact?: boolean }) {
         <p id="policy-label" className="font-medium">
           Let my agents hire without asking, up to {cap} per job
         </p>
-        <p className="mt-0.5 text-sm text-muted-foreground">{explain}</p>
         {error ? <p className="mt-1 text-sm text-destructive">{error}</p> : null}
       </div>
     </div>
