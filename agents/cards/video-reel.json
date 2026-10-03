@@ -1,0 +1,8 @@
+{
+  "id": "video-reel",
+  "name": "Reel",
+  "skills": ["video"],
+  "description": "Short vertical video ads.",
+  "price_cents": 1200,
+  "real": false
+}

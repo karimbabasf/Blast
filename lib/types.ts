@@ -1,6 +1,7 @@
 // The contract from SPEC.md. Change it only after telling the other person.
 
 export type Skill = 'script' | 'voice'
+export type CardSkill = Skill | 'music' | 'image' | 'video' | 'translate'
 export type RunMode = 'approve' | 'auto'
 export type RunStatus = 'splitting' | 'auditioning' | 'waiting' | 'hiring' | 'done'
 export type JobStatus = 'auditioning' | 'waiting' | 'hired' | 'done'
@@ -53,7 +54,7 @@ export type Payment = {
 export type AgentCard = {
   id: string
   name: string
-  skills: Skill[]
+  skills: CardSkill[]
   description: string
   price_cents: number
   real: boolean

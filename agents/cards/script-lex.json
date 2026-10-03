@@ -1,0 +1,8 @@
+{
+  "id": "script-lex",
+  "name": "Lex",
+  "skills": ["script"],
+  "description": "Long form copywriter. Blog posts and landing pages.",
+  "price_cents": 400,
+  "real": false
+}
