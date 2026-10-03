@@ -113,7 +113,7 @@ export function Request({ initialNeed, watch = false }: { initialNeed: string | 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-12">
       {watch && !needId ? <Waiting /> : null}
-      <form onSubmit={submit} className={watch ? "hidden" : "mx-auto max-w-2xl"}>
+      <form onSubmit={submit} className={watch || (view.need as LiveNeed | null)?.source === "claude-code" ? "hidden" : "mx-auto max-w-2xl"}>
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">Blast</h1>
         <label htmlFor="need" className="mt-3 block text-xl font-medium tracking-tight sm:text-2xl">
           Hire the specialist your agent can&apos;t be.

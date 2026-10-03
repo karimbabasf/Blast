@@ -123,23 +123,20 @@ export function outcome(name: string, output: unknown): string {
   if (typeof output === "string" || typeof output === "number") return short(String(output), 48);
   if (Array.isArray(output)) {
     const first = output[0] ? outcome(name, output[0]) : "";
-    return output.length === 1 && first ? first : `${output.length} found${first ? `, ${first}` : ""}`;
+    if (output.length < 2) return first || (output.length ? "" : "none found");
+    return `${output.length} found${first ? `, top: ${first}` : ""}`;
   }
   const o = output as Record<string, unknown>;
   if (typeof o.error === "string") return `error: ${short(o.error, 40)}`;
-  for (const k of ["results", "items", "codes", "rules", "parts", "bulletins"]) {
-    if (Array.isArray(o[k])) return outcome(name, o[k]);
-  }
+  if (o.tsb) return `TSB ${str(o.tsb).replace(/^TSB\s*/i, "")}`;
   if (typeof o.total_cents === "number") return `total ${money(o.total_cents)}`;
   if (typeof o.price_cents === "number") return [str(o.part_number ?? o.name), money(o.price_cents)].filter(Boolean).join(" ");
   if (typeof o.hours === "number" || typeof o.labor_hours === "number") return `${o.hours ?? o.labor_hours} h`;
-  if (o.tsb || name === "search_tsb") {
-    const id = str(o.tsb ?? o.id ?? o.number);
-    if (id) return `TSB ${id.replace(/^TSB\s*/i, "")}`;
-  }
   const id = str(o.code ?? o.id ?? o.number ?? o.claim_id ?? o.status);
-  const label = str(o.title ?? o.description ?? o.name ?? o.rule);
-  return short([id, label].filter(Boolean).join(" "), 48);
+  const label = str(o.meaning ?? o.title ?? o.description ?? o.name ?? o.rule);
+  if (id || label) return short([id, label].filter(Boolean).join(" "), 48);
+  for (const v of Object.values(o)) if (Array.isArray(v)) return outcome(name, v);
+  return "";
 }
 
 export function replyText(input: unknown, output: unknown) {

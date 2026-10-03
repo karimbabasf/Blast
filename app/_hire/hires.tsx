@@ -1,11 +1,12 @@
 "use client";
 
-import { Bot, ExternalLink, Loader2 } from "lucide-react";
+import { Bot, Check, ExternalLink, Loader2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { db } from "./db";
-import { clock, money } from "./format";
+import { clock, money, outcome, summarize } from "./format";
 import { capturedCents, type LiveNeed, stripeLinks, workLine } from "./proof";
+import { useNeed } from "./use-need";
 
 type Row = LiveNeed;
 
@@ -71,11 +72,22 @@ export function Hires() {
       ) : !data.needs.length ? (
         <p className="mt-8 text-muted-foreground">No hires yet. Ask Claude Code to hire a specialist.</p>
       ) : (
-        <ul className="mt-6 divide-y rounded-xl border bg-card">
-          {data.needs.map((n) => (
-            <HireRow key={n.id} need={n} builder={data.builders[n.result?.agent_id ?? n.hold?.agent_id ?? ""]} />
-          ))}
-        </ul>
+        <>
+          {data.needs
+            .filter((n) => ACTIVE.has(n.status))
+            .map((n) => (
+              <Working key={n.id} need={n} />
+            ))}
+          {data.needs.some((n) => !ACTIVE.has(n.status)) ? (
+            <ul className="mt-6 divide-y rounded-xl border bg-card">
+              {data.needs
+                .filter((n) => !ACTIVE.has(n.status))
+                .map((n) => (
+                  <HireRow key={n.id} need={n} builder={data.builders[n.result?.agent_id ?? n.hold?.agent_id ?? ""]} />
+                ))}
+            </ul>
+          ) : null}
+        </>
       )}
     </main>
   );
@@ -132,6 +144,91 @@ function HireRow({ need: n, builder }: { need: Row; builder?: string }) {
         )}
       </div>
     </li>
+  );
+}
+
+const ACTIVE = new Set(["auditioning", "checkout"]);
+
+const STAGES = ["Found (semantic search)", "Auditioning on your job", "Winner picked", "Paid on proof"];
+
+// A hire in progress: the four stages, then one lane per auditioning agent with its tool calls as they land.
+function Working({ need }: { need: Row }) {
+  const view = useNeed(need.id);
+  const n = (view.need as Row | null) ?? need;
+  const { tryouts, steps } = view;
+  const names = new Map(view.agents.map((a) => [a.id, a.name]));
+  const done = [
+    !!n.search || tryouts.length > 0,
+    tryouts.length > 0 && !tryouts.some((t) => t.status === "running"),
+    n.status === "checkout" || n.status === "hired" || !!n.result,
+    n.hold?.status === "captured",
+  ];
+  const current = done.indexOf(false);
+
+  return (
+    <Link href={`/?need=${n.id}`} className="mt-6 block rounded-xl border border-(--hire)/50 bg-card p-5 shadow-[0_0_0_1px_var(--hire)]">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <p className="line-clamp-2 max-w-3xl text-lg font-medium">{n.text}</p>
+        <span className="text-sm text-muted-foreground tabular-nums">{clock(n.created_at)}</span>
+      </div>
+
+      <ol className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {STAGES.map((label, i) => {
+          const on = done[i];
+          const now = i === current;
+          return (
+            <li
+              key={label}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors duration-300 ease-out ${
+                on ? "border-(--hire)/40 bg-(--hire-soft) text-(--hire)" : now ? "text-foreground" : "text-muted-foreground"
+              }`}
+            >
+              {on ? (
+                <Check className="size-4 shrink-0" />
+              ) : (
+                <span className={`size-2 shrink-0 rounded-full ${now ? "bg-(--hire) animate-pulse motion-reduce:animate-none" : "bg-muted-foreground/30"}`} />
+              )}
+              {label}
+            </li>
+          );
+        })}
+      </ol>
+
+      {tryouts.length ? (
+        <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,260px),1fr))] gap-3">
+          {tryouts.map((t) => {
+            const lane = steps.filter((s) => s.tryout_id === t.id && s.kind === "tool").slice(-5);
+            const passed = t.checks?.length ? t.checks.every((c) => c.passed) : false;
+            return (
+              <div key={t.id} className="rounded-lg bg-muted/60 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate font-semibold">{names.get(t.agent_id) ?? "Specialist"}</span>
+                  {t.status === "running" ? (
+                    <span className="size-2 shrink-0 rounded-full bg-(--hire) animate-pulse motion-reduce:animate-none" aria-label="working" />
+                  ) : t.status === "scored" ? (
+                    <span className="flex items-center gap-1 text-sm tabular-nums">
+                      {t.score?.toFixed(1)}
+                      {passed ? <Check className="size-4 text-success" /> : <X className="size-4 text-destructive" />}
+                    </span>
+                  ) : (
+                    <X className="size-4 text-destructive" aria-label="failed" />
+                  )}
+                </div>
+                <ol className="mt-2 space-y-1 font-mono text-sm leading-snug">
+                  {lane.map((s) => (
+                    <li key={s.id} className="animate-in fade-in slide-in-from-bottom-1 duration-200 ease-out motion-reduce:animate-none">
+                      <span className="text-(--hire)">{s.name}</span> {summarize(s.name, s.input)}
+                      {outcome(s.name, s.output) ? <span className="text-muted-foreground"> -&gt; {outcome(s.name, s.output)}</span> : null}
+                    </li>
+                  ))}
+                  {!lane.length ? <li className="text-muted-foreground">Starting</li> : null}
+                </ol>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+    </Link>
   );
 }
 
