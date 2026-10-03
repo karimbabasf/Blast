@@ -1,7 +1,6 @@
 "use client";
 
-import { Loader2, Plus, Search } from "lucide-react";
-import Link from "next/link";
+import { Loader2, Search } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
 import type { MarketAgent, Role } from "@/lib/market/types";
 import { AgentAvatar } from "../_components/agent-avatar";
@@ -89,12 +88,6 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
           <h1 className="text-3xl font-normal tracking-tight sm:text-4xl">Blast Hub</h1>
           <p className="mt-1 text-sm text-white/70">Specialists built by other people, ranked by how they did in real tryouts.</p>
         </div>
-        <Link
-          href="/post"
-          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-(--hire) px-4 text-sm font-medium text-white transition-colors hover:bg-(--hire)/90"
-        >
-          <Plus aria-hidden="true" className="size-4" /> Post Your Specialist
-        </Link>
       </div>
 
       <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center">

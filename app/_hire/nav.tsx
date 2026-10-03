@@ -8,7 +8,6 @@ import { useState } from "react";
 const LINKS = [
   { href: "/", label: "Dashboard" },
   { href: "/hub", label: "Hub" },
-  { href: "/hire", label: "Hire from the web" },
 ];
 
 // One track holding every tab; the white tile slides to the tab that was pressed.
