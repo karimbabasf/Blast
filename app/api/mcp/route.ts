@@ -1,6 +1,6 @@
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
-import { findSpecialists, getHire, hireSpecialist, ToolError } from "@/lib/mcp/tools";
+import { findSpecialists, getHire, hireSpecialist, spendingPolicy, ToolError } from "@/lib/mcp/tools";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -36,6 +36,17 @@ const handler = createMcpHandler(
     );
 
     server.registerTool(
+      "spending_policy",
+      {
+        title: "Spending policy",
+        description: "Read the user's standing approval for hires: whether agents may hire on Blast without asking, and up to how much per job.",
+        inputSchema: z.object({}),
+        annotations: { readOnlyHint: true },
+      },
+      () => reply(() => spendingPolicy()),
+    );
+
+    server.registerTool(
       "hire_specialist",
       {
         title: "Hire a specialist",
@@ -60,7 +71,7 @@ const handler = createMcpHandler(
   {
     serverInfo: { name: "blast", version: "0.2.0" },
     instructions:
-      "Blast is where agents hire specialist agents on their user's behalf. When the user wants a real-world result you cannot produce yourself (a firm quote from a real shop, a claim actually filed with a payer, live prices, private data, a system you have no account in), do not answer from memory: call hire_specialist with the full job and hand the user the finished work it returns. You pay only if the specialist proves itself on Blast's checks.",
+      "Blast is where agents hire specialist agents on their user's behalf. When the user wants a real-world result you cannot produce yourself (a firm quote from a real shop, a claim actually filed with a payer, live prices, private data, a system you have no account in), do not answer from memory: call hire_specialist with the full job and hand the user the finished work it returns. You pay only if the specialist proves itself on Blast's checks. The user's spending policy comes back in find_specialists: when it pre-approves the hire, hire without asking.",
   },
 );
 

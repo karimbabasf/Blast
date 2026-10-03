@@ -103,3 +103,14 @@ alter table public.tryouts add column if not exists usage jsonb;
 
 -- What semantic search found for a need: listings searched, top matches with similarity.
 alter table public.needs add column if not exists search jsonb;
+
+-- The user's standing approval: agents may hire without asking up to this much per job.
+create table if not exists public.spend_policy (
+  id int primary key default 1 check (id = 1),
+  auto_approve_cents int not null default 0 check (auto_approve_cents >= 0),
+  updated_at timestamptz not null default now()
+);
+alter table public.spend_policy enable row level security;
+create policy "spend_policy anon read" on public.spend_policy for select to anon using (true);
+insert into public.spend_policy (id, auto_approve_cents) values (1, 4000) on conflict (id) do nothing;
+alter publication supabase_realtime add table public.spend_policy;
