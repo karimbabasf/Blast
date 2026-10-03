@@ -21,7 +21,7 @@ async function ask(model: string, prompt: string): Promise<string> {
     method: "POST",
     headers: { authorization: `Bearer ${process.env.AI_GATEWAY_API_KEY}`, "content-type": "application/json" },
     body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }] }),
-    signal: AbortSignal.timeout(30_000),
+    signal: AbortSignal.timeout(20_000),
   });
   if (!res.ok) throw new Error(`judge ${model} ${res.status}`);
   const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
@@ -52,9 +52,12 @@ async function judge(agent: MarketAgent, task: string, steps: Step[], reply: str
 
 const passedShare = (checks: Check[]) => (checks.length ? checks.filter((c) => c.passed).length / checks.length : 0);
 
-async function runOne(tryoutId: string, agent: MarketAgent, role: Role): Promise<void> {
+// Specialists audition on the caller's actual job; calendar and email ones on a fixed task in a copy.
+const ON_THE_JOB = new Set<Role>(["auto_repair", "medical_billing"]);
+
+async function runOne(tryoutId: string, agent: MarketAgent, role: Role, jobText: string): Promise<void> {
   const db = admin();
-  const task = TASKS[role];
+  const task = ON_THE_JOB.has(role) ? jobText : TASKS[role];
   if (!task) throw new Error(`role ${role} has no test task`);
   const worldId = await createWorld(tryoutId);
   const steps: Step[] = [];
@@ -82,22 +85,25 @@ async function runOne(tryoutId: string, agent: MarketAgent, role: Role): Promise
   } catch (err) {
     runError = err instanceof Error ? err.message : String(err);
   }
-  const checks = await checksFor(role, worldId);
-  if (runError) {
+  const checks = await checksFor(role, worldId, task);
+  // Work already handed in still counts when the agent ran out of time before its final reply.
+  if (runError && !checks[0]?.passed) {
     await db.from("tryouts").update({ status: "failed", checks, reason: runError, steps: toolSteps }).eq("id", tryoutId);
     return;
   }
   const verdict = await judge(agent, task, steps, reply);
   const share = passedShare(checks);
-  const score = verdict ? Math.round((7 * share + 3 * (verdict.score / 10)) * 10) / 10 : null;
+  // When no judge answers, the checks carry the whole score, so a passing agent can still win.
+  const judged = verdict ? verdict.score : share * 10;
+  const score = Math.round((7 * share + 3 * (judged / 10)) * 10) / 10;
   const failed = checks.filter((c) => !c.passed).map((c) => c.name);
   const reason = [
     failed.length ? `Failed: ${failed.join("; ")}.` : "All checks passed.",
-    verdict ? `Judges ${verdict.score.toFixed(1)}/10: ${verdict.reason}` : "Judges did not answer.",
+    verdict ? `Judges ${verdict.score.toFixed(1)}/10: ${verdict.reason}` : "Judges did not answer; scored on checks alone.",
   ].join(" ");
   await db
     .from("tryouts")
-    .update({ status: verdict ? "scored" : "failed", score, checks, reason, steps: toolSteps, usage })
+    .update({ status: "scored", score, checks, reason, steps: toolSteps, usage })
     .eq("id", tryoutId);
 }
 
@@ -112,14 +118,19 @@ export async function createTryouts(need: Need, agents: MarketAgent[]): Promise<
   return data;
 }
 
-export async function runTryouts(need: Need, agents: MarketAgent[], tryouts: { id: string; agent_id: string }[]): Promise<void> {
+export async function runTryouts(
+  need: Need,
+  agents: MarketAgent[],
+  tryouts: { id: string; agent_id: string }[],
+  after: Need["status"] = "waiting",
+): Promise<void> {
   const db = admin();
   await Promise.allSettled(
     tryouts.map(async (t) => {
       const agent = agents.find((a) => a.id === t.agent_id);
       if (!agent) return;
       try {
-        await runOne(t.id, agent, need.role);
+        await runOne(t.id, agent, need.role, need.text);
       } catch (err) {
         await db
           .from("tryouts")
@@ -128,5 +139,5 @@ export async function runTryouts(need: Need, agents: MarketAgent[], tryouts: { i
       }
     }),
   );
-  await db.from("needs").update({ status: "waiting" }).eq("id", need.id);
+  await db.from("needs").update({ status: after }).eq("id", need.id);
 }

@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { AgentAvatar } from "../_components/agent-avatar";
 import { LogoFactory } from "../_components/agent-logo";
 import { scoreTone } from "../_components/score-tone";
-import type { Capability, MarketAgent, Need, Role, TryoutStep } from "@/lib/market/types";
+import type { Capability, MarketAgent, Need, TryoutStep } from "@/lib/market/types";
 import { postJson } from "./db";
 import { modelName, money, ROLE_LABEL, ROLE_TOOLS, summarize, toolLabel } from "./format";
-import { HoldStrip, type LiveNeed, type LiveTryout, ResultCard, SourceBadge } from "./proof";
+import { HoldStrip, type LiveNeed, type LiveTryout, ResultCard, SearchBlock, SourceBadge } from "./proof";
 import { Scorecard } from "./scorecard";
 import { useNeed } from "./use-need";
 import { MicButton } from "./voice";
@@ -47,11 +47,6 @@ async function clarify(text: string): Promise<Question[] | null> {
     window.clearTimeout(timer);
   }
 }
-
-const TASKS: Partial<Record<Role, string>> = {
-  calendar: "Book a 30 minute call titled 'Rakha sync' with rakha@xochitl.coffee next Tuesday afternoon. Do not double book.",
-  email: "Clean up the inbox: archive the newsletters, label the investor email 'Important', and draft a reply to Grace confirming Thursday at 3pm.",
-};
 
 export function Request({ initialNeed, watch = false }: { initialNeed: string | null; watch?: boolean }) {
   const [text, setText] = useState(DEFAULT_NEED);
@@ -125,7 +120,7 @@ export function Request({ initialNeed, watch = false }: { initialNeed: string | 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-4 py-5">
       {watch && !needId ? <Waiting /> : null}
-      <form onSubmit={submit} className={watch ? "hidden" : "relative mx-auto w-full max-w-2xl"}>
+      <form onSubmit={submit} className={watch || (view.need as LiveNeed | null)?.source === "claude-code" ? "hidden" : "relative mx-auto w-full max-w-2xl"}>
         <label htmlFor="need" className="text-3xl font-normal tracking-tight">
           Hire the Specialist Your Agent Can&apos;t Be
         </label>
@@ -287,7 +282,7 @@ function Candidates({
     }
   }
 
-  const task = need ? (TASKS[need.role] ?? need.text) : undefined;
+  const task = need?.text;
   const status = !needId
     ? "Idle"
     : !agents.length
@@ -391,8 +386,9 @@ function Candidates({
       </p>
     </section>
     <Scorecard agents={field} ranks={running ? null : ordered.map((a) => a.id)} byAgent={byAgent} winnerId={winnerId} tools={need ? (ROLE_TOOLS[need.role] ?? []) : []} />
-    <HoldStrip hold={need?.hold} />
     <ResultCard result={need?.result} />
+    <HoldStrip hold={need?.hold} />
+    <SearchBlock search={need?.search} auditioned={new Set(tryouts.map((t) => t.agent_id))} />
     </>
   );
 }

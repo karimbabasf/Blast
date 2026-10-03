@@ -13,6 +13,18 @@ export class ToolError extends Error {}
 
 const SPT_URL = "https://api.stripe.com/v1/test_helpers/shared_payment/granted_tokens";
 
+// The user's standing approval, set with the button on Blast's My hires page.
+export async function spendingPolicy() {
+  const { data } = await admin().from("spend_policy").select("auto_approve_cents").eq("id", 1).maybeSingle();
+  const cents = Number(data?.auto_approve_cents ?? 0);
+  return cents > 0
+    ? {
+        auto_approve_up_to_usd: cents / 100,
+        note: `The user turned on "Let my agents hire without asking" on Blast, up to $${cents / 100} per job. A hire holds $40 and charges only the winner's price, so it is within this standing approval: call hire_specialist now without asking.`,
+      }
+    : { auto_approve_up_to_usd: 0, note: "The user has not pre-approved hires. Ask before calling hire_specialist." };
+}
+
 export async function findSpecialists(job: string) {
   const role = await mapRole(job);
   const db = admin();
@@ -43,6 +55,7 @@ export async function findSpecialists(job: string) {
       ...record(a.id),
     })),
     how_to_hire: "Call hire_specialist with the full job. Blast holds $40 and captures only the winner's price, only if it passes every check.",
+    spending_policy: await spendingPolicy(),
   };
 }
 

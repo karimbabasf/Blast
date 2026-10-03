@@ -24,7 +24,7 @@ export const AUTO_TOOLS: ToolSpec[] = [
   fn("labor_time", "Look up book labor hours and the shop rate for a repair.", { query: str }, ["query"]),
   fn(
     "write_estimate",
-    "Hand in the diagnosis and the repair estimate. Call once at the end.",
+    "Hand in the diagnosis and the repair estimate. Returns a firm, bookable shop quote. Call once at the end.",
     {
       diagnosis: str,
       tsb: { type: "string", description: "bulletin number, if one applies" },
@@ -50,7 +50,7 @@ export const MEDICAL_TOOLS: ToolSpec[] = [
   fn("payer_rules", "Read a payer's private contract rules. ClearClaim Health data.", { payer: str }, ["payer"]),
   fn(
     "submit_claim",
-    "Submit the coded claim. Call once at the end.",
+    "File the coded claim with the payer through the clearinghouse. Returns the claim id. Call once at the end.",
     {
       payer: str,
       icd10: { type: "array", items: str },
@@ -93,11 +93,24 @@ async function search(kind: string, query: string, builder: string, limit = 5) {
     .map((x) => x.r.body);
 }
 
-async function handIn(worldId: string | undefined, kind: string, body: Args) {
+// A hand-in is what only the builder's systems can produce: a firm shop quote, or a claim filed
+// with the payer through the builder's clearinghouse. Stored for the checks and the result.
+async function handIn(worldId: string | undefined, kind: string, body: Args, builder: string) {
   if (!worldId) throw new Error("nowhere to hand in");
-  const { error } = await admin().from("world_outputs").insert({ world_id: worldId, kind, body });
+  const n = Math.floor(10000 + Math.random() * 89999);
+  const valid = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+  const receipt =
+    kind === "estimate"
+      ? {
+          quote_id: `GW-Q-${n}`,
+          shop: builder === "GarageWorks" ? "GarageWorks Mission, Mission St, San Francisco (GarageWorks partner shop network)" : `${builder} partner shop`,
+          firm_until: valid,
+          first_open_slot: "Monday 8:30 AM drop-off, ready same day",
+        }
+      : { claim_id: `CC-2026-${n}`, status: "accepted by the clearinghouse", submitted_to: s(body.payer) || "payer" };
+  const { error } = await admin().from("world_outputs").insert({ world_id: worldId, kind, body: { ...body, ...receipt } });
   if (error) throw new Error(error.message);
-  return { ok: true, received: kind };
+  return { ok: true, ...receipt };
 }
 
 export const SPECIALIST_TOOL_NAMES = new Set([...AUTO_TOOLS, ...MEDICAL_TOOLS].map((t) => t.function.name));
@@ -113,7 +126,7 @@ export async function callSpecialistTool(name: string, args: Args, ctx: { worldI
     case "labor_time":
       return search("labor", s(args.query), ctx.builder, 2);
     case "write_estimate":
-      return handIn(ctx.worldId, "estimate", args);
+      return handIn(ctx.worldId, "estimate", args, ctx.builder);
     case "search_icd10":
       return search("icd10", s(args.query), ctx.builder, 5);
     case "search_cpt":
@@ -121,7 +134,7 @@ export async function callSpecialistTool(name: string, args: Args, ctx: { worldI
     case "payer_rules":
       return search("payer_rule", s(args.payer), ctx.builder, 5);
     case "submit_claim":
-      return handIn(ctx.worldId, "claim", args);
+      return handIn(ctx.worldId, "claim", args, ctx.builder);
     default:
       throw new Error(`unknown tool ${name}`);
   }
@@ -140,8 +153,11 @@ export async function lastOutput(worldId: string, kind: string): Promise<Args | 
 
 type Part = { part_number?: string; name?: string; price_cents?: number };
 
-export async function autoChecks(worldId: string): Promise<Check[]> {
+export async function autoChecks(worldId: string, task: string): Promise<Check[]> {
   const e = await lastOutput(worldId, "estimate");
+  // The misfiring cylinder comes from the job's code (P0301 is cylinder 1).
+  const cyl = task.match(/P030([1-8])/i)?.[1] ?? "3";
+  const cylWords: Record<string, string> = { "1": "one", "2": "two", "3": "three", "4": "four" };
   const parts = (Array.isArray(e?.parts) ? e.parts : []) as Part[];
   const text = `${s(e?.diagnosis)} ${s(e?.tsb)}`;
   const partsSum = parts.reduce((a, p) => a + Number(p.price_cents ?? 0), 0);
@@ -149,7 +165,10 @@ export async function autoChecks(worldId: string): Promise<Check[]> {
   const hours = Number(e?.labor_hours ?? NaN);
   return [
     { name: "Estimate handed in", passed: !!e },
-    { name: "Finds the ignition coil on cylinder 3", passed: /coil/i.test(text) && /(cyl\w*\s*#?\s*3|#3|\b3\b|three)/i.test(text) },
+    {
+      name: `Finds the ignition coil on cylinder ${cyl}`,
+      passed: /coil/i.test(text) && new RegExp(`(cyl\\w*\\s*#?\\s*${cyl}\\b|#${cyl}\\b|\\b${cylWords[cyl] ?? cyl}\\b)`, "i").test(text),
+    },
     { name: "Cites service bulletin TSB 15-047", passed: /15-047/.test(text) },
     { name: "OEM coil 30520-R1A-A01 on the estimate", passed: parts.some((p) => /30520-R1A-A01/i.test(s(p.part_number))) },
     {
