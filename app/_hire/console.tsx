@@ -259,14 +259,13 @@ function actionLine(m: EngagementMessage) {
 }
 
 function ActionLog({ actions, metered, priceCents }: { actions: EngagementMessage[]; metered: number; priceCents: number }) {
-  const count = Math.max(metered, actions.length);
   return (
     <Panel
       title="Actions"
       aside={
         <span className="text-xs text-muted-foreground tabular-nums">
-          <span className="text-foreground">{metered}</span> metered in Stripe
-          {priceCents ? ` · ${money(count * priceCents)}` : null}
+          {actions.length} actions · <span className="text-foreground">{metered}</span> metered in Stripe
+          {priceCents ? ` · ${money(metered * priceCents)}` : null}
         </span>
       }
     >
