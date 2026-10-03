@@ -225,8 +225,9 @@ async function googleThreads(acct: Scoped, query: string, max: number): Promise<
     gfetch<{ threads?: { id: string }[] }>(acct, `${GMAIL}/threads?${q}`),
     labelNames(acct),
   ]);
-  const full = await Promise.all(threads.map((t) => demoThread(acct, t.id, "metadata")));
-  return full.map((t) => toMailThread(acct, t, names));
+  // A thread without the demo label is skipped, never mirrored, even if the list query let it through.
+  const full = await Promise.all(threads.map((t) => demoThread(acct, t.id, "metadata").catch(() => null)));
+  return full.filter((t): t is GThread => t !== null).map((t) => toMailThread(acct, t, names));
 }
 
 async function mirrorThread(t: MailThread) {
@@ -424,6 +425,71 @@ function demoMail(): MailBackend {
       return d;
     },
   };
+}
+
+// ---------- Reset to the seeded state ----------
+
+const KEEP_LABELS = new Set(["INBOX", "UNREAD", "SENT", "DRAFT"]);
+
+// Puts the demo calendar and labelled threads back to the seed: drops agent-made events and re-creates moved or
+// cancelled seed events, deletes the drafts the agent made (only those recorded in live_drafts), and returns every
+// demo thread to the inbox, unread, with no extra labels. Nothing outside the demo calendar and label is touched.
+export async function resetDemo(): Promise<{ events: number; threads: number; removed_events: number; removed_drafts: number }> {
+  const db = admin();
+  const { data: drafts } = await db.from("live_drafts").select("id");
+  const found = await account();
+
+  if (!found) {
+    check((await db.from("live_drafts").delete().not("id", "is", null)).error, "live_drafts reset failed");
+    const gone = await db.from("live_events").delete().not("id", "is", null).select("id");
+    check(gone.error ?? (await db.from("live_mail").delete().not("id", "is", null)).error, "live mirror reset failed");
+    seeded = null;
+    await ensureDemoSeed();
+    return { events: seedEvents().length, threads: seedMail().length, removed_events: gone.data?.length ?? 0, removed_drafts: drafts?.length ?? 0 };
+  }
+
+  const acct = await demoScope(found);
+  const seed = seedEvents();
+  const key = (e: { title: string; start: string }) => `${e.title}|${new Date(e.start).toISOString()}`;
+  const seedKeys = new Set(seed.map(key));
+  const now = Date.now();
+  const current = await googleEvents(acct, new Date(now - 30 * 86_400_000).toISOString(), new Date(now + 60 * 86_400_000).toISOString());
+  const kept = new Set<string>();
+  let removed_events = 0;
+  for (const e of current) {
+    if (seedKeys.has(key(e)) && !kept.has(key(e))) {
+      kept.add(key(e));
+      continue;
+    }
+    await gfetch(acct, `${calUrl(acct, `/${encodeURIComponent(e.id)}`)}?sendUpdates=none`, { method: "DELETE" });
+    removed_events++;
+  }
+  for (const e of seed) if (!kept.has(key(e))) await createDemoEvent(acct, e);
+
+  let removed_drafts = 0;
+  for (const d of drafts ?? []) {
+    const res = await fetch(`${GMAIL}/drafts/${encodeURIComponent(d.id)}`, {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${await accessToken(acct)}` },
+    });
+    if (res.ok) removed_drafts++;
+  }
+  check((await db.from("live_drafts").delete().not("id", "is", null)).error, "live_drafts reset failed");
+
+  const q = new URLSearchParams({ labelIds: acct.label_id, q: "-in:spam -in:trash", maxResults: "50" });
+  const { threads = [] } = await gfetch<{ threads?: { id: string }[] }>(acct, `${GMAIL}/threads?${q}`);
+  for (const { id } of threads) {
+    const t = await demoThread(acct, id, "metadata").catch(() => null);
+    if (!t) continue;
+    const extra = [...threadLabelIds(t)].filter((l) => l !== acct.label_id && !KEEP_LABELS.has(l) && !l.startsWith("CATEGORY_"));
+    await gfetch(acct, `${GMAIL}/threads/${encodeURIComponent(id)}/modify`, {
+      method: "POST",
+      body: { addLabelIds: ["INBOX", "UNREAD"], removeLabelIds: extra },
+    });
+  }
+
+  const synced = await syncLive();
+  return { events: synced.events, threads: synced.threads, removed_events, removed_drafts };
 }
 
 // ---------- Public seams ----------
