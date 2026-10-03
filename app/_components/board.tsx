@@ -2,7 +2,8 @@ import { motion } from "motion/react";
 import type { AgentCard, Audition, Job, Skill } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { AgentAvatar } from "./agent-avatar";
-import { AuditionCard, EmptySlot } from "./audition-card";
+import type { TrackRecord } from "../_data/use-scorecard";
+import { AuditionCard, BenchCard, EmptySlot } from "./audition-card";
 import { SKILL_LABEL } from "./format";
 
 export const SKILLS: Skill[] = ["script", "voice"];
@@ -21,10 +22,12 @@ export function Board({
   jobs,
   auditions,
   cards,
+  records,
 }: {
   jobs: Job[];
   auditions: Audition[];
   cards: AgentCard[];
+  records: Map<string, TrackRecord>;
 }) {
   const byId = new Map(cards.map((card) => [card.id, card]));
 
@@ -43,7 +46,18 @@ export function Board({
           );
         const skipped = mine.filter((a) => a.status === "skipped");
         const top = active[0]?.score != null ? active[0].agent_id : null;
-        const empty = Math.max(0, SLOTS - active.length);
+        // Before a run, the slots hold the agents on the bench, best record first.
+        const bench = job
+          ? []
+          : cards
+              .filter((card) => card.real && card.skills.includes(skill))
+              .sort(
+                (a, b) =>
+                  (records.get(b.id)?.avg_score ?? -1) -
+                  (records.get(a.id)?.avg_score ?? -1),
+              )
+              .slice(0, SLOTS);
+        const empty = Math.max(0, SLOTS - active.length - bench.length);
 
         return (
           <div key={skill} className="flex min-w-0 flex-col gap-3">
@@ -53,7 +67,7 @@ export function Board({
                   {SKILL_LABEL[skill]}
                 </h2>
                 <p className="truncate text-sm text-muted-foreground">
-                  {job?.brief ?? "Waiting for a goal."}
+                  {job?.brief ?? "On the bench, ranked by track record."}
                 </p>
               </div>
               <Badge
@@ -92,6 +106,11 @@ export function Board({
                   </motion.li>
                 );
               })}
+              {bench.map((card) => (
+                <li key={`bench-${card.id}`}>
+                  <BenchCard card={card} record={records.get(card.id)} />
+                </li>
+              ))}
               {Array.from({ length: empty }, (_, index) => (
                 <li key={`slot-${index}`}>
                   <EmptySlot />

@@ -5,6 +5,7 @@ import { AUDITION_VOICE_LINE, type AgentCard, type Audition } from "@/lib/types"
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { AgentAvatar } from "./agent-avatar";
+import type { TrackRecord } from "../_data/use-scorecard";
 import { money } from "./format";
 
 // Every card and every empty slot is this tall, so nothing below ever moves.
@@ -33,6 +34,82 @@ export function EmptySlot() {
     >
       Waiting for an agent
     </div>
+  );
+}
+
+// An agent before any run: who it is and how it has done in past auditions.
+export function BenchCard({
+  card,
+  record,
+}: {
+  card: AgentCard;
+  record: TrackRecord | undefined;
+}) {
+  const average = record?.avg_score ?? null;
+  const stats = [
+    { label: "Auditions", value: String(record?.auditions ?? 0), tone: "" },
+    { label: "Hires", value: String(record?.hires ?? 0), tone: "" },
+  ];
+
+  return (
+    <article
+      className={cn(
+        CARD_HEIGHT,
+        "flex flex-col gap-2 overflow-hidden rounded-xl bg-card p-3 ring-1 ring-foreground/10",
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <AgentAvatar card={card} />
+        <div className="min-w-0 flex-1">
+          <h3 className="h-5 text-sm font-semibold" translate="no">
+            {card.name}
+          </h3>
+          <p className="truncate text-sm text-muted-foreground">
+            {card.description}
+          </p>
+        </div>
+        <div className="flex w-14 shrink-0 flex-col items-end">
+          <div className="flex h-7 items-center">
+            {average === null ? (
+              <p className="text-xs text-muted-foreground">New</p>
+            ) : (
+              <p
+                className={cn(
+                  "rounded-md px-1.5 py-0.5 text-lg leading-none font-semibold tabular-nums",
+                  scoreTone(average),
+                )}
+              >
+                {average}
+                <span className="text-xs font-normal opacity-70">/10</span>
+              </p>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground tabular-nums">
+            {money(card.price_cents)}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <dl className="flex h-10 items-center gap-6 border-l-2 border-border pl-3">
+          {stats.map((stat) => (
+            <div key={stat.label} className="flex flex-col">
+              <dd className="text-sm leading-5 font-semibold tabular-nums">
+                {stat.value}
+              </dd>
+              <dt className="text-xs leading-4 text-muted-foreground">
+                {stat.label}
+              </dt>
+            </div>
+          ))}
+        </dl>
+        <p className="truncate text-xs text-muted-foreground">
+          {average === null
+            ? "No track record yet"
+            : "Average score across past auditions"}
+        </p>
+      </div>
+    </article>
   );
 }
 

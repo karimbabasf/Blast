@@ -38,6 +38,7 @@ export function Summary({
   auditions,
   payments,
   cards,
+  agentPays,
   onApprove,
   onReject,
   className,
@@ -48,6 +49,7 @@ export function Summary({
   auditions: Audition[];
   payments: Payment[];
   cards: AgentCard[];
+  agentPays: boolean;
   onApprove: () => void;
   onReject: () => void;
   className?: string;
@@ -78,8 +80,10 @@ export function Summary({
     status === "waiting" && (mode === "approve" || planned > budget);
 
   const button =
-    mode === "auto" && !canApprove
-      ? "Auto Hiring On"
+    agentPays
+      ? "Paid by the Agent"
+      : mode === "auto" && !canApprove
+        ? "Auto Hiring On"
       : status === "hiring"
         ? "Hiring…"
         : status === "done"
@@ -178,7 +182,9 @@ export function Summary({
 
       <dl className="flex flex-col gap-2 border-t border-foreground/10 pt-4 text-sm tabular-nums">
         <div className="flex justify-between gap-4">
-          <dt className="text-muted-foreground">You pay</dt>
+          <dt className="text-muted-foreground">
+            {agentPays ? "Agent pays" : "You pay"}
+          </dt>
           <dd className="-mr-1.5">
             <ValueFlash value={price} format={money} label="You pay" />
           </dd>

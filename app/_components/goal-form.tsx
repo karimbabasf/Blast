@@ -6,12 +6,14 @@ export function GoalForm({
   busy,
   done,
   error,
+  startLabel,
   onStart,
 }: {
   defaultGoal: string;
   busy: boolean;
   done: boolean;
   error: string | null;
+  startLabel: string;
   onStart: (goal: string) => void;
 }) {
   return (
@@ -37,7 +39,7 @@ export function GoalForm({
           className="h-11 flex-1 px-3.5 text-base md:text-base"
         />
         <Button type="submit" disabled={busy} className="h-11 w-36 text-sm">
-          {busy ? "Working…" : done ? "Run Again" : "Start Auditions"}
+          {busy ? "Working…" : done ? "Run Again" : startLabel}
         </Button>
       </div>
       <p

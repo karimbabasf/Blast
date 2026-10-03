@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { AgentCard } from "@/lib/types";
-import type { RunState } from "./run-state";
+import type { LogTone, RunState } from "./run-state";
 
-export type LogTone = "info" | "good" | "warn" | "bad";
+export type { LogTone };
 
 export type LogEntry = {
   id: string;
@@ -25,7 +25,7 @@ function scoreTone(score: number): LogTone {
 // the row and event it came from, so a line is written once, when that
 // change first shows up, in the order the changes really arrived.
 export function useWorkLog(
-  { run, jobs, auditions, payments }: RunState,
+  { run, jobs, auditions, payments, notes }: RunState,
   cards: AgentCard[],
 ): LogEntry[] {
   const [log, setLog] = useState<LogEntry[]>([]);
@@ -43,12 +43,14 @@ export function useWorkLog(
     };
 
     // A new run starts at "splitting" with nothing else yet: start over.
-    const restarted = run?.status === "splitting" && seen.current.size > 1;
+    const restarted =
+      run?.status === "splitting" && !notes.length && seen.current.size > 1;
     if (!run || restarted) {
       seen.current.clear();
       startedAt.current = Date.now();
     }
     if (run) {
+      for (const note of notes) add(`note-${note.id}`, note.text, note.tone);
       add("goal", "Read the goal");
 
       if (jobs.length) {
@@ -128,7 +130,7 @@ export function useWorkLog(
     } else if (lines.length) {
       setLog((prev) => [...prev, ...lines]);
     }
-  }, [run, jobs, auditions, payments, cards]);
+  }, [run, jobs, auditions, payments, notes, cards]);
 
   return log;
 }

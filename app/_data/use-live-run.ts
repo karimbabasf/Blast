@@ -12,7 +12,7 @@ import {
   type RunMode,
 } from "@/lib/types";
 import { CARDS } from "./fake";
-import { EMPTY, type RunApi, type RunState } from "./run-state";
+import { EMPTY, type LogNote, type RunApi, type RunState } from "./run-state";
 
 const POLL_MS = 1500;
 
@@ -25,13 +25,31 @@ function supabase() {
   return client;
 }
 
+type AgentLine =
+  | ({ type: "note" } & LogNote)
+  | { type: "done"; run_id: string; stripe_payment: string }
+  | { type: "error"; error: string };
+
+// Shown before the run row exists.
+function pendingRun(goal: string, mode: RunMode): Run {
+  return {
+    id: "pending",
+    goal,
+    mode,
+    budget_cents: RUN_BUDGET_CENTS,
+    price_cents: RUN_PRICE_CENTS,
+    status: "splitting",
+    created_at: new Date().toISOString(),
+  };
+}
+
 function upsert<T extends { id: string }>(rows: T[], row: T) {
   return rows.some((r) => r.id === row.id)
     ? rows.map((r) => (r.id === row.id ? row : r))
     : [...rows, row];
 }
 
-async function load(runId: string): Promise<RunState | null> {
+async function load(runId: string): Promise<Omit<RunState, "notes"> | null> {
   const db = supabase();
   const [run, jobs, payments] = await Promise.all([
     db.from("runs").select("*").eq("id", runId).maybeSingle(),
@@ -83,7 +101,7 @@ export function useLiveRun(): RunApi {
 
     const refresh = () =>
       load(runId).then((next) => {
-        if (active && next) setState(next);
+        if (active && next) setState((s) => ({ ...next, notes: s.notes }));
       });
 
     const channel = supabase()
@@ -118,22 +136,18 @@ export function useLiveRun(): RunApi {
     };
   }, [runId, done]);
 
+  const finder = useRef<number | null>(null);
+  const stopFinder = useCallback(() => {
+    if (finder.current) window.clearInterval(finder.current);
+    finder.current = null;
+  }, []);
+  useEffect(() => stopFinder, [stopFinder]);
+
   const start = useCallback((goal: string, mode: RunMode) => {
     setError(null);
     setRunId(null);
-    // Shown while the manager splits the goal, before the run row exists.
-    setState({
-      ...EMPTY,
-      run: {
-        id: "pending",
-        goal,
-        mode,
-        budget_cents: RUN_BUDGET_CENTS,
-        price_cents: RUN_PRICE_CENTS,
-        status: "splitting",
-        created_at: new Date().toISOString(),
-      },
-    });
+    stopFinder();
+    setState({ ...EMPTY, run: pendingRun(goal, mode) });
     call("/api/run", { goal, mode })
       .then(({ run, jobs }: { run: Run; jobs: Job[] }) => {
         setState({ ...EMPTY, run, jobs });
@@ -143,7 +157,71 @@ export function useLiveRun(): RunApi {
         setState(EMPTY);
         setError(err.message);
       });
-  }, []);
+  }, [stopFinder]);
+
+  // An outside agent buys the ad over HTTP. Its steps stream in as notes, and
+  // the board picks up the run it paid for as soon as that run exists.
+  const startAgent = useCallback(
+    (goal: string) => {
+      setError(null);
+      setRunId(null);
+      stopFinder();
+      setState({ ...EMPTY, run: pendingRun(goal, "auto") });
+
+      const since = new Date(Date.now() - 5000).toISOString();
+      finder.current = window.setInterval(async () => {
+        const { data } = await supabase()
+          .from("runs")
+          .select("id")
+          .eq("mode", "auto")
+          .gte("created_at", since)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        if (data?.[0] && finder.current) {
+          stopFinder();
+          setRunId(data[0].id);
+        }
+      }, 1000);
+
+      const handle = (line: AgentLine) => {
+        if (line.type === "note") {
+          const { id, text, tone } = line;
+          setState((s) => ({ ...s, notes: [...s.notes, { id, text, tone }] }));
+        } else if (line.type === "done") {
+          stopFinder();
+          setRunId(line.run_id);
+        } else {
+          setError(line.error);
+        }
+      };
+
+      (async () => {
+        const res = await fetch("/api/demo-agent", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ goal }),
+        });
+        if (!res.ok || !res.body) {
+          const json = await res.json().catch(() => ({}));
+          throw new Error(json.error ?? `outside agent failed (${res.status})`);
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        for (;;) {
+          const { done: end, value } = await reader.read();
+          if (end) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+          for (const text of lines) if (text.trim()) handle(JSON.parse(text));
+        }
+      })()
+        .catch((err: Error) => setError(err.message))
+        .finally(stopFinder);
+    },
+    [stopFinder],
+  );
 
   const approve = useCallback(() => {
     if (!runId) return;
@@ -157,8 +235,9 @@ export function useLiveRun(): RunApi {
   const reject = useCallback(() => {
     setError(null);
     setRunId(null);
+    stopFinder();
     setState(EMPTY);
-  }, []);
+  }, [stopFinder]);
 
-  return { ...state, error, cards: CARDS, start, approve, reject };
+  return { ...state, error, cards: CARDS, start, startAgent, approve, reject };
 }

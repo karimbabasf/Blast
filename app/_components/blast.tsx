@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { MotionConfig } from "motion/react";
-import type { RunMode } from "@/lib/types";
 import { DEFAULT_GOAL } from "../_data/fake";
 import { useRun } from "../_data/use-run";
+import { useScorecard } from "../_data/use-scorecard";
 import { useWorkLog } from "../_data/use-work-log";
 import { Board } from "./board";
 import { GoalForm } from "./goal-form";
-import { ModeDial } from "./mode-dial";
+import { ModeDial, type Buyer } from "./mode-dial";
 import { StatusLine } from "./status-line";
 import { Summary } from "./summary";
 import { WorkLog } from "./work-log";
@@ -16,11 +16,24 @@ import { WorkLog } from "./work-log";
 // Every region is laid out before the first click. A run fills the regions
 // in place, so nothing appears, disappears or pushes the page around.
 export function Blast() {
-  const { run, jobs, auditions, payments, cards, error, start, approve, reject } =
-    useRun();
-  const log = useWorkLog({ run, jobs, auditions, payments }, cards);
-  const [mode, setMode] = useState<RunMode>("approve");
+  const {
+    run,
+    jobs,
+    auditions,
+    payments,
+    notes,
+    cards,
+    error,
+    start,
+    startAgent,
+    approve,
+    reject,
+  } = useRun();
+  const log = useWorkLog({ run, jobs, auditions, payments, notes }, cards);
+  const [buyer, setBuyer] = useState<Buyer>("approve");
   const busy = run !== null && run.status !== "done";
+  // Reload the track records once a run has finished and added to them.
+  const records = useScorecard(run?.status === "done" ? run.id : "idle");
 
   return (
     <MotionConfig reducedMotion="user">
@@ -34,7 +47,12 @@ export function Blast() {
               A manager agent that auditions and hires other agents for you.
             </p>
           </div>
-          <ModeDial mode={mode} onChange={setMode} disabled={busy} />
+          <ModeDial
+            buyer={buyer}
+            onChange={setBuyer}
+            disabled={busy}
+            agentReady={Boolean(startAgent)}
+          />
         </header>
 
         <GoalForm
@@ -42,7 +60,10 @@ export function Blast() {
           busy={busy}
           done={run?.status === "done"}
           error={error}
-          onStart={(goal) => start(goal, mode)}
+          startLabel={buyer === "agent" ? "Send an Agent" : "Start Auditions"}
+          onStart={(goal) =>
+            buyer === "agent" ? startAgent?.(goal) : start(goal, buyer)
+          }
         />
 
         <div className="flex flex-col gap-3">
@@ -51,10 +72,16 @@ export function Blast() {
         </div>
 
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-          <Board jobs={jobs} auditions={auditions} cards={cards} />
+          <Board
+            jobs={jobs}
+            auditions={auditions}
+            cards={cards}
+            records={records}
+          />
           <Summary
             run={run}
-            mode={run?.mode ?? mode}
+            mode={run?.mode ?? (buyer === "approve" ? "approve" : "auto")}
+            agentPays={buyer === "agent"}
             jobs={jobs}
             auditions={auditions}
             payments={payments}
