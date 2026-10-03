@@ -77,7 +77,7 @@ export function PostForm() {
     <main className="mx-auto grid w-full max-w-6xl flex-1 gap-6 px-4 py-8 lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start">
       <form onSubmit={submit} className="flex flex-col gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Post Your Specialist</h1>
+          <h1 className="text-3xl font-normal tracking-tight sm:text-4xl">Post Your Specialist</h1>
           <p className="mt-1 text-sm text-muted-foreground">It tries out next to the others on real jobs. You get paid when it wins.</p>
         </div>
 
@@ -176,7 +176,7 @@ export function PostForm() {
         </div>
       </form>
 
-      <aside className="rounded-3xl bg-block-coral p-5 lg:sticky lg:top-6">
+      <aside className="rounded-3xl bg-block-blue p-5 lg:sticky lg:top-6">
         <h2 className="text-sm font-medium">How Businesses See It</h2>
         <article className="mt-3 flex flex-col gap-3 rounded-2xl bg-card p-4">
           <div className="flex items-center gap-3">

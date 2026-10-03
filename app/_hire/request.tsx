@@ -125,7 +125,7 @@ export function Request({ initialNeed, watch = false }: { initialNeed: string | 
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-4 py-5">
       {watch && !needId ? <Waiting /> : null}
       <form onSubmit={submit} className={watch ? "hidden" : "relative mx-auto w-full max-w-2xl"}>
-        <label htmlFor="need" className="text-2xl font-semibold tracking-tight">
+        <label htmlFor="need" className="text-3xl font-normal tracking-tight">
           Hire the Specialist Your Agent Can&apos;t Be
         </label>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -195,6 +195,8 @@ export function Request({ initialNeed, watch = false }: { initialNeed: string | 
 }
 
 const STEPS = ["Read", "Match", "Tryouts", "Pick"];
+// Each finished step keeps its own colour, like the stages of an agent timeline.
+const STEP_DONE = ["bg-block-blue", "bg-block-mint", "bg-block-peach", "bg-block-gold"];
 
 // Four equal segments, always on screen. Progress only changes their colour.
 function Steps({ phase }: { phase: number }) {
@@ -205,8 +207,8 @@ function Steps({ phase }: { phase: number }) {
           <li key={label} aria-current={index === phase ? "step" : undefined} className="flex flex-col gap-1.5">
             <span
               aria-hidden="true"
-              className={`h-1 rounded-full transition-colors duration-200 ease-out ${
-                phase > index || phase === 3 ? "bg-success" : phase === index ? "bg-foreground" : "bg-muted"
+              className={`h-1.5 rounded-full transition-colors duration-200 ease-out ${
+                phase > index || phase === 3 ? STEP_DONE[index] : phase === index ? "bg-primary" : "bg-secondary"
               } ${index === phase && phase < 3 ? "animate-pulse" : ""}`}
             />
             <span
@@ -298,7 +300,7 @@ function Candidates({
 
   return (
     <>
-    <section aria-label="Tryouts" className="flex flex-col gap-3 rounded-3xl bg-block-lime p-5">
+    <section aria-label="Tryouts" className="flex flex-col gap-3 rounded-3xl bg-block-peach p-5">
       <div className="flex h-12 items-start justify-between gap-6">
         <div className="min-w-0">
           <h2 className="flex items-center gap-2 text-base leading-6 font-semibold">
