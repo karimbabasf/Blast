@@ -11,6 +11,7 @@
   "dependencies": {
     "@base-ui/react": "^1.8.0",
     "@modelcontextprotocol/server": "2.3.0",
+    "@paper-design/shaders-react": "^0.0.81",
     "@supabase/supabase-js": "2.117.2",
     "@vercel/sandbox": "^3.5.1",
     "class-variance-authority": "^0.7.1",

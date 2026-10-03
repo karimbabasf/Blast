@@ -6,6 +6,7 @@ import { DEFAULT_GOAL } from "../_data/fake";
 import { useRun } from "../_data/use-run";
 import { useScorecard } from "../_data/use-scorecard";
 import { useWorkLog } from "../_data/use-work-log";
+import { LogoFactory } from "./agent-logo";
 import { Board } from "./board";
 import { GoalForm } from "./goal-form";
 import { ModeDial, type Buyer } from "./mode-dial";
@@ -92,6 +93,7 @@ export function Blast() {
           />
         </div>
       </main>
+      <LogoFactory ids={cards.map((card) => card.id)} />
     </MotionConfig>
   );
 }

@@ -1,37 +1,7 @@
-import {
-  AudioLines,
-  BookOpen,
-  Check,
-  Feather,
-  FileText,
-  Film,
-  Image as ImageIcon,
-  Languages,
-  Moon,
-  Music,
-  Radio,
-  Sun,
-  Zap,
-  type LucideIcon,
-} from "lucide-react";
+import { Check } from "lucide-react";
 import type { AgentCard } from "@/lib/types";
 import { cn } from "@/lib/utils";
-
-// One mark per agent card. An unknown agent falls back to its initial.
-const LOGOS: Record<string, LucideIcon> = {
-  "script-quill": Feather,
-  "script-mara": BookOpen,
-  "script-dex": Zap,
-  "script-lex": FileText,
-  "voice-aria": AudioLines,
-  "voice-bram": Moon,
-  "voice-kit": Sun,
-  "voice-nova": Radio,
-  "music-tempo": Music,
-  "image-pixel": ImageIcon,
-  "video-reel": Film,
-  "translate-polyglot": Languages,
-};
+import { useAgentLogo } from "./agent-logo";
 
 const SIZES = {
   xs: { box: "size-6", icon: "size-3", text: "text-[0.625rem]" },
@@ -52,7 +22,7 @@ export function AgentAvatar({
   verified?: boolean;
   className?: string;
 }) {
-  const Logo = LOGOS[card.id];
+  const logo = useAgentLogo(card.id);
   const s = SIZES[size];
 
   return (
@@ -66,8 +36,15 @@ export function AgentAvatar({
         className,
       )}
     >
-      {Logo ? (
-        <Logo aria-hidden="true" className={s.icon} strokeWidth={1.75} />
+      {logo ? (
+        // eslint-disable-next-line @next/next/no-img-element -- a generated data URL
+        <img
+          src={logo}
+          alt=""
+          width={64}
+          height={64}
+          className="absolute inset-0 size-full rounded-full object-cover"
+        />
       ) : (
         <span aria-hidden="true" className={cn("font-semibold", s.text)}>
           {card.name.slice(0, 1)}
