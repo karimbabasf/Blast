@@ -31,7 +31,8 @@ export function Policy() {
   }, []);
 
   const on = (cents ?? 0) > 0;
-  const cap = money(on ? (cents ?? 0) : 4000);
+  // Off, the cap shown is one hold: what turning it on allows.
+  const cap = money(on ? (cents ?? 0) : 100);
 
   async function flip() {
     setBusy(true);
@@ -47,7 +48,7 @@ export function Policy() {
   }
 
   return (
-    <div className="flex w-full items-center gap-3 rounded-2xl bg-white/10 p-3 sm:w-80">
+    <div className="flex shrink-0 items-center gap-2.5 text-sm">
       <button
         type="button"
         role="switch"
@@ -56,23 +57,18 @@ export function Policy() {
         disabled={busy || cents == null}
         onClick={flip}
         className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ease-out disabled:opacity-60 ${
-          on ? "bg-(--hire)" : "bg-white/25"
+          on ? "bg-(--hire)" : "bg-secondary"
         }`}
       >
         <span
-          className={`inline-block size-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out motion-reduce:transition-none ${
+          className={`inline-block size-5 rounded-full bg-white transition-transform duration-200 ease-out motion-reduce:transition-none ${
             on ? "translate-x-5.5" : "translate-x-0.5"
           }`}
         />
       </button>
-      <div className="min-w-0 text-sm">
-        <p id="policy-label" className="font-medium">
-          Hire Without Asking, up to {cap}
-        </p>
-        <p aria-live="polite" className="truncate text-xs text-white/70">
-          {error ?? (cents == null ? "Loading…" : on ? `Stripe caps the payment token at ${cap} too.` : "Claude Code asks before every hire.")}
-        </p>
-      </div>
+      <p id="policy-label" aria-live="polite" className="w-56">
+        {error ? <span className="text-destructive">{error}</span> : <>Hire without asking <span className="text-muted-foreground">up to {cap}</span></>}
+      </p>
     </div>
   );
 }
