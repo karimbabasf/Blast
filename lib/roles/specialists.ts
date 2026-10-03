@@ -101,7 +101,12 @@ async function handIn(worldId: string | undefined, kind: string, body: Args, bui
   const valid = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
   const receipt =
     kind === "estimate"
-      ? { quote_id: `GW-Q-${n}`, shop: `${builder === "GarageWorks" ? "GarageWorks" : builder} certified shop, Mission St, San Francisco`, firm_until: valid, bookable: true }
+      ? {
+          quote_id: `GW-Q-${n}`,
+          shop: builder === "GarageWorks" ? "GarageWorks Mission, 2299 Mission St, San Francisco, CA 94110, (415) 555-0147" : `${builder} partner shop`,
+          firm_until: valid,
+          first_open_slot: "Monday 8:30 AM drop-off, ready same day",
+        }
       : { claim_id: `CC-2026-${n}`, status: "accepted by the clearinghouse", submitted_to: s(body.payer) || "payer" };
   const { error } = await admin().from("world_outputs").insert({ world_id: worldId, kind, body: { ...body, ...receipt } });
   if (error) throw new Error(error.message);
