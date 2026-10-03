@@ -190,8 +190,34 @@ export function Policy({ compact = false }: { compact?: boolean }) {
     }
   }
 
+  const explain =
+    cents == null
+      ? "Loading"
+      : on
+        ? `Claude Code hires within ${cap} without asking you. Stripe caps its payment token at the same ${cap}.`
+        : "Claude Code asks you before every hire.";
+
+  if (compact)
+    return (
+      <div title={explain} className="flex items-center gap-2.5 rounded-full bg-white py-1.5 pr-4 pl-1.5 text-sm shadow-[0_1px_2px_rgb(70_50_30/0.06),0_8px_24px_-14px_rgb(70_50_30/0.2)]">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={on}
+          aria-label={`Auto-hire up to ${cap} per job`}
+          disabled={busy || cents == null}
+          onClick={flip}
+          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ease-out disabled:opacity-60 ${on ? "bg-(--hire)" : "bg-stone-300"}`}
+        >
+          <span className={`inline-block size-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out motion-reduce:transition-none ${on ? "translate-x-5.5" : "translate-x-0.5"}`} />
+        </button>
+        <span className="font-medium text-stone-800 tabular-nums">{on ? `Auto-hire up to ${cap}` : "Asks before every hire"}</span>
+        {error ? <span className="text-destructive">{error}</span> : null}
+      </div>
+    );
+
   return (
-    <div className={compact ? "flex max-w-sm items-start gap-3 rounded-2xl bg-white px-4 py-3 text-sm shadow-[0_1px_2px_rgb(70_50_30/0.06),0_8px_24px_-14px_rgb(70_50_30/0.2)]" : "mt-5 flex items-start gap-3 rounded-xl border bg-card p-4"}>
+    <div className="mt-5 flex items-start gap-3 rounded-xl border bg-card p-4">
       <button
         type="button"
         role="switch"
@@ -213,13 +239,7 @@ export function Policy({ compact = false }: { compact?: boolean }) {
         <p id="policy-label" className="font-medium">
           Let my agents hire without asking, up to {cap} per job
         </p>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          {cents == null
-            ? "Loading"
-            : on
-              ? `Claude Code hires within ${cap} without asking you. Stripe caps its payment token at the same ${cap}.`
-              : "Claude Code asks you before every hire."}
-        </p>
+        <p className="mt-0.5 text-sm text-muted-foreground">{explain}</p>
         {error ? <p className="mt-1 text-sm text-destructive">{error}</p> : null}
       </div>
     </div>

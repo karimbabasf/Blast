@@ -75,7 +75,7 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
   const loading = !data || (data && q !== draft.trim());
 
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-10">
+    <main className="mx-auto w-full max-w-[1360px] flex-1 px-4 py-8 sm:py-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Blast Hub</h1>

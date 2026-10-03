@@ -10,7 +10,7 @@ const LINKS = [
 export function Header({ active }: { active?: string }) {
   return (
     <header className="border-b">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:gap-6">
+      <div className="mx-auto flex h-14 max-w-[1360px] items-center gap-4 px-4 sm:gap-6">
         <Link href="/" className="flex items-center gap-2 text-[17px] font-semibold tracking-[-0.02em]">
           <BlastMark className="size-7" />
           Blast
