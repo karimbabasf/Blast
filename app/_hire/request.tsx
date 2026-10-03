@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Loader2, Mic, MousePointerClick, X } from "lucide-react";
+import { Check, Loader2, X } from "lucide-react";
 import { motion } from "motion/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -13,18 +13,12 @@ import { postJson } from "./db";
 import { modelName, money, ROLE_LABEL, summarize } from "./format";
 import { useNeed } from "./use-need";
 
-const EXAMPLES: { label: string; text: string; caps: Capability[] }[] = [
-  {
-    label: "Calendar",
-    text: "I need an agent that manages my calendar. It should talk and book meetings for me.",
-    caps: ["talk", "act"],
-  },
-  {
-    label: "Email",
-    text: "I need an agent that keeps my inbox clean. It should archive newsletters, flag what matters and draft replies for me.",
-    caps: ["act"],
-  },
-];
+const DEFAULT_NEED = "I need an agent that manages my calendar. It should talk and book meetings for me.";
+
+// What the agent must be able to do, read from the request itself.
+function capabilities(text: string): Capability[] {
+  return /\b(talk|voice|speak|call|phone)/i.test(text) ? ["talk", "act"] : ["act"];
+}
 
 type Question = { id: string; question: string; options: string[] };
 type Answer = { id: string; question: string; answer: string };
@@ -56,8 +50,7 @@ const TASKS: Partial<Record<Role, string>> = {
 };
 
 export function Request({ initialNeed }: { initialNeed: string | null }) {
-  const [text, setText] = useState(EXAMPLES[0].text);
-  const [caps, setCaps] = useState<Capability[]>(EXAMPLES[0].caps);
+  const [text, setText] = useState(DEFAULT_NEED);
   const [needId, setNeedId] = useState<string | null>(initialNeed);
   const [posted, setPosted] = useState<MarketAgent[]>([]);
   const [listed, setListed] = useState<number | null>(null);
@@ -67,9 +60,6 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [tags, setTags] = useState<Answer[]>([]);
   const view = useNeed(needId);
-
-  const toggle = (c: Capability) =>
-    setCaps((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -96,7 +86,7 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
     try {
       const res = await postJson<{ need: Need; agents?: MarketAgent[]; listed?: MarketAgent[] }>("/api/needs", {
         text,
-        capabilities: caps,
+        capabilities: capabilities(text),
         answers: picked,
       });
       setPosted(res.agents ?? []);
@@ -142,28 +132,7 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
             rows={2}
             className="block w-full resize-none rounded-t-xl bg-transparent px-4 pt-3 pb-1 text-base outline-none"
           />
-          <div className="flex flex-wrap items-center gap-2 px-3 pb-3">
-            <Toggle on={caps.includes("talk")} onClick={() => toggle("talk")} icon={<Mic aria-hidden="true" className="size-3.5" />}>
-              Can talk
-            </Toggle>
-            <Toggle on={caps.includes("act")} onClick={() => toggle("act")} icon={<MousePointerClick aria-hidden="true" className="size-3.5" />}>
-              Can act
-            </Toggle>
-            <span className="ml-2 text-sm text-muted-foreground">Try</span>
-            {EXAMPLES.map((ex) => (
-              <button
-                key={ex.label}
-                type="button"
-                onClick={() => {
-                  setText(ex.text);
-                  setCaps(ex.caps);
-                  setQuestions(null);
-                }}
-                className="h-8 rounded-full border px-3 text-sm transition-colors hover:bg-muted"
-              >
-                {ex.label}
-              </button>
-            ))}
+          <div className="flex items-center px-3 pb-3">
             <Button type="submit" disabled={busy || !text.trim()} className="ml-auto h-9 w-32">
               {busy ? (
                 <>
@@ -242,22 +211,6 @@ function Steps({ phase }: { phase: number }) {
         {STEPS[phase]}
       </p>
     </div>
-  );
-}
-
-function Toggle({ on, onClick, icon, children }: { on: boolean; onClick: () => void; icon: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={on}
-      onClick={onClick}
-      className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm outline-none transition-[scale,background-color,color] duration-150 ease-out focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.97] ${
-        on ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:bg-muted"
-      }`}
-    >
-      {icon}
-      {children}
-    </button>
   );
 }
 
