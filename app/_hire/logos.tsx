@@ -1,4 +1,4 @@
-// Brand marks from Simple Icons (CC0), drawn in each brand's color.
+// Brand marks from Simple Icons (CC0).
 const PATHS = {
   supabase: "M11.9 1.036c-.015-.986-1.26-1.41-1.874-.637L.764 12.05C-.33 13.427.65 15.455 2.409 15.455h9.579l.113 7.51c.014.985 1.259 1.408 1.873.636l9.262-11.653c1.093-1.375.113-3.403-1.645-3.403h-9.642z",
   vercel: "M24 22.525H0l12-21.05 12 21.05z",
@@ -8,13 +8,14 @@ const PATHS = {
   googlegemini: "M11.04 19.32Q12 21.51 12 24q0-2.49.93-4.68.96-2.19 2.58-3.81t3.81-2.55Q21.51 12 24 12q-2.49 0-4.68-.93a12.3 12.3 0 0 1-3.81-2.58 12.3 12.3 0 0 1-2.58-3.81Q12 2.49 12 0q0 2.49-.96 4.68-.93 2.19-2.55 3.81a12.3 12.3 0 0 1-3.81 2.58Q2.49 12 0 12q2.49 0 4.68.96 2.19.93 3.81 2.55t2.55 3.81",
 };
 
+// Every mark is drawn in the text colour: the pages are grey, black and white.
 const COLOR: Record<Brand, string> = {
-  supabase: "#3ECF8E",
+  supabase: "currentColor",
   vercel: "currentColor",
-  stripe: "#635BFF",
-  anthropic: "#D97757",
-  openai: "#10A37F",
-  googlegemini: "#8E75B2",
+  stripe: "currentColor",
+  anthropic: "currentColor",
+  openai: "currentColor",
+  googlegemini: "currentColor",
 };
 
 const NAME: Record<Brand, string> = {
@@ -46,13 +47,14 @@ const MARK_CSS = `
 .bm-hex { stroke-dasharray: 1; stroke-dashoffset: 1; fill-opacity: 0; animation: bm-draw 380ms ease-out forwards, bm-fill 220ms ease-out 380ms forwards; }
 .bm-b { opacity: 0; animation: bm-fill 220ms ease-out 420ms forwards; }
 .bm-live { animation: bm-breathe 2.4s ease-in-out infinite; }
-@keyframes bm-draw { to { stroke-dashoffset: 0; } }
+@keyframes bm-draw { 99% { stroke-dashoffset: 0; stroke-dasharray: 1; } to { stroke-dashoffset: 0; stroke-dasharray: none; } }
 @keyframes bm-fill { to { fill-opacity: 1; opacity: 1; } }
-@keyframes bm-breathe { 0%, 100% { filter: drop-shadow(0 0 0 rgb(60 80 220 / 0)); } 50% { filter: drop-shadow(0 0 5px rgb(60 80 220 / 0.55)); } }
-@media (prefers-reduced-motion: reduce) { .bm-hex, .bm-b { animation: none; stroke-dashoffset: 0; fill-opacity: 1; opacity: 1; } .bm-live { animation: none; } }
+@keyframes bm-breathe { 0%, 100% { filter: drop-shadow(0 0 0 rgb(0 0 0 / 0)); } 50% { filter: drop-shadow(0 0 5px rgb(0 0 0 / 0.35)); } }
+@media (prefers-reduced-motion: reduce) { .bm-hex, .bm-b { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; fill-opacity: 1; opacity: 1; } .bm-live { animation: none; } }
 `;
 
-// The Blast mark (public/brand/mark.svg): draws in on load, breathes while a hire runs.
+// The Blast mark (public/brand/mark.svg): draws in on load, breathes while a hire runs. The dash is dropped
+// once drawn, or the stroke's start and end leave a notch at the top corner.
 export function BlastMark({ className = "size-6", live = false }: { className?: string; live?: boolean }) {
   return (
     <svg viewBox="0 0 100 100" role="img" aria-label="Blast" className={`${className} ${live ? "bm-live" : ""}`}>

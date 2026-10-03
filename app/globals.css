@@ -40,8 +40,8 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   /* From DESIGN.md (Figma): pastel colour blocks, one per screen, on a black and white frame. */
-  --color-success: #05a35f;
-  --color-warning: oklch(0.68 0.16 65);
+  --color-success: #0a0b0d;
+  --color-warning: #5b616e;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --radius-sm: calc(var(--radius) * 0.6);
@@ -60,7 +60,7 @@
   --card-foreground: #0a0b0d;
   --popover: #ffffff;
   --popover-foreground: #0a0b0d;
-  --primary: #0052ff;
+  --primary: #0a0b0d;
   --primary-foreground: #ffffff;
   --secondary: #dee1e6;
   --secondary-foreground: #0a0b0d;
@@ -68,7 +68,7 @@
   --muted-foreground: #5b616e;
   --accent: #eef0f3;
   --accent-foreground: #0a0b0d;
-  --destructive: #cf202f;
+  --destructive: #5b616e;
   --border: #dee1e6;
   --input: #dee1e6;
   --ring: #7c828a;
@@ -143,6 +143,43 @@
   h2,
   h3 {
     text-wrap: balance;
+  }
+}
+
+::selection {
+  background: rgb(10 11 13 / 0.14);
+}
+
+:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 2px;
+}
+
+/* The live stage: black, with white and grey only. */
+.stage {
+  --st-bg: #0a0b0d;
+  --st-1: #ffffff;
+  --st-2: #a8acb3;
+  --st-3: #7c828a;
+  --st-blue: #ffffff;
+  --st-blue-soft: rgb(255 255 255 / 0.12);
+  --st-blue-text: #ffffff;
+  --st-green: #ffffff;
+  --st-red: #a8acb3;
+  background: var(--st-bg);
+}
+
+.stage-scan {
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.06) 40%, rgb(255 255 255 / 0.14) 50%, rgb(255 255 255 / 0.06) 60%, transparent);
+  animation: stage-scan 1.4s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+
+@keyframes stage-scan {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
   }
 }
 

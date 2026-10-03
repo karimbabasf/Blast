@@ -1,34 +1,29 @@
 "use client";
 
-import { Check, ExternalLink, X } from "lucide-react";
+import { Check, ExternalLink, Loader2, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import type { MarketAgent, TryoutStep } from "@/lib/market/types";
-import { AgentAvatar } from "../_components/agent-avatar";
-import { scoreTone } from "../_components/score-tone";
 import { db } from "./db";
-import { clock, modelName, money, ROLE_LABEL, ROLE_TOOLS, summarize, tokenCost } from "./format";
-import { Policy } from "./hires";
-import { type Brand, Logo } from "./logos";
-import { capturedCents, ClaimCodes, type Claim, type Estimate, EstimateTable, type Hold, isEstimate, type LiveNeed, type LiveTryout, stripeLinks } from "./proof";
-import { Scorecard } from "./scorecard";
-import { TabTrack } from "./tab-track";
+import { clock, money, ROLE_LABEL } from "./format";
+import { type Brand, labOf, Logo } from "./logos";
+import { capturedCents, type LiveNeed, type LiveTryout, stripeLinks, workLine } from "./proof";
+import { bestTryout, DeliveredStage, isDelivery, isSite, LiveStage, phaseOf, type Phase, StageFrame, useCountUp, useHubAgents, useNow } from "./stage";
 import { useNeed } from "./use-need";
-import { SpeakButton } from "./voice";
-
-type Site = { title: string; palette: string[]; fonts: { display: string; body: string }; html: string; live_url: string };
 
 const MCP = "claude mcp add --transport http blast https://blast-kbkotes-projects.vercel.app/api/mcp";
 
-const FEED_IN = "animate-in fade-in slide-in-from-bottom-1 duration-200 ease-out motion-reduce:animate-none";
-const ACTIVE = new Set(["auditioning", "checkout"]);
+const CARD = "rounded-xl border bg-card";
+const OUT = [0.23, 1, 0.32, 1] as const;
 
-const TABS = ["overview", "tryouts", "payment", "search"] as const;
-type TabId = (typeof TABS)[number];
-const TAB_LABEL: Record<TabId, string> = { overview: "Overview", tryouts: "Tryouts", payment: "Payment", search: "Search" };
+// What each role hires and hands back, in plain words.
+const NOUN: Record<string, [string, string, string]> = {
+  web_design: ["web designer", "web designers", "site"],
+  auto_repair: ["mechanic", "mechanics", "repair quote"],
+  medical_billing: ["medical biller", "medical billers", "billing claim"],
+};
 
-function isTab(v: string | null): v is TabId {
-  return TABS.includes(v as TabId);
-}
+const at = (iso: string) => new Date(iso).getTime();
 
 // Claude Code's hires, newest first. Realtime on needs; a 2 s poll covers a dropped socket.
 function useHires() {
@@ -60,60 +55,29 @@ function useHires() {
   return needs;
 }
 
-// One small pill for how a hire stands. The only filled colour on the page besides the agent dots.
-function Status({ need }: { need: LiveNeed }) {
-  const working = ACTIVE.has(need.status);
-  const released = need.status === "waiting" || need.hold?.status === "released";
-  const tone = working ? "bg-primary/10 text-primary" : released ? "bg-muted text-muted-foreground" : "bg-success/10 text-success";
-  return (
-    <span className={`inline-flex h-6 shrink-0 items-center rounded-full px-2 text-xs font-medium ${tone} ${working ? "animate-pulse motion-reduce:animate-none" : ""}`}>
-      {working ? "Working…" : released ? "Nobody passed" : "Completed"}
-    </span>
-  );
-}
-
-// The list of hires on the left, the picked hire on the right.
-export function Dashboard({ initialNeed, initialTab }: { initialNeed: string | null; initialTab: string | null }) {
+export function Dashboard({ initialNeed }: { initialNeed: string | null }) {
   const needs = useHires();
+  const hub = useHubAgents();
   const [picked, setPicked] = useState<string | null>(initialNeed);
-  // Null until the user picks a tab; until then the hire's state chooses one.
-  const [tab, setTab] = useState<TabId | null>(isTab(initialTab) ? initialTab : null);
   const newest = needs?.[0]?.id ?? null;
   const [seen, setSeen] = useState<string | null>(null);
 
   // A new hire always takes focus, even after a click on an older one.
   if (newest && newest !== seen) {
     setSeen(newest);
-    if (seen) {
-      setPicked(null);
-      setTab(null);
-    }
+    if (seen) setPicked(null);
   }
-
-  // The picked tab lives in the URL, so a reload keeps it.
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    if (tab) url.searchParams.set("tab", tab);
-    else url.searchParams.delete("tab");
-    window.history.replaceState(null, "", url);
-  }, [tab]);
-
   const focus = picked ?? newest;
 
   return (
-    <main className="mx-auto flex w-full max-w-[1360px] flex-1 flex-col gap-6 px-4 pt-6 pb-16">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold tracking-tight">Hires</h1>
-        <Policy />
-      </div>
-
+    <main className="mx-auto w-full max-w-[1360px] flex-1 px-4 pt-5 pb-14 sm:px-6 sm:pt-7">
       {!needs ? null : !focus ? (
         <Empty />
       ) : (
-        <div className="grid items-start gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
-          <Hires needs={needs} focus={focus} onPick={setPicked} />
-          <Focus key={focus} id={focus} fallback={needs.find((n) => n.id === focus) ?? null} tab={tab} onTab={setTab} />
-        </div>
+        <>
+          <Focus key={focus} id={focus} fallback={needs.find((n) => n.id === focus) ?? null} hub={hub} />
+          {needs.length > 1 ? <History needs={needs} focus={focus} onPick={setPicked} /> : null}
+        </>
       )}
     </main>
   );
@@ -121,461 +85,465 @@ export function Dashboard({ initialNeed, initialTab }: { initialNeed: string | n
 
 function Empty() {
   return (
-    <div className="rounded-xl border px-6 py-16 text-center">
-      <p className="mx-auto flex w-fit items-center gap-2.5 text-base font-medium">
-        <span aria-hidden="true" className="size-2 animate-pulse rounded-full bg-primary motion-reduce:animate-none" />
-        Waiting for an agent to hire…
-      </p>
-      <p className="mt-4 text-sm text-muted-foreground">Connect Claude Code to Blast:</p>
-      <code className="mt-2 inline-block max-w-full overflow-x-auto rounded-lg bg-muted px-3 py-2 font-mono text-sm select-all">{MCP}</code>
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+      <div className={`${CARD} px-6 py-7`}>
+        <h1 className="text-2xl leading-tight font-semibold tracking-[-0.025em] text-balance text-foreground">Waiting for an agent to hire</h1>
+        <p className="mt-3 max-w-[52ch] text-base leading-relaxed text-muted-foreground">
+          When Claude Code hits work it cannot do well alone, it hires a specialist here. Specialists try out live on the real job, and Blast pays only the one that passes every check.
+        </p>
+        <p className="mt-6 text-sm font-medium text-muted-foreground">Connect Claude Code to Blast</p>
+        <code className="mt-2 block overflow-x-auto rounded-xl bg-muted px-4 py-3 font-mono text-xs text-foreground select-all">{MCP}</code>
+      </div>
+      <StageFrame>
+        <div className="flex min-h-[360px] items-center justify-center p-6 text-sm text-(--st-2)">
+          <Loader2 className="mr-2 size-4 animate-spin" /> Listening for the next hire
+        </div>
+      </StageFrame>
     </div>
   );
 }
 
-// Every hire as a row. Picking one swaps the view beside it in place; nothing navigates.
-function Hires({ needs, focus, onPick }: { needs: LiveNeed[]; focus: string; onPick: (id: string) => void }) {
-  return (
-    <ul aria-label="Hires" className="flex gap-2 overflow-x-auto lg:max-h-[calc(100dvh-10rem)] lg:flex-col lg:gap-0 lg:overflow-x-visible lg:overflow-y-auto">
-      {needs.map((n) => {
-        const on = n.id === focus;
-        return (
-          <li key={n.id} className="shrink-0 lg:border-b">
-            <button
-              type="button"
-              onClick={() => onPick(n.id)}
-              aria-pressed={on}
-              className={`flex h-16 w-64 items-center gap-3 rounded-lg px-3 text-left text-sm transition-colors duration-150 ease-out lg:w-full ${on ? "bg-muted" : "hover:bg-muted/60"}`}
-            >
-              {n.result?.agent_id ? (
-                <AgentAvatar card={{ id: n.result.agent_id, name: n.result.agent_name }} size="sm" />
-              ) : (
-                <span aria-hidden="true" className={`size-8 shrink-0 rounded-full bg-secondary ${ACTIVE.has(n.status) ? "animate-pulse motion-reduce:animate-none" : ""}`} />
-              )}
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium">{n.text}</span>
-                <span className="block truncate text-xs text-muted-foreground tabular-nums">
-                  {n.result?.agent_name ?? (ACTIVE.has(n.status) ? "Working…" : "Nobody passed")}
-                  {n.hold?.status === "captured" ? ` · ${money(capturedCents(n.hold))}` : ""} · {clock(n.created_at)}
-                </span>
-              </span>
-            </button>
-          </li>
-        );
-      })}
-    </ul>
-  );
+type View = { need: LiveNeed; tryouts: LiveTryout[]; steps: TryoutStep[] };
+
+// A finished hire played back on its own recorded clock: steps land when they landed, scores when they were scored.
+function rewind(v: View, ms: number): View & { over: boolean; clock: number } {
+  const t0 = at(v.need.created_at);
+  const rel = (iso: string) => at(iso) - t0;
+  const firstTry = v.tryouts.length ? Math.min(...v.tryouts.map((t) => rel(t.created_at))) : 0;
+  const lastStep = v.steps.length ? Math.max(...v.steps.map((s) => rel(s.created_at))) : firstTry;
+  const searchAt = Math.max(0, firstTry - 1500);
+  const doneAt = lastStep + 1500;
+  const speed = Math.max(1, (doneAt - searchAt) / 18000);
+  const t = searchAt + (ms - 1300) * speed;
+  const over = t >= doneAt;
+  const steps = v.steps.filter((s) => rel(s.created_at) <= t);
+  const tryouts = v.tryouts
+    .filter((tr) => rel(tr.created_at) <= t)
+    .map((tr) => {
+      const own = v.steps.filter((s) => s.tryout_id === tr.id && !isDelivery(s));
+      const end = (own.length ? Math.max(...own.map((s) => rel(s.created_at))) : rel(tr.created_at)) + 600;
+      return t >= end ? tr : { ...tr, status: "running" as const, score: null, checks: [] };
+    });
+  const scored = tryouts.length === v.tryouts.length && tryouts.every((tr) => tr.status !== "running");
+  const h = v.need.hold;
+  const need: LiveNeed = {
+    ...v.need,
+    search: t >= searchAt ? v.need.search : null,
+    status: over ? v.need.status : scored && tryouts.length ? "checkout" : "auditioning",
+    result: over ? v.need.result : null,
+    hold: over || !h ? h : { ...h, status: "held", captured_cents: undefined, transfer: undefined, builder_cents: undefined, blast_cents: undefined, agent_id: undefined },
+  };
+  return { need, tryouts, steps, over, clock: t0 + t };
 }
 
-const STEPS = ["Search", "Tryouts", "Paid on proof", "Delivered"];
-
-function Focus({ id, fallback, tab, onTab }: { id: string; fallback: LiveNeed | null; tab: TabId | null; onTab: (t: TabId) => void }) {
+function Focus({ id, fallback, hub }: { id: string; fallback: LiveNeed | null; hub: ReturnType<typeof useHubAgents> }) {
   const view = useNeed(id);
-  const need = (view.need as LiveNeed | null) ?? fallback;
-  if (!need) return null;
-  const loaded = !!view.need;
-  const tryouts = view.tryouts as LiveTryout[];
-  const winnerId = need.result?.agent_id ?? need.hold?.agent_id ?? null;
-  const running = tryouts.some((t) => t.status === "running");
-  const byAgent = new Map(tryouts.map((t) => [t.agent_id, t]));
-  const field = view.agents.filter((a) => byAgent.has(a.id));
-  const ranked = [...field].sort((x, y) => (byAgent.get(y.id)?.score ?? -1) - (byAgent.get(x.id)?.score ?? -1));
-  const best = running ? null : (ranked[0]?.id ?? null);
-  const winner = winnerId ? (byAgent.get(winnerId) ?? null) : null;
+  const base = (view.need as LiveNeed | null) ?? fallback;
+  const [replayFrom, setReplayFrom] = useState<number | null>(null);
+  const liveNow = base ? phaseOf(base, view.tryouts as LiveTryout[]) : "done";
+  const ticking = replayFrom != null || liveNow === "search" || liveNow === "tryout" || liveNow === "build";
+  const wall = useNow(ticking, 100);
+  if (!base) return null;
 
-  const searched = !!need.search || tryouts.length > 0;
-  const auditioned = tryouts.length > 0 && !running;
-  const paid = need.hold?.status === "captured" || need.hold?.status === "released";
-  const delivered = !!need.result;
-  const done = [searched, auditioned, paid, delivered];
-  const live = done.indexOf(false);
-  const working = ACTIVE.has(need.status);
-  const hold = need.hold ?? null;
-
-  // A running hire opens on the live tryouts, a finished one on its result.
-  const current = tab ?? (working ? "tryouts" : "overview");
-  const checks = winner?.checks ?? [];
-  const facts = [
-    need.result ? `${need.result.agent_name} won` : working ? (tryouts.length ? `Trying out ${tryouts.length}` : "Searching the Hub") : "Nobody passed",
-    winner?.score != null ? `${winner.score.toFixed(1)} score` : null,
-    checks.length ? `${checks.filter((c) => c.passed).length}/${checks.length} checks` : null,
-    hold ? (hold.status === "captured" ? `${money(capturedCents(hold))} captured` : hold.status === "released" ? `${money(hold.amount_cents)} released` : `${money(hold.amount_cents)} held`) : null,
-  ].filter((f): f is string => !!f);
+  const real: View = { need: base, tryouts: view.tryouts as LiveTryout[], steps: view.steps };
+  const replay = replayFrom != null ? rewind(real, wall - replayFrom) : null;
+  const shown = replay && !replay.over ? replay : real;
+  const { need, tryouts, steps } = shown;
+  const agents = new Map(view.agents.map((a) => [a.id, a]));
+  const phase = phaseOf(need, tryouts);
+  const best = phase === "build" || phase === "done" ? bestTryout(tryouts) : null;
+  const winnerId = need.result?.agent_id ?? need.hold?.agent_id ?? best?.agent_id ?? null;
+  const winner = winnerId ? agents.get(winnerId) : undefined;
 
   return (
-    <article className="flex min-w-0 flex-col gap-5">
-      <header className="flex flex-col gap-2">
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <span className="truncate">
-            {ROLE_LABEL[need.role] ?? need.role} · {clock(need.created_at)} · Hired by Claude Code
-          </span>
-          <span className="ml-auto">
-            <Status need={need} />
-          </span>
-        </div>
-        <h2 title={need.text} className="line-clamp-2 h-14 max-w-4xl text-xl leading-7 font-semibold tracking-tight text-pretty">
-          {need.text}
-        </h2>
-        <p className="flex h-8 items-center gap-2 text-sm text-muted-foreground tabular-nums">
-          {need.result ? <AgentAvatar card={{ id: need.result.agent_id, name: need.result.agent_name }} size="xs" /> : null}
-          {facts.map((f, i) => (
-            <span key={f} className={i === 0 ? "font-medium text-foreground" : ""}>
-              {i ? "· " : ""}
-              {f}
-            </span>
-          ))}
-        </p>
-        <ol className="grid grid-cols-4 gap-1.5">
-          {STEPS.map((label, i) => (
-            <li key={label} aria-current={i === live ? "step" : undefined} className="flex flex-col gap-1.5">
-              <span
-                aria-hidden="true"
-                className={`h-1 rounded-full transition-colors duration-300 ease-out ${done[i] ? "bg-foreground" : i === live ? "animate-pulse bg-primary motion-reduce:animate-none" : "bg-secondary"}`}
+    <article className="grid items-start gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+      <Story need={need} tryouts={tryouts} steps={steps} agents={agents} phase={phase} winner={winner} winnerId={winnerId} />
+      <StageFrame>
+        <AnimatePresence mode="wait" initial={false}>
+          {phase === "done" && need.result ? (
+            <motion.div key="done" exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+              <DeliveredStage result={need.result} onReplay={() => setReplayFrom(Date.now())} />
+            </motion.div>
+          ) : (
+            <motion.div key={`live-${replayFrom ?? "now"}`} exit={{ opacity: 0, filter: "blur(6px)" }} transition={{ duration: 0.3, ease: OUT }}>
+              <LiveStage
+                need={need}
+                tryouts={tryouts}
+                steps={steps}
+                agents={agents}
+                hub={hub}
+                now={replay && !replay.over ? replay.clock : wall}
+                winnerId={phase === "tryout" ? null : winnerId}
               />
-              <span className={`truncate text-xs ${done[i] || i === live ? "text-foreground" : "text-muted-foreground"}`}>{label}</span>
-            </li>
-          ))}
-        </ol>
-      </header>
-
-      <Tabs current={current} onPick={onTab} />
-
-      <div className="min-h-[28rem]">
-        <Panel id="overview" current={current}>
-          {need.result ? (
-            <div className={FEED_IN}>
-              <Delivered result={need.result} />
-            </div>
-          ) : (
-            <Nothing>{working ? "The winner's work lands here…" : "Nobody passed the proof, so nothing was delivered."}</Nothing>
+            </motion.div>
           )}
-        </Panel>
-
-        <Panel id="tryouts" current={current}>
-          {field.length ? (
-            <Tryouts agents={running ? field : ranked} byAgent={byAgent} steps={view.steps} winnerId={running ? null : (winnerId ?? best)} running={running} />
-          ) : (
-            <Nothing>{!loaded ? "Loading the tryouts…" : working ? "Searching the Hub for specialists…" : "No specialist was tried out for this hire."}</Nothing>
-          )}
-          <Scorecard agents={field} ranks={running ? null : ranked.map((a) => a.id)} byAgent={byAgent} winnerId={running ? null : (winnerId ?? best)} tools={ROLE_TOOLS[need.role] ?? []} />
-        </Panel>
-
-        <Panel id="payment" current={current}>
-          <Caption logo="stripe">Held before the work, captured only when the winner passed.</Caption>
-          {hold ? (
-            <Money hold={hold} builder={winnerId ? field.find((a) => a.id === winnerId)?.builder : undefined} />
-          ) : (
-            <Nothing>{working ? "The hold is placed once a specialist is picked…" : "No payment was held for this hire."}</Nothing>
-          )}
-        </Panel>
-
-        <Panel id="search" current={current}>
-          <Caption logo="supabase">Semantic search (pgvector) over {need.search?.listings ?? "the"} Hub listings.</Caption>
-          {need.search?.matches.length ? (
-            <SearchMatches need={need} tried={new Set(tryouts.map((t) => t.agent_id))} />
-          ) : (
-            <Nothing>{working && !searched ? "Searching the Hub…" : "No search record was kept for this hire."}</Nothing>
-          )}
-        </Panel>
-      </div>
+        </AnimatePresence>
+      </StageFrame>
     </article>
   );
 }
 
-function Tabs({ current, onPick }: { current: TabId; onPick: (t: TabId) => void }) {
-  // Left and right move between tabs, Home and End jump to the ends.
-  function onKeyDown(e: React.KeyboardEvent) {
-    const at = TABS.indexOf(current);
-    const to =
-      e.key === "ArrowRight" ? (at + 1) % TABS.length : e.key === "ArrowLeft" ? (at + TABS.length - 1) % TABS.length : e.key === "Home" ? 0 : e.key === "End" ? TABS.length - 1 : -1;
-    if (to < 0) return;
-    e.preventDefault();
-    onPick(TABS[to]);
-    document.getElementById(`hire-tab-${TABS[to]}`)?.focus();
-  }
-
-  const items = TABS.map((t) => ({ id: t, label: TAB_LABEL[t] }));
-
-  return (
-    <div className="overflow-x-auto">
-      <TabTrack items={items} active={current} role="tablist" aria-label="Hire details" onKeyDown={onKeyDown}>
-        {(item, className) => (
-          <button
-            type="button"
-            role="tab"
-            id={`hire-tab-${item.id}`}
-            aria-selected={item.id === current}
-            aria-controls={`hire-panel-${item.id}`}
-            tabIndex={item.id === current ? 0 : -1}
-            onClick={() => onPick(item.id as TabId)}
-            className={className}
-          >
-            {item.label}
-          </button>
-        )}
-      </TabTrack>
-    </div>
-  );
+function headline(phase: Phase, need: LiveNeed, tryouts: LiveTryout[], winner?: string) {
+  const [one, many, thing] = NOUN[need.role] ?? ["specialist", "specialists", "work"];
+  if (phase === "search") return `Finding a ${one} for this job`;
+  if (phase === "tryout") return tryouts.length === 1 ? `1 ${one} is trying out on the job` : `${tryouts.length} ${many} are trying out on the job`;
+  if (phase === "build") return winner ? `Hired ${winner}. Now building your ${thing}.` : "Scoring the tryouts";
+  if (phase === "done") return `${winner ?? "The winner"} delivered your ${thing}`;
+  return "Nobody passed, so nobody got paid";
 }
 
-// Every panel stays mounted, so a tab keeps its state; only the picked one shows.
-function Panel({ id, current, children }: { id: TabId; current: TabId; children: React.ReactNode }) {
-  return (
-    <div
-      role="tabpanel"
-      id={`hire-panel-${id}`}
-      aria-labelledby={`hire-tab-${id}`}
-      hidden={id !== current}
-      tabIndex={0}
-      className="flex animate-in flex-col gap-4 rounded-lg duration-200 ease-out fade-in motion-reduce:animate-none"
-    >
-      {children}
-    </div>
-  );
-}
+type StepState = "done" | "now" | "todo" | "off";
 
-function Caption({ logo, children }: { logo: Brand; children: React.ReactNode }) {
-  return (
-    <p className="flex items-center gap-2 text-sm text-muted-foreground">
-      <Logo brand={logo} className="size-4 shrink-0" />
-      {children}
-    </p>
-  );
-}
-
-function Nothing({ children }: { children: React.ReactNode }) {
-  return <p className="rounded-xl border px-4 py-10 text-center text-sm text-muted-foreground">{children}</p>;
-}
-
-const TH = "py-2 pr-4 text-left text-xs font-normal text-muted-foreground";
-
-// One row per candidate: who it is, how it scored, and where it stands right now.
-function Tryouts({
-  agents,
-  byAgent,
+function Story({
+  need,
+  tryouts,
   steps,
+  agents,
+  phase,
+  winner,
   winnerId,
-  running,
 }: {
-  agents: MarketAgent[];
-  byAgent: Map<string, LiveTryout>;
+  need: LiveNeed;
+  tryouts: LiveTryout[];
   steps: TryoutStep[];
+  agents: Map<string, MarketAgent>;
+  phase: Phase;
+  winner?: MarketAgent;
   winnerId: string | null;
-  running: boolean;
 }) {
+  const [jobOpen, setJobOpen] = useState(false);
+  const h = need.hold;
+  const released = phase === "released";
+  const running = tryouts.filter((t) => t.status === "running").length;
+  const calls = steps.filter((s) => s.kind === "tool" && !isDelivery(s)).length;
+  const out = need.result?.output;
+  const site = isSite(out) ? out : null;
+  const title = headline(phase, need, tryouts, winner?.name ?? need.result?.agent_name);
+
+  const search: StepState = need.search || tryouts.length ? "done" : "now";
+  const tryout: StepState = !tryouts.length ? "todo" : running ? "now" : "done";
+  const pay: StepState = released ? "off" : h?.status === "captured" ? "done" : phase === "build" ? "now" : "todo";
+  const deliver: StepState = released ? "off" : need.result ? "done" : phase === "build" ? "now" : "todo";
+
   return (
-    <div className="overflow-x-auto rounded-xl border">
-      <table className="w-full min-w-[40rem] text-sm tabular-nums">
-        <thead>
-          <tr>
-            <th scope="col" className={`${TH} w-72 pl-4`}>
-              Specialist
-            </th>
-            <th scope="col" className={`${TH} w-20`}>
-              Score
-            </th>
-            <th scope="col" className={`${TH} w-20`}>
-              Checks
-            </th>
-            <th scope="col" className={`${TH} w-24`}>
-              Tokens
-            </th>
-            <th scope="col" className={`${TH} w-20`}>
-              Per job
-            </th>
-            <th scope="col" className={TH}>
-              Result
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {agents.map((a) => {
-            const t = byAgent.get(a.id);
-            const checks = t?.checks ?? [];
-            const failed = checks.find((c) => !c.passed);
-            const last = steps.filter((s) => s.tryout_id === t?.id && s.kind === "tool").at(-1);
-            return (
-              <tr key={a.id} className={`h-14 border-t ${a.id === winnerId ? "bg-success/5" : ""}`}>
-                <td className="py-2 pr-4 pl-4">
-                  <div className="flex items-center gap-3">
-                    <AgentAvatar card={a} size="sm" status={t?.status === "running" ? "working" : undefined} />
-                    <div className="min-w-0">
-                      <div className="truncate font-medium" translate="no">
-                        {a.name}
-                      </div>
-                      <div className="truncate text-xs text-muted-foreground">
-                        {modelName(a.model)} · {a.builder}
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td className="pr-4">
-                  {t?.score != null ? (
-                    <span className={`inline-block rounded-full px-2 py-0.5 font-semibold ${scoreTone(t.score)}`}>{t.score.toFixed(1)}</span>
-                  ) : (
-                    <span className="text-muted-foreground">{t?.status === "failed" ? "Failed" : "…"}</span>
-                  )}
-                </td>
-                <td className="pr-4">{checks.length ? `${checks.filter((c) => c.passed).length}/${checks.length}` : <span className="text-muted-foreground">…</span>}</td>
-                <td className="pr-4 text-muted-foreground">{t?.usage?.cost_usd != null ? tokenCost(t.usage.cost_usd) : "…"}</td>
-                <td className="pr-4">{money(a.price_action_cents)}</td>
-                <td className="max-w-0 pr-4">
-                  <span className="flex items-center gap-1.5 truncate">
-                    {a.id === winnerId ? (
-                      <span className="font-medium text-success">Hired</span>
-                    ) : failed ? (
-                      <>
-                        <X aria-hidden="true" className="size-3.5 shrink-0 text-destructive" strokeWidth={3} />
-                        <span className="truncate text-muted-foreground" title={failed.name}>
-                          {failed.name}
-                        </span>
-                      </>
-                    ) : checks.length ? (
-                      <>
-                        <Check aria-hidden="true" className="size-3.5 shrink-0 text-success" strokeWidth={3} />
-                        <span className="truncate text-muted-foreground">All checks passed</span>
-                      </>
-                    ) : last ? (
-                      <span className="truncate font-mono text-xs text-muted-foreground">
-                        {last.name} {summarize(last.name, last.input)}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">{running ? "Starting…" : ""}</span>
-                    )}
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className={`${CARD} min-w-0 px-5 pt-6 pb-5 sm:px-7`}>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.h1
+          key={title}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.3, ease: OUT }}
+          className="text-2xl leading-[1.15] font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-3xl"
+        >
+          {title}
+        </motion.h1>
+      </AnimatePresence>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {need.source === "claude-code" ? "Claude Code asked over MCP" : "Asked on the web"} at <span className="tabular-nums">{clock(need.created_at)}</span>
+        <span className="mx-1.5 text-muted-foreground/70">/</span>
+        {ROLE_LABEL[need.role] ?? need.role}
+      </p>
+
+      <button
+        type="button"
+        onClick={() => setJobOpen((o) => !o)}
+        aria-expanded={jobOpen}
+        className="mt-4 block w-full rounded-2xl bg-muted px-4 py-3 text-left ring-1 ring-border transition-colors hover:bg-muted"
+      >
+        <span className="block text-xs font-medium text-muted-foreground">The job</span>
+        <span className={`mt-1 text-sm leading-relaxed text-pretty text-foreground ${jobOpen ? "block" : "line-clamp-3"}`}>{need.text}</span>
+      </button>
+
+      <ol className="mt-6">
+        <Step state={search} title="Search the Hub" brand="supabase" by="pgvector">
+          {need.search ? (
+            <>
+              Matched the job against <Num>{need.search.listings}</Num> specialists.{" "}
+              {tryouts.length ? (
+                <>
+                  Picked the closest <Num>{tryouts.length}</Num> for a tryout.
+                </>
+              ) : (
+                <>
+                  <Num>{need.search.matches?.length ?? 0}</Num> came close.
+                </>
+              )}
+            </>
+          ) : (
+            "Matching the job against every specialist on the Hub."
+          )}
+        </Step>
+        <Step state={tryout} title="Try out on the real job" brand="vercel" by="Sandbox">
+          {!tryouts.length ? (
+            "Each pick does this exact job in its own sandbox, then gets checked and scored."
+          ) : (
+            <>
+              {running ? (
+                <span className="tabular-nums">
+                  {running} of {tryouts.length} still working, {calls} tool calls so far.
+                </span>
+              ) : null}
+              <Board tryouts={tryouts} agents={agents} winnerId={phase === "tryout" ? null : winnerId} />
+            </>
+          )}
+        </Step>
+        <Step state={pay} title="Pay on proof" brand="stripe" by="MPP">
+          <Payment hold={h} builder={winner?.builder} released={released} />
+        </Step>
+        <Step state={deliver} title="Deliver" last>
+          {released ? (
+            "Nothing to deliver."
+          ) : need.result ? (
+            site ? (
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="font-medium text-foreground">{site.title}</span>
+                {site.live_url ? (
+                  <a href={site.live_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-(--hire) hover:underline">
+                    Open live site <ExternalLink className="size-3.5" />
+                  </a>
+                ) : null}
+              </span>
+            ) : (
+              <span className="font-medium text-foreground">{workLine(need.result.output as Parameters<typeof workLine>[0]) || "Delivered."}</span>
+            )
+          ) : phase === "build" && winner ? (
+            `${winner.name} is doing the real job now.`
+          ) : (
+            "The winner does the real job and hands it back here."
+          )}
+        </Step>
+      </ol>
     </div>
   );
 }
 
-function SearchMatches({ need, tried }: { need: LiveNeed; tried: Set<string> }) {
-  const matches = need.search?.matches ?? [];
+function Num({ children }: { children: React.ReactNode }) {
+  return <span className="font-semibold text-foreground tabular-nums">{children}</span>;
+}
+
+function Step({ state, title, brand, by, last, children }: { state: StepState; title: string; brand?: Brand; by?: string; last?: boolean; children: React.ReactNode }) {
   return (
-    <ul className="rounded-xl border">
-      {matches.slice(0, 8).map((m, i) => (
-        <li key={m.id} className={`flex h-12 items-center gap-3 px-4 text-sm ${i ? "border-t" : ""}`}>
-          <AgentAvatar card={m} size="xs" />
-          <span className="w-40 truncate font-medium" translate="no">
-            {m.name}
-          </span>
-          <span className="hidden min-w-0 flex-1 truncate text-muted-foreground sm:block">{m.builder}</span>
-          {tried.has(m.id) ? <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">Tried out</span> : null}
-          <span className="ml-auto w-12 text-right font-medium tabular-nums">{Math.round(m.similarity * 100)}%</span>
-        </li>
+    <li className="relative grid grid-cols-[28px_minmax(0,1fr)] gap-x-3.5">
+      <div className="flex flex-col items-center">
+        <StepIcon state={state} />
+        {!last ? <span className={`my-1.5 w-0.5 flex-1 rounded-full transition-colors duration-500 ${state === "done" ? "bg-muted-foreground" : "bg-secondary"}`} /> : null}
+      </div>
+      <div className={`min-w-0 ${last ? "" : "pb-5"}`}>
+        <div className="flex min-h-7 items-center justify-between gap-3">
+          <span className={`text-base font-semibold tracking-[-0.01em] ${state === "todo" ? "text-muted-foreground/70" : "text-foreground"}`}>{title}</span>
+          {brand ? (
+            <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground/70">
+              <Logo brand={brand} className={`size-3.5 ${brand === "vercel" ? "text-foreground" : ""}`} />
+              {by}
+            </span>
+          ) : null}
+        </div>
+        <div className={`mt-0.5 text-sm leading-relaxed text-pretty ${state === "todo" ? "text-muted-foreground/70" : "text-muted-foreground"}`}>{children}</div>
+      </div>
+    </li>
+  );
+}
+
+function StepIcon({ state }: { state: StepState }) {
+  return (
+    <span className="relative grid size-7 shrink-0 place-items-center">
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.span
+          key={state}
+          initial={{ scale: 0.4, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.4, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 520, damping: 26 }}
+          className={`absolute inset-0 grid place-items-center rounded-full ${
+            state === "done" ? "bg-foreground text-white" : state === "now" ? "bg-(--hire-soft) text-(--hire) ring-1 ring-(--hire)/30" : state === "off" ? "bg-secondary text-muted-foreground" : "ring-[1.5px] ring-border ring-inset"
+          }`}
+        >
+          {state === "done" ? <Check className="size-4" strokeWidth={3} /> : state === "now" ? <Loader2 className="size-4 animate-spin" /> : state === "off" ? <X className="size-4" strokeWidth={2.5} /> : null}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  );
+}
+
+function Board({ tryouts, agents, winnerId }: { tryouts: LiveTryout[]; agents: Map<string, MarketAgent>; winnerId: string | null }) {
+  const rows = [...tryouts].sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+  return (
+    <ul className="mt-2.5 -mx-2">
+      {rows.map((t) => (
+        <motion.li key={t.id} layout transition={{ type: "spring", stiffness: 380, damping: 32 }}>
+          <BoardRow tryout={t} agent={agents.get(t.agent_id)} win={t.agent_id === winnerId} />
+        </motion.li>
       ))}
     </ul>
   );
 }
 
-// The money as a short ledger: what was paid, held, captured and paid out.
-function Money({ hold: h, builder }: { hold: Hold; builder?: string }) {
-  const captured = h.status === "captured";
-  const released = h.status === "released";
-  const rows: { label: string; value: React.ReactNode; note: React.ReactNode; on: boolean }[] = [
-    { label: "Paid by", value: h.via === "mpp" ? "MPP 402" : "Card", note: h.via === "mpp" ? "Claude Code paid the HTTP 402" : "Card on file", on: true },
-    {
-      label: "Held",
-      value: money(h.amount_cents),
-      note: h.spt ? <span className="font-mono text-xs">{h.spt}</span> : <Ref href={stripeLinks.payment(h.payment_intent)} id={h.payment_intent} />,
-      on: true,
-    },
-    released
-      ? { label: "Released", value: money(h.amount_cents), note: "No specialist passed, nothing charged", on: true }
-      : {
-          label: "Captured",
-          value: captured ? money(capturedCents(h)) : "…",
-          note: captured ? <Ref href={stripeLinks.payment(h.payment_intent)} id={h.payment_intent} /> : "Waits for the proof",
-          on: captured,
-        },
-    ...(released
-      ? []
-      : [
-          {
-            label: `Paid out to ${builder ?? "the builder"}`,
-            value: h.builder_cents != null && h.transfer ? money(h.builder_cents) : "…",
-            note: h.transfer ? <Ref href={stripeLinks.transfer(h.transfer)} id={h.transfer} /> : "Through Stripe Connect",
-            on: !!h.transfer,
-          },
-          ...(captured && h.blast_cents != null ? [{ label: "Blast kept", value: money(h.blast_cents), note: "", on: true }] : []),
-        ]),
-  ];
+function BoardRow({ tryout: t, agent, win }: { tryout: LiveTryout; agent?: MarketAgent; win: boolean }) {
+  const [open, setOpen] = useState(false);
+  const score = useCountUp(t.status === "scored" ? t.score : null);
+  const lab = agent ? labOf(agent.model) : null;
+  const checks = t.checks ?? [];
+  const passed = checks.filter((c) => c.passed).length;
   return (
-    <dl className="rounded-xl border text-sm">
-      {rows.map((r, i) => (
-        <div key={r.label} className={`flex h-12 items-center gap-4 px-4 ${i ? "border-t" : ""} ${r.on ? "" : "text-muted-foreground"}`}>
-          <dt className="w-48 shrink-0 truncate">{r.label}</dt>
-          <dd className="w-20 shrink-0 font-semibold tabular-nums">{r.value}</dd>
-          <dd className="min-w-0 flex-1 truncate text-right text-muted-foreground">{r.note}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
-function Ref({ href, id }: { href: string; id: string }) {
-  return (
-    <a href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-xs text-primary hover:underline">
-      {id}
-      <ExternalLink aria-hidden="true" className="size-3 shrink-0" />
-    </a>
-  );
-}
-
-// Replies arrive as light markdown: keep **bold**, drop the markers.
-function bold(text: string) {
-  return text.split(/\*\*(.+?)\*\*/g).map((part, i) => (i % 2 ? <strong key={i} className="font-semibold">{part}</strong> : part));
-}
-
-function isSite(o: unknown): o is Site {
-  return !!o && typeof o === "object" && typeof (o as Site).html === "string";
-}
-
-function Delivered({ result }: { result: NonNullable<LiveNeed["result"]> }) {
-  const out = result.output as Estimate | Claim | Site | null;
-  return (
-    <div>
-      {result.reply ? (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-          <p className="max-w-3xl text-base leading-relaxed text-pretty whitespace-pre-line">{bold(result.reply)}</p>
-          <SpeakButton text={result.reply} />
-        </div>
-      ) : null}
-      {isSite(out) ? <SitePreview site={out} /> : out ? isEstimate(out as Estimate | Claim) ? <EstimateTable e={out as Estimate} /> : "icd10" in out ? <ClaimCodes c={out as Claim} /> : null : null}
+    <div className={`rounded-xl transition-colors duration-300 ${win ? "bg-(--hire-soft)" : open ? "bg-muted" : ""}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        disabled={!checks.length}
+        className="grid w-full grid-cols-[minmax(0,1fr)_4.5rem] items-center gap-3 rounded-xl px-2 py-2 text-left enabled:hover:bg-muted disabled:cursor-default sm:grid-cols-[minmax(0,1fr)_minmax(48px,96px)_4.5rem]"
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          {lab ? <Logo brand={lab} className="size-3.5 shrink-0" /> : null}
+          <span className="truncate text-sm font-medium text-foreground">{agent?.name ?? "Specialist"}</span>
+          <span className="hidden truncate text-sm text-muted-foreground/70 sm:inline">{agent?.builder}</span>
+          {win ? <span className="shrink-0 rounded-md bg-(--hire) px-1.5 py-px text-xs font-semibold text-white">Hired</span> : null}
+        </span>
+        <span className="hidden h-1.5 overflow-hidden rounded-full bg-secondary sm:block">
+          <span
+            className={`block h-full rounded-full transition-[width] duration-700 ease-out ${win ? "bg-(--hire)" : passed === checks.length && checks.length ? "bg-foreground" : "bg-muted-foreground/60"}`}
+            style={{ width: `${t.status === "scored" ? Math.max(4, score * 10) : 0}%` }}
+          />
+        </span>
+        <span className="flex items-baseline justify-end gap-1.5 tabular-nums">
+          {t.status === "running" ? (
+            <Loader2 className="size-3.5 animate-spin text-(--hire)" />
+          ) : t.status === "scored" ? (
+            <>
+              <span className="text-base font-semibold text-foreground">{score.toFixed(1)}</span>
+              <span className="text-xs text-muted-foreground/70">
+                {passed}/{checks.length}
+              </span>
+            </>
+          ) : (
+            <span className="text-sm text-muted-foreground">Failed</span>
+          )}
+        </span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && checks.length ? (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.28, ease: OUT }}
+            className="overflow-hidden"
+          >
+            <div className="px-2 pt-0.5 pb-3">
+              <ul className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
+                {checks.map((c) => (
+                  <li key={c.name} className="flex items-start gap-1.5">
+                    {c.passed ? <Check className="mt-0.5 size-3.5 shrink-0 text-foreground" strokeWidth={3} /> : <X className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" strokeWidth={3} />}
+                    <span className={c.passed ? "text-foreground" : "text-muted-foreground"}>{c.name}</span>
+                  </li>
+                ))}
+              </ul>
+              {t.reason ? <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t.reason}</p> : null}
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }
 
-function SitePreview({ site }: { site: Site }) {
+function Payment({ hold: h, builder, released }: { hold: LiveNeed["hold"]; builder?: string; released: boolean }) {
+  if (!h) return <>No payment is held for this job.</>;
+  if (released || h.status === "released")
+    return (
+      <>
+        The <Num>{money(h.amount_cents)}</Num> hold was released. Nothing was charged.
+      </>
+    );
+  if (h.status !== "captured")
+    return (
+      <>
+        <Num>{money(h.amount_cents)}</Num> held on Stripe{h.via === "mpp" ? ", paid by Claude Code over MPP" : ""}. Captured only if the winner passes every check.
+      </>
+    );
   return (
-    <div className="mt-4">
-      <div className="relative h-[420px] overflow-hidden rounded-xl border bg-white">
-        <iframe title={site.title} srcDoc={site.html} sandbox="" className="absolute top-0 left-0 h-[840px] w-[200%] origin-top-left scale-50 border-0" />
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-        <span className="font-medium">{site.title}</span>
-        <span aria-label={`Palette: ${site.palette.join(", ")}`} role="img" className="flex gap-1">
-          {site.palette.map((c) => (
-            <span key={c} className="size-4 rounded-full ring-1 ring-foreground/10" style={{ background: c }} />
-          ))}
-        </span>
-        <span className="text-muted-foreground">
-          {site.fonts.display} / {site.fonts.body}
-        </span>
-        {site.live_url ? (
-          <a
-            href={site.live_url}
-            target="_blank"
-            rel="noreferrer"
-            className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 font-medium transition-colors duration-150 ease-out hover:bg-muted"
-          >
-            Open live site <ExternalLink aria-hidden="true" className="size-3.5" />
+    <>
+      <Cents value={capturedCents(h)} /> paid from the <Num>{money(h.amount_cents)}</Num> hold.{" "}
+      {h.builder_cents != null ? (
+        <>
+          {builder ?? "The builder"} got <Cents value={h.builder_cents} />
+          {h.blast_cents != null ? (
+            <>
+              , Blast kept <Num>{money(h.blast_cents)}</Num>
+            </>
+          ) : null}
+          .
+        </>
+      ) : null}
+      <span className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+        <a href={stripeLinks.payment(h.payment_intent)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-(--hire) hover:underline">
+          Stripe payment <ExternalLink className="size-3" />
+        </a>
+        {h.transfer ? (
+          <a href={stripeLinks.transfer(h.transfer)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-(--hire) hover:underline">
+            Connect payout <ExternalLink className="size-3" />
           </a>
         ) : null}
+      </span>
+    </>
+  );
+}
+
+function Cents({ value }: { value: number }) {
+  const v = useCountUp(value);
+  return <span className="font-semibold text-foreground tabular-nums">{money(Math.round(v))}</span>;
+}
+
+function History({ needs, focus, onPick }: { needs: LiveNeed[]; focus: string; onPick: (id: string) => void }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? needs : needs.slice(0, 6);
+  return (
+    <section className="mt-12">
+      <div className="flex items-baseline gap-2">
+        <h2 className="text-base font-semibold text-foreground">Earlier hires</h2>
+        <span className="text-sm text-muted-foreground/70 tabular-nums">{needs.length}</span>
       </div>
-    </div>
+      <ul className={`${CARD} mt-3 divide-y divide-border overflow-hidden`}>
+        {shown.map((n) => {
+          const released = n.status === "waiting" || n.hold?.status === "released";
+          const busy = n.status === "auditioning" || n.status === "checkout";
+          const result = released
+            ? "Nobody passed"
+            : busy
+              ? "In progress"
+              : [n.result?.agent_name, n.hold?.status === "captured" ? money(capturedCents(n.hold)) : null].filter(Boolean).join(", ") || "Done";
+          return (
+            <li key={n.id}>
+              <button
+                type="button"
+                onClick={() => {
+                  onPick(n.id);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                aria-current={n.id === focus}
+                className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-0.5 px-4 py-3 text-left transition-colors duration-200 ease-out hover:bg-muted sm:grid-cols-[3.25rem_8.5rem_minmax(0,1fr)_auto] sm:px-5 ${
+                  n.id === focus ? "bg-(--hire-soft)/70" : ""
+                }`}
+              >
+                <span className="order-2 text-xs text-muted-foreground/70 tabular-nums sm:order-none sm:text-sm">{clock(n.created_at)}</span>
+                <span className="order-3 hidden truncate text-sm text-muted-foreground sm:order-none sm:block">{ROLE_LABEL[n.role] ?? n.role}</span>
+                <span className="order-1 col-span-2 truncate text-sm text-foreground sm:order-none sm:col-span-1">{n.text}</span>
+                <span
+                  className={`order-2 justify-self-end text-sm tabular-nums sm:order-none ${released ? "text-muted-foreground/70" : busy ? "font-medium text-(--hire)" : "font-medium text-foreground"}`}
+                >
+                  {result}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {needs.length > 6 ? (
+        <button type="button" onClick={() => setAll((a) => !a)} className="mt-3 text-sm font-medium text-muted-foreground hover:text-foreground">
+          {all ? "Show fewer" : `Show all ${needs.length}`}
+        </button>
+      ) : null}
+    </section>
   );
 }

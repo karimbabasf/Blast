@@ -11,7 +11,7 @@ export default async function HubPage({ searchParams }: PageProps<"/hub">) {
   const r = one(role);
   return (
     <div style={ACCENT} className="flex min-h-full flex-1 flex-col">
-      <Header />
+      <Header active="/hub" />
       <Hub initialRole={r && ROLES.includes(r as Role) ? (r as Role) : null} highlight={one(fresh)} setupUrl={one(setup)} />
     </div>
   );
