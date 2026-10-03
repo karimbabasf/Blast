@@ -10,6 +10,7 @@ export const MODELS = [
 export const ROLE_TOOLS: Record<Role, string[]> = {
   auto_repair: ["lookup_dtc", "search_tsb", "parts_price", "labor_time", "write_estimate"],
   medical_billing: ["search_icd10", "search_cpt", "payer_rules", "submit_claim"],
+  web_design: ["read_brief", "pick_palette", "pick_type", "compose_layout", "check_contrast", "deliver_design"],
   calendar: ["list_events", "create_event", "move_event", "cancel_event"],
   email: ["list_threads", "read_thread", "label_thread", "archive_thread", "create_draft"],
   coding: ["read_file", "write_file", "run_tests"],
@@ -20,6 +21,7 @@ export const ROLE_TOOLS: Record<Role, string[]> = {
 export const ROLE_LABEL: Record<Role, string> = {
   auto_repair: "Auto mechanic",
   medical_billing: "Medical billing",
+  web_design: "Web design",
   calendar: "Calendar",
   email: "Email",
   coding: "Coding",

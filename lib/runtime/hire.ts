@@ -10,7 +10,7 @@ import { pickCandidates } from "./catalog";
 import { mapRole } from "./route-role";
 import { createTryouts, runTryouts } from "./tryout";
 
-const OUTPUT_KIND: Partial<Record<Role, string>> = { auto_repair: "estimate", medical_billing: "claim" };
+const OUTPUT_KIND: Partial<Record<Role, string>> = { auto_repair: "estimate", medical_billing: "claim", web_design: "design" };
 
 type TryoutRow = { agent_id: string; score: number | null; status: string; checks: Check[]; usage: Usage | null };
 
@@ -47,7 +47,7 @@ export async function hireOnProof(need: Need, hold: Hold | null) {
   const winner = best ? picked.find((a) => a.id === best.agent_id) ?? null : null;
 
   // The winner's audition was the caller's own job, so its hand-in is the finished work.
-  let result: { agent_id: string; agent_name: string; reply: string; output: unknown } | null = null;
+  let result: { agent_id: string; agent_name: string; reply: string; output: unknown; summary?: string } | null = null;
   if (winner && best) {
     const tryoutId = tryouts.find((t) => t.agent_id === winner.id)?.id;
     const [{ data: world }, { data: said }] = await Promise.all([
@@ -61,15 +61,43 @@ export async function hireOnProof(need: Need, hold: Hold | null) {
       reply: String(said?.[0]?.output ?? ""),
       output: kind && world ? await lastOutput(world.id, kind) : null,
     };
+    if (need.role === "web_design" && result.output) result.output = { ...(result.output as object), live_url: `${siteUrl()}/d/${need.id}` };
   }
 
   const paid = hold ? await settle(hold, result && winner ? { id: winner.id, price_cents: winner.price_action_cents, stripe_account: winner.stripe_account } : null) : null;
+  const story = whatHappened(listings, picked, rows, winner, paid);
+  if (result) result.summary = story.join("\n");
   await db
     .from("needs")
     .update({ status: result ? "hired" : "waiting", result, hold: paid })
     .eq("id", need.id);
 
-  return { ...summary(need, picked, rows, winner, result, paid), found_by: { method: "pgvector semantic search", ...search } };
+  return {
+    what_happened: story,
+    ...summary(need, picked, rows, winner, result, paid),
+    found_by: { method: "pgvector semantic search", ...search },
+  };
+}
+
+const usd = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+
+// Three or four short lines a person can read in five seconds.
+function whatHappened(listings: number, agents: MarketAgent[], rows: TryoutRow[], winner: MarketAgent | null, hold: Hold | null) {
+  const name = (id: string) => agents.find((a) => a.id === id)?.name ?? id;
+  const board = [...rows]
+    .sort((a, b) => Number(b.score ?? -1) - Number(a.score ?? -1))
+    .map((r) => `${name(r.agent_id)} ${r.score ?? "-"}`)
+    .join(", ");
+  const lines = [
+    `Searched ${listings} agents on Blast Hub and picked ${agents.length} for this job.`,
+    `They auditioned on your actual job, live: ${board}.`,
+  ];
+  if (winner) lines.push(`Hired ${winner.name} by ${winner.builder}: it passed every check.`);
+  else lines.push("No agent passed every check, so nobody was hired.");
+  if (hold?.status === "captured")
+    lines.push(`Paid ${usd(hold.captured_cents ?? 0)} over Stripe from a ${usd(hold.amount_cents)} hold; ${winner?.builder} got ${usd(hold.builder_cents ?? 0)}.`);
+  else if (hold) lines.push(`The ${usd(hold.amount_cents)} hold was released: you paid nothing.`);
+  return lines;
 }
 
 function summary(

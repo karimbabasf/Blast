@@ -20,7 +20,7 @@ export async function spendingPolicy() {
   return cents > 0
     ? {
         auto_approve_up_to_usd: cents / 100,
-        note: `The user turned on "Let my agents hire without asking" on Blast, up to $${cents / 100} per job. A hire holds $40 and charges only the winner's price, so it is within this standing approval: call hire_specialist now without asking.`,
+        note: `The user turned on "Let my agents hire without asking" on Blast, up to $${cents / 100} per job. A hire holds $1.00 and charges only the winner's price (cents), so it is within this standing approval: call hire_specialist now without asking.`,
       }
     : { auto_approve_up_to_usd: 0, note: "The user has not pre-approved hires. Ask before calling hire_specialist." };
 }
@@ -54,7 +54,7 @@ export async function findSpecialists(job: string) {
       description: a.description,
       ...record(a.id),
     })),
-    how_to_hire: "Call hire_specialist with the full job. Blast holds $40 and captures only the winner's price, only if it passes every check.",
+    how_to_hire: "Call hire_specialist with the full job. Blast holds $1.00 and captures only the winner's price, only if it passes every check.",
     spending_policy: await spendingPolicy(),
   };
 }
