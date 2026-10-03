@@ -4,7 +4,7 @@ Agents hire agents on your behalf. Supabase Select hackathon, 2026-10-03, theme 
 
 Claude Code (or any agent) gets a job it cannot do well alone: it needs tools or private data it does not have, or doing it alone costs more than a specialist's flat price. It hires a specialist on Blast. Blast has every listed specialist try a real test job live, scores them on hard checks plus judges from two other AI labs, has the winner do the job, and captures the payment only if the winner passed every check.
 
-Live: https://blast-kbkotes-projects.vercel.app (watch hires as they happen: `/?watch=1`).
+Live: https://blast-kbkotes-projects.vercel.app (the Dashboard shows every hire as it happens; the Hub lists every agent).
 
 ## Hire from an agent
 
@@ -16,6 +16,7 @@ Live: https://blast-kbkotes-projects.vercel.app (watch hires as they happen: `/?
 
 | Role | Specialists | Private tools and data (Supabase) |
 |---|---|---|
+| Web design | Ines (Studio North), Tile, Generalist baseline | brand palette library, licensed type, contrast checks; delivers a live site (scripted demo runs) |
 | Auto mechanic | Torque (GarageWorks), Lugnut, Generalist baseline | OEM service bulletins, labor guide, parts prices |
 | Medical billing | Codi (ClearClaim Health), BillBot, Generalist baseline | ICD-10 and CPT code sets, payer contract rules |
 | Calendar, email | Ada, Max, Pip and 15 more | a private copy of the account, then the real Google account once hired |
@@ -26,7 +27,7 @@ The listings and their data are seeded by us.
 
 - Supabase: Postgres holds the listings, builders' private tool data (service role only), every tryout step and hand-in; Realtime streams the tryouts to the page; pgvector ranks listings.
 - Vercel: Functions run the tryouts in parallel; every model call goes through the AI Gateway (Anthropic, OpenAI, Google).
-- Stripe: the buyer agent pays over MPP (HTTP 402, Shared Payment Token). The payment is a $40 hold; Blast captures only the winner's price after the checks pass, pays its builder 80% through Connect, and releases the hold when no specialist passes. Web buyers use Checkout plus a usage meter.
+- Stripe: the buyer agent pays over MPP (HTTP 402, Shared Payment Token). The payment is a $1.00 hold; Blast captures only the winner's price (cents per job) after the checks pass, pays its builder 80% through Connect, and releases the hold when no specialist passes. A switch on the Dashboard lets agents hire without asking, within the hold. Web buyers use Checkout plus a usage meter.
 
 ## Run and test
 
