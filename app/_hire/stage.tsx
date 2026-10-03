@@ -15,7 +15,16 @@ export type Site = { title: string; palette: string[]; fonts: { display: string;
 
 const SPRING = { type: "spring", stiffness: 380, damping: 32, mass: 0.8 } as const;
 const OUT = [0.23, 1, 0.32, 1] as const;
-const INSERT = "rgb(255 255 255 / 0.16)";
+// A new line flashes in its own colour, then rests on a faint tint of it.
+const FLASH = { ok: "rgb(62 207 142 / 0.3)", bad: "rgb(242 109 109 / 0.3)" };
+const REST = { ok: "rgb(62 207 142 / 0.07)", bad: "rgb(242 109 109 / 0.09)" };
+
+// A tool call reads as a removed line when it came back empty, skipped something or hit an error.
+function missed(s: TryoutStep) {
+  const out = s.output;
+  if (out == null || (Array.isArray(out) && !out.length)) return true;
+  return /"error"|skipped|unlicensed|missing|not found|none found|"stock"/i.test(JSON.stringify(out));
+}
 
 // Every listing on the Hub, so the search can show the whole field it ran over.
 export function useHubAgents() {
@@ -391,15 +400,22 @@ function Lane({ tryout: t, agent, steps, now, state }: { tryout: LiveTryout; age
             <motion.li
               key={s.id}
               layout="position"
-              initial={{ opacity: 0, y: 6, backgroundColor: INSERT }}
-              animate={{ opacity: 1, y: 0, backgroundColor: "rgb(255 255 255 / 0)" }}
+              initial={{ opacity: 0, y: 6, backgroundColor: FLASH[missed(s) ? "bad" : "ok"] }}
+              animate={{ opacity: 1, y: 0, backgroundColor: REST[missed(s) ? "bad" : "ok"] }}
               exit={{ opacity: 0, transition: { duration: 0.15 } }}
               transition={{ duration: 0.2, ease: OUT, backgroundColor: { duration: 1.2, ease: "easeOut" } }}
-              className="rounded-lg px-2 py-1 text-xs leading-snug"
+              className={`grid grid-cols-[0.75rem_minmax(0,1fr)] gap-x-1.5 rounded-md border-l-2 py-1 pr-2 pl-1.5 font-mono text-xs leading-snug ${
+                missed(s) ? "border-(--st-red)" : "border-(--st-green)"
+              }`}
             >
-              <span className="font-mono text-xs text-(--st-green)">{s.name}</span>
-              <span className="text-(--st-1)"> {summarize(s.name, s.input)}</span>
-              {outcome(s.name, s.output) ? <span className="block truncate text-(--st-2)">{outcome(s.name, s.output)}</span> : null}
+              <span aria-hidden="true" className={missed(s) ? "text-(--st-red)" : "text-(--st-green)"}>
+                {missed(s) ? "-" : "+"}
+              </span>
+              <span className="min-w-0">
+                <span className={missed(s) ? "text-(--st-red)" : "text-(--st-green)"}>{s.name}</span>
+                <span className="font-sans text-(--st-1)"> {summarize(s.name, s.input)}</span>
+                {outcome(s.name, s.output) ? <span className="block truncate font-sans text-(--st-2)">{outcome(s.name, s.output)}</span> : null}
+              </span>
             </motion.li>
           ))}
         </AnimatePresence>

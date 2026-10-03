@@ -377,7 +377,7 @@ function StepIcon({ state }: { state: StepState }) {
           exit={{ scale: 0.9, opacity: 0 }}
           transition={{ type: "spring", duration: 0.3, bounce: 0.15 }}
           className={`absolute inset-0 grid place-items-center rounded-full ${
-            state === "done" ? "bg-foreground text-white" : state === "now" ? "bg-(--hire-soft) text-(--hire) ring-1 ring-(--hire)/30" : state === "off" ? "bg-secondary text-muted-foreground" : "ring-[1.5px] ring-border ring-inset"
+            state === "done" ? "bg-pass text-white" : state === "now" ? "bg-(--hire-soft) text-(--hire) ring-1 ring-(--hire)/30" : state === "off" ? "bg-secondary text-muted-foreground" : "ring-[1.5px] ring-border ring-inset"
           }`}
         >
           {state === "done" ? <Check className="size-4" strokeWidth={3} /> : state === "now" ? <Loader2 className="size-4 animate-spin" /> : state === "off" ? <X className="size-4" strokeWidth={2.5} /> : null}

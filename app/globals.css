@@ -41,6 +41,7 @@
   --color-card: var(--card);
   /* From DESIGN.md (Figma): pastel colour blocks, one per screen, on a black and white frame. */
   --color-success: #0a0b0d;
+  --color-pass: #05a35f;
   --color-warning: #5b616e;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
@@ -155,7 +156,7 @@
   outline-offset: 2px;
 }
 
-/* The live stage: black, with white and grey only. */
+/* The live stage: black, with green for work that landed and red for work that missed. */
 .stage {
   --st-bg: #0a0b0d;
   --st-1: #ffffff;
@@ -164,8 +165,8 @@
   --st-blue: #ffffff;
   --st-blue-soft: rgb(255 255 255 / 0.12);
   --st-blue-text: #ffffff;
-  --st-green: #ffffff;
-  --st-red: #a8acb3;
+  --st-green: #3ecf8e;
+  --st-red: #f26d6d;
   background: var(--st-bg);
 }
 
