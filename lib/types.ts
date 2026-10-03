@@ -61,6 +61,8 @@ export type AgentCard = {
   // Set for agents a builder listed in the registry: the JobRequest is POSTed here.
   endpoint?: string
   builder?: string
+  // Set for agents a builder listed as code: Blast runs it in a Vercel Sandbox.
+  code?: string
 }
 
 export type JobRequest = {

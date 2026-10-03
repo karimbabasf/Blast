@@ -2,6 +2,7 @@ import { judgePanel } from "@/lib/judge/panel";
 import type { AgentCard, JobRequest, JobResult, Verdict } from "@/lib/types";
 import { fakeJudge, fakeRun } from "./fake";
 import { withRetry } from "./retry";
+import { runInSandbox } from "./sandbox";
 import { runScript } from "./script";
 import { runVoice } from "./voice";
 
@@ -36,6 +37,7 @@ async function runExternal(card: AgentCard, req: JobRequest): Promise<JobResult>
 
 export function runAgent(card: AgentCard, req: JobRequest): Promise<JobResult> {
   if (fake()) return fakeRun(card, req);
+  if (card.code) return runInSandbox(card.id, card.code, req).then((run) => run.result);
   if (card.endpoint) return runExternal(card, req);
   return req.skill === "script" ? runScript(card, req) : runVoice(card, req);
 }
