@@ -1,6 +1,6 @@
 import { Bot, Check, ExternalLink, Lock, RotateCcw } from "lucide-react";
 import type { Need, Tryout } from "@/lib/market/types";
-import { modelName, money } from "./format";
+import { money } from "./format";
 import { SpeakButton } from "./voice";
 
 // Columns the lead adds to needs. All three are absent on old rows.
@@ -187,37 +187,5 @@ function ClaimCodes({ c }: { c: Claim }) {
         ))}
       </dd>
     </dl>
-  );
-}
-
-function Chip({ name, children }: { name: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border bg-card px-3 py-2">
-      <div className="font-medium text-foreground">{name}</div>
-      <div className="mt-0.5">{children}</div>
-    </div>
-  );
-}
-
-export function RunsOn({ need, models }: { need: LiveNeed | null; models: string[] }) {
-  if (!need) return null;
-  const hold = need.hold;
-  return (
-    <section className="mt-8">
-      <h3 className="text-sm font-medium text-muted-foreground">Runs on</h3>
-      <div className="mt-2 grid grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] gap-2 text-sm text-muted-foreground">
-        <Chip name="Supabase">
-          Tool data in Postgres, live over Realtime. Need <span className="font-mono text-xs">{need.id.slice(0, 8)}</span>
-        </Chip>
-        <Chip name="Vercel">
-          AI Gateway models, Functions.{models.length ? ` ${models.map(modelName).join(", ")}` : ""}
-        </Chip>
-        <Chip name="Stripe">
-          {hold?.via === "mpp" ? "MPP, " : ""}hold and capture, Connect.
-          {hold?.payment_intent ? <span className="font-mono text-xs"> {hold.payment_intent}</span> : null}
-          {hold?.transfer ? <span className="font-mono text-xs"> {hold.transfer}</span> : null}
-        </Chip>
-      </div>
-    </section>
   );
 }

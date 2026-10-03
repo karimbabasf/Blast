@@ -11,7 +11,7 @@ import { scoreTone } from "../_components/score-tone";
 import type { Capability, MarketAgent, Need, Role, TryoutStep } from "@/lib/market/types";
 import { postJson } from "./db";
 import { modelName, money, ROLE_LABEL, ROLE_TOOLS, summarize, toolLabel } from "./format";
-import { HoldStrip, type LiveNeed, type LiveTryout, ResultCard, RunsOn, SourceBadge } from "./proof";
+import { HoldStrip, type LiveNeed, type LiveTryout, ResultCard, SourceBadge } from "./proof";
 import { Scorecard } from "./scorecard";
 import { useNeed } from "./use-need";
 import { MicButton } from "./voice";
@@ -348,8 +348,8 @@ function Candidates({
           <motion.li
             key={a.id}
             layout="position"
-            initial={{ opacity: 0, transform: "scale(0.97)" }}
-            animate={{ opacity: 1, transform: "scale(1)" }}
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
             transition={{
               layout: { type: "spring", stiffness: 520, damping: 34, mass: 0.45 },
               default: { duration: 0.22, delay: index * 0.05, ease: [0.23, 1, 0.32, 1] },
@@ -357,7 +357,7 @@ function Candidates({
           >
             <Candidate
               agent={a}
-              rank={running || !byAgent.get(a.id)?.score ? null : index + 1}
+              rank={running || byAgent.get(a.id)?.score == null ? null : index + 1}
               tryout={byAgent.get(a.id) ?? null}
               steps={steps.filter((s) => s.tryout_id === byAgent.get(a.id)?.id)}
               winner={a.id === winnerId}
@@ -390,10 +390,9 @@ function Candidates({
         ) : null}
       </p>
     </section>
-    <Scorecard agents={ordered} byAgent={byAgent} winnerId={winnerId} tools={need ? (ROLE_TOOLS[need.role] ?? []) : []} />
+    <Scorecard agents={field} ranks={running ? null : ordered.map((a) => a.id)} byAgent={byAgent} winnerId={winnerId} tools={need ? (ROLE_TOOLS[need.role] ?? []) : []} />
     <HoldStrip hold={need?.hold} />
     <ResultCard result={need?.result} />
-    <RunsOn need={need} models={[...new Set(field.map((a) => a.model))]} />
     </>
   );
 }

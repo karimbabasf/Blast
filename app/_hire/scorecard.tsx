@@ -14,11 +14,14 @@ function judges(reason: string | null | undefined) {
 // How the ranking was made: every check for every candidate, then the numbers the score is built from.
 export function Scorecard({
   agents,
+  ranks,
   byAgent,
   winnerId,
   tools,
 }: {
   agents: MarketAgent[];
+  // Agent ids, best first. Columns keep their place; only the number changes.
+  ranks: string[] | null;
   byAgent: Map<string, LiveTryout>;
   winnerId: string | null;
   tools: string[];
@@ -67,10 +70,10 @@ export function Scorecard({
               <th scope="col" className="w-[38%] pb-2 text-left text-xs font-normal text-muted-foreground">
                 What each one brings
               </th>
-              {agents.map((a, index) => (
+              {agents.map((a) => (
                 <th key={a.id} scope="col" className={`rounded-t-xl px-2 pt-2 pb-2 font-medium ${col(a.id)}`}>
                   <span className="flex items-center justify-center gap-1.5">
-                    <span className="text-xs text-muted-foreground">{winnerId ? index + 1 : ""}</span>
+                    <span className="text-xs text-muted-foreground">{ranks && byAgent.get(a.id)?.score != null ? ranks.indexOf(a.id) + 1 : ""}</span>
                     <AgentAvatar card={a} size="xs" />
                     <span className="truncate" translate="no">
                       {a.name}
