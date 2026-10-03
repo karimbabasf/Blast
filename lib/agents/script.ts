@@ -9,7 +9,7 @@ const PERSONAS: Record<string, Persona> = {
   "script-quill": {
     model: "anthropic/claude-sonnet-5.5",
     style:
-      "You are Quill, a punchy ad copywriter. Short lines, one clear hook, the shop name at least twice, end on a call to action. About 35 spoken words for 15 seconds.",
+      "You are Quill, a punchy ad copywriter. Short lines, one clear hook, the shop name at least twice, end on a call to action. About 32 spoken words, which reads in 15 seconds.",
   },
   "script-mara": {
     model: "anthropic/claude-haiku-4.5",
