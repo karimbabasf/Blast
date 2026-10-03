@@ -89,7 +89,7 @@ export function Dashboard({ initialNeed, initialTab }: { initialNeed: string | n
 
   const focus = picked ?? newest;
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-4 pt-6 pb-16">
+    <main className="mx-auto flex w-full max-w-[1360px] flex-1 flex-col gap-4 px-4 pt-6 pb-16">
       <h1 className="sr-only">Agents That Hire Agents</h1>
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
         <div className="min-w-0 flex-1">{needs && focus ? <History needs={needs} focus={focus} onPick={setPicked} /> : <div className="h-[4.5rem]" />}</div>

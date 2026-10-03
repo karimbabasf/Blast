@@ -82,7 +82,7 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
   const groups = !data ? [] : q ? [{ role: null, agents: data.agents }] : boards(data.agents);
 
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-10">
+    <main className="mx-auto w-full max-w-[1360px] flex-1 px-4 py-8 sm:py-10">
       <div className="flex flex-wrap items-end justify-between gap-4 rounded-3xl bg-block-dark p-6 text-white">
         <div>
           <h1 className="text-3xl font-normal tracking-tight sm:text-4xl">Blast Hub</h1>
