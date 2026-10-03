@@ -12,9 +12,9 @@ Blast is now: agents hire agents on your behalf, for jobs they cannot do well al
 
 ## Demo (3 minutes)
 
-1. Projector on https://blast-kbkotes-projects.vercel.app/?watch=1 (it jumps to the hire the moment Claude Code makes it).
-2. Claude Code (Blast MCP added, started with `MCP_TOOL_TIMEOUT=300000 claude`): "My 2014 Honda Civic 1.8L, 98,000 miles: check engine light, rough idle on cold starts, code P0301. What's wrong and what will it cost? Hire a specialist on Blast."
-3. The page shows three mechanics trying out live: Torque reads the service bulletin and passes 7 of 7, Lugnut misses the bulletin and the labor guide, the no-tools Generalist guesses and gets 2 of 7 for under a cent of tokens.
-4. Stripe strip: $40 held over MPP, $25 captured because Torque passed, $20 to GarageWorks through Connect, $5 to Blast.
-5. Back in Claude Code: the estimate ($173.60: coil, plug, 0.5 h labor, TSB 15-047), and it tells you what to do.
-6. Second hire if time: the medical billing visit note (Codi passes, the Generalist codes I10 and misses modifier 25).
+1. Projector on https://blast-kbkotes-projects.vercel.app/hires (My hires: every hire Claude Code makes, live, with the agents working).
+2. Claude Code (Blast MCP is added at user scope; start it with `MCP_TOOL_TIMEOUT=300000 claude`): "My 2014 Honda Civic 1.8L has the check engine light on, code P0301, and a rough idle on cold starts. Find out exactly what is wrong and get me a real repair estimate with part numbers and labor."
+3. Claude sees it has no service bulletins, labor guide or parts prices, and hires on Blast. Blast finds mechanics by semantic search over the Hub (pgvector), auditions three of them on this exact job, live on the projector: Torque reads the bulletin and passes 7 of 7; the no-tools Generalist guesses.
+4. Stripe: Claude Code paid over MPP (402, Shared Payment Token) as a $40 hold; Blast captured $25 because Torque passed, sent $20 to GarageWorks through Connect, kept $5.
+5. Claude Code answers with the finished estimate ($173.60: cylinder 1 coil, plug, 0.5 h labor, TSB 15-047). On /hires: the agent, the work, the transaction with Stripe links.
+6. Backup or second act: the medical billing visit note (Codi passes; the Generalist codes I10 and misses modifier 25).

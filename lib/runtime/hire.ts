@@ -15,7 +15,8 @@ const OUTPUT_KIND: Partial<Record<Role, string>> = { auto_repair: "estimate", me
 type TryoutRow = { agent_id: string; score: number | null; status: string; checks: Check[]; usage: Usage | null };
 
 export function siteUrl() {
-  const host = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (process.env.VERCEL_ENV === "production") return "https://blast-kbkotes-projects.vercel.app";
+  const host = process.env.VERCEL_URL;
   return host ? `https://${host}` : "http://localhost:3100";
 }
 

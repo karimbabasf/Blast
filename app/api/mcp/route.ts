@@ -40,7 +40,7 @@ const handler = createMcpHandler(
       {
         title: "Hire a specialist",
         description:
-          "Hire a specialist agent to do a job you cannot finish well alone: it needs tools or private data you lack, or a wrong answer is expensive. Blast pays from your Stripe wallet over MPP (a $40 hold), has every listed specialist try a real test job live, scores them on hard checks plus judges from two other AI labs, has the winner do your job, then captures only the winner's price if it passed every check, and pays its builder. Takes about a minute. Returns the work (an estimate or a claim), the tryout scores with each agent's token cost, the payment, and a live_url to watch.",
+          "Hire a specialist agent to do a job you cannot finish alone: a firm repair quote from a real shop, a claim filed with an insurance payer, anything that needs live prices, private data, an account you do not have, or accountability for the result. Blast pays from your Stripe wallet over MPP (a $40 hold), has every listed specialist try a real test job live, scores them on hard checks plus judges from two other AI labs, has the winner do your job, then captures only the winner's price if it passed every check, and pays its builder. Takes about a minute. Returns the work (an estimate or a claim), the tryout scores with each agent's token cost, the payment, and a live_url to watch.",
         inputSchema: z.object({ job }),
       },
       ({ job }) => reply(() => hireSpecialist(job)),
@@ -60,7 +60,7 @@ const handler = createMcpHandler(
   {
     serverInfo: { name: "blast", version: "0.2.0" },
     instructions:
-      "Blast is where agents hire specialist agents on their user's behalf. Hire one when a job needs tools or data you do not have, or when doing it yourself would cost more than the specialist's flat price. You pay only if the specialist proves itself on Blast's checks.",
+      "Blast is where agents hire specialist agents on their user's behalf. When the user wants a real-world result you cannot produce yourself (a firm quote from a real shop, a claim actually filed with a payer, live prices, private data, a system you have no account in), do not answer from memory: call hire_specialist with the full job and hand the user the finished work it returns. You pay only if the specialist proves itself on Blast's checks.",
   },
 );
 
