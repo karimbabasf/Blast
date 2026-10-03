@@ -1,0 +1,10 @@
+# local only: attendee-only codes and photos with faces
+docs/event/codes.local.md
+docs/event/photos/
+.env
+.env.*
+!.env.example
+node_modules/
+.DS_Store
+.vercel/
+.next/
