@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, ChevronLeft, ChevronRight, Copy, Loader2, Mic, Send } from "lucide-react";
+import { Archive, ChevronLeft, ChevronRight, Copy, Loader2, Mic, RotateCcw, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { CalEvent, Draft, EngagementMessage, MailThread } from "@/lib/market/types";
@@ -51,7 +51,10 @@ export function Console({ id, origin }: { id: string; origin: string }) {
             {engagement?.status === "pending_payment" ? " · waiting for payment" : null}
           </p>
         </div>
-        <GoogleStatus />
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <GoogleStatus />
+          <ResetDemo />
+        </div>
       </div>
 
       {/* Phones read chat, then the live account, then the log; wide screens put the live account on the right. */}
@@ -110,6 +113,37 @@ function GoogleStatus() {
     <a href="/api/google/connect" className="text-sm font-medium text-(--hire) hover:underline">
       Connect Google
     </a>
+  );
+}
+
+type ResetResult = { events: number; threads: number; removed_events: number; removed_drafts: number };
+
+// Puts the demo calendar and inbox back to the seed; the live_* rows stream in over Realtime.
+function ResetDemo() {
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  async function reset() {
+    setBusy(true);
+    setNote(null);
+    try {
+      const r = await postJson<ResetResult>("/api/google/reset", {});
+      setNote(`Reset: ${r.events} events, ${r.threads} threads`);
+    } catch (err) {
+      setNote(err instanceof Error ? err.message : "Reset failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      {note ? <span className="text-xs text-muted-foreground tabular-nums">{note}</span> : null}
+      <Button variant="outline" size="sm" onClick={reset} disabled={busy}>
+        {busy ? <Loader2 className="animate-spin" /> : <RotateCcw />}
+        {busy ? "Resetting" : "Reset demo"}
+      </Button>
+    </div>
   );
 }
 
