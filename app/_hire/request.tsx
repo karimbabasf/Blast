@@ -178,7 +178,7 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
         {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
       </form>
 
-      {needId ? <Candidates needId={needId} need={view.need} agents={agents} tags={tags} listed={listed ?? view.agents.length} tryouts={view.tryouts} steps={view.steps} /> : null}
+      {needId ? <Candidates needId={needId} need={view.need} agents={agents} tags={tags.length ? tags : ((view.need as (Need & { answers?: Answer[] }) | null)?.answers ?? [])} listed={listed ?? view.agents.length} tryouts={view.tryouts} steps={view.steps} /> : null}
     </main>
   );
 }
