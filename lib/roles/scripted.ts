@@ -23,7 +23,7 @@ const DESIGN_CHECKS = (passed: boolean[]): Check[] =>
 export function businessName(job: string): string {
   const quoted = job.match(/"([^"]{2,40})"/)?.[1];
   const named = job.match(/\b(?:called|named|for)\s+((?:[A-Z][\w'&-]*\s?){1,3})/)?.[1]?.trim();
-  return quoted ?? (named && !/^(My|A|An|The|Our)$/.test(named) ? named : "Xochitl Coffee");
+  return quoted ?? (named && !/^(My|A|An|The|Our)$/.test(named) ? named : "Select Coffee");
 }
 
 const SCRIPTS: Record<string, (job: string) => Script> = {
@@ -34,12 +34,13 @@ const SCRIPTS: Record<string, (job: string) => Script> = {
         { name: "read_brief", input: { job: job.slice(0, 120) }, output: { business: name, goal: "landing page", must_have: ["menu", "hours", "order ahead"] } },
         { name: "pick_palette", input: { mood: "warm, Oaxacan, modern" }, output: { palette: PALETTE, source: "Studio North brand library, 12,000 palettes" } },
         { name: "pick_type", input: { voice: "confident, friendly" }, output: { display: "Plus Jakarta Sans 800", body: "DM Sans", license: "OFL, free for web" } },
-        { name: "compose_layout", input: { sections: ["hero", "menu", "story", "visit"] }, output: { grid: "12 columns, 1120 max", breakpoints: [375, 768, 1120] } },
+        { name: "art_direct_photos", input: { shots: ["hero cup", "pour over", "farm", "cherries", "pan dulce", "interior"] }, output: { photos: 6, license: "made for this brand", hosted: "Supabase Storage" } },
+        { name: "compose_layout", input: { sections: ["hero", "story", "menu", "photos", "visit"] }, output: { grid: "12 columns", breakpoints: [375, 768, 1280] } },
         { name: "check_contrast", input: { pairs: 8 }, output: { passed: 8, lowest: "7.4:1, AAA" } },
-        { name: "deliver_design", input: { format: "one HTML file" }, output: { bytes: 6400, status: "live" } },
+        { name: "publish_site", input: { format: "one HTML file" }, output: { status: "live", url: "blast /d/<hire>" } },
       ],
       checks: DESIGN_CHECKS([true, true, true, true, true, true]),
-      judge: 9.6,
+      judge: 9.8,
       reason: "All checks passed. Judges 9.6/10: a warm, specific page with every section asked for; strong contrast and a clean phone layout.",
       reply: `Delivered a finished landing page for ${name}: warm palette, licensed type, menu, hours and an order button, AAA contrast, built for phones first.`,
       cost_usd: 0.0412,
