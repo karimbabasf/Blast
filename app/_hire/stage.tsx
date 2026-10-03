@@ -230,6 +230,15 @@ function Field({ hub, need, picked, settled }: { hub: HubAgent[]; need: LiveNeed
     : (need.search?.matches ?? []).map((m) => ({ id: m.id, name: m.name, builder: m.builder, role: m.role as HubAgent["role"], model: "" }));
   const order = [...pool].sort((a, b) => hash(a.id + need.id) - hash(b.id + need.id));
 
+  // While searching, a few listings at a time light up as if each were being read, then let go.
+  const [beat, setBeat] = useState(0);
+  useEffect(() => {
+    if (settled || reduce) return;
+    const timer = window.setInterval(() => setBeat((b) => b + 1), 260);
+    return () => window.clearInterval(timer);
+  }, [settled, reduce]);
+  const probing = (id: string) => !settled && !reduce && hash(id + beat) % 12 === 0;
+
   return (
     <div className="relative mt-5 overflow-hidden rounded-2xl">
       <ul className="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-1.5">
@@ -243,17 +252,19 @@ function Field({ hub, need, picked, settled }: { hub: HubAgent[]; need: LiveNeed
               key={a.id}
               initial={reduce ? false : { opacity: 0, y: 6 }}
               animate={{
-                opacity: !settled ? 0.62 : on ? 1 : lit ? 0.9 : 0.22,
+                opacity: !settled ? (probing(a.id) ? 1 : 0.5) : on ? 1 : lit ? 0.9 : 0.22,
                 y: 0,
                 scale: settled && on ? 1.03 : 1,
               }}
-              transition={{ ...SPRING, delay: settled ? (i % 9) * 0.035 : Math.min(i, 60) * 0.008 }}
+              transition={{ ...SPRING, delay: settled ? (i % 9) * 0.035 : beat ? 0 : Math.min(i, 60) * 0.008 }}
               className={`flex h-9 min-w-0 items-center gap-1.5 rounded-[10px] px-2.5 text-xs ring-1 transition-colors duration-200 ease-out ${
                 settled && on
                   ? "bg-(--st-blue-soft) text-white ring-(--st-blue)"
                   : lit
                     ? "bg-white/[0.07] text-(--st-1) ring-white/15"
-                    : "bg-white/[0.035] text-(--st-2) ring-white/[0.06]"
+                    : probing(a.id)
+                      ? "bg-white/[0.16] text-white ring-white/40"
+                      : "bg-white/[0.035] text-(--st-2) ring-white/[0.06]"
               }`}
             >
               {lab ? <Logo brand={lab} className="size-3 shrink-0" /> : <span className="size-3 shrink-0 rounded-[4px] bg-white/15" />}
@@ -263,7 +274,6 @@ function Field({ hub, need, picked, settled }: { hub: HubAgent[]; need: LiveNeed
           );
         })}
       </ul>
-      {!settled && !reduce ? <div aria-hidden className="stage-scan pointer-events-none absolute inset-y-0 left-0 w-1/3" /> : null}
     </div>
   );
 }

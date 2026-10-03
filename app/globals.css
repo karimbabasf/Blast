@@ -169,20 +169,6 @@
   background: var(--st-bg);
 }
 
-.stage-scan {
-  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.06) 40%, rgb(255 255 255 / 0.14) 50%, rgb(255 255 255 / 0.06) 60%, transparent);
-  animation: stage-scan 1.4s cubic-bezier(0.45, 0, 0.25, 1) infinite;
-}
-
-@keyframes stage-scan {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(300%);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
