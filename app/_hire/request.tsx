@@ -32,6 +32,7 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
   const [caps, setCaps] = useState<Capability[]>(EXAMPLES[0].caps);
   const [needId, setNeedId] = useState<string | null>(initialNeed);
   const [posted, setPosted] = useState<MarketAgent[]>([]);
+  const [listed, setListed] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const view = useNeed(needId);
@@ -45,8 +46,9 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await postJson<{ need: Need; agents?: MarketAgent[] }>("/api/needs", { text, capabilities: caps });
+      const res = await postJson<{ need: Need; agents?: MarketAgent[]; listed?: MarketAgent[] }>("/api/needs", { text, capabilities: caps });
       setPosted(res.agents ?? []);
+      setListed(res.listed?.length ?? null);
       setNeedId(res.need.id);
       window.history.replaceState(null, "", `/?need=${res.need.id}`);
     } catch (err) {
@@ -56,7 +58,9 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
     }
   }
 
-  const agents = view.agents.length ? view.agents : posted;
+  // The need's candidates: what POST /api/needs picked, else (after a reload) whoever has a tryout in it.
+  const picked = new Set(posted.map((a) => a.id));
+  const agents = posted.length ? (view.agents.length ? view.agents.filter((a) => picked.has(a.id)) : posted) : view.agents;
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-12">
@@ -107,7 +111,7 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
         {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
       </form>
 
-      {needId ? <Candidates needId={needId} need={view.need} agents={agents} tryouts={view.tryouts} steps={view.steps} /> : null}
+      {needId ? <Candidates needId={needId} need={view.need} agents={agents} listed={listed ?? view.agents.length} tryouts={view.tryouts} steps={view.steps} /> : null}
     </main>
   );
 }
@@ -132,12 +136,14 @@ function Candidates({
   needId,
   need,
   agents,
+  listed,
   tryouts,
   steps,
 }: {
   needId: string;
   need: Need | null;
   agents: MarketAgent[];
+  listed: number;
   tryouts: Tryout[];
   steps: TryoutStep[];
 }) {
@@ -149,7 +155,9 @@ function Candidates({
   const best = scored.reduce<Tryout | null>((a, t) => (!a || (t.score ?? 0) > (a.score ?? 0) ? t : a), null);
   const winnerId = best && !running ? best.agent_id : null;
 
-  const ordered = [...agents].sort((a, b) => {
+  // Agents posted after the tryouts started were not part of this run.
+  const field = tryouts.length ? agents.filter((a) => byAgent.has(a.id)) : agents;
+  const ordered = [...field].sort((a, b) => {
     const sa = byAgent.get(a.id)?.score ?? -1;
     const sb = byAgent.get(b.id)?.score ?? -1;
     return running ? 0 : sb - sa;
@@ -174,7 +182,7 @@ function Candidates({
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
         <h2 className="text-lg font-semibold tracking-tight">
           {need ? `${ROLE_LABEL[need.role]} agents` : "Finding agents"}
-          <span className="ml-2 font-normal text-muted-foreground tabular-nums">{agents.length || ""}</span>
+          <span className="ml-2 font-normal text-muted-foreground tabular-nums">{field.length || ""}</span>
         </h2>
         <p className="text-sm text-muted-foreground">
           {!tryouts.length ? "Starting tryouts" : running ? "Tryouts running" : winnerId ? "Tryouts done" : "No agent passed"}
@@ -213,7 +221,7 @@ function Candidates({
           <Link href={`/hub?role=${need.role}`} className="font-medium text-(--hire) hover:underline">
             Blast Hub
           </Link>
-          : <span className="tabular-nums">{agents.length}</span> agents for this role.
+          : <span className="tabular-nums">{listed}</span> agents for this role.
         </p>
       ) : null}
     </section>
