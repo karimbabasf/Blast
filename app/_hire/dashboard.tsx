@@ -380,6 +380,12 @@ function Board({ tryouts, agents, winnerId }: { tryouts: LiveTryout[]; agents: M
   );
 }
 
+// The reason repeats the failed checks before the judges' note; the list above already shows those.
+function judged(reason: string | null | undefined) {
+  const at = reason?.indexOf("Judges") ?? -1;
+  return at >= 0 ? reason!.slice(at) : (reason ?? "");
+}
+
 function BoardRow({ tryout: t, agent, win }: { tryout: LiveTryout; agent?: MarketAgent; win: boolean }) {
   const [open, setOpen] = useState(false);
   const score = useCountUp(t.status === "scored" ? t.score : null);
@@ -387,7 +393,7 @@ function BoardRow({ tryout: t, agent, win }: { tryout: LiveTryout; agent?: Marke
   const checks = t.checks ?? [];
   const passed = checks.filter((c) => c.passed).length;
   return (
-    <div className={`rounded-xl transition-colors duration-300 ${win ? "bg-(--hire-soft)" : open ? "bg-muted" : ""}`}>
+    <div className={`rounded-xl transition-colors duration-200 ease-out ${open ? "bg-muted" : ""}`}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -432,16 +438,19 @@ function BoardRow({ tryout: t, agent, win }: { tryout: LiveTryout; agent?: Marke
             transition={{ duration: 0.28, ease: OUT }}
             className="overflow-hidden"
           >
-            <div className="px-2 pt-0.5 pb-3">
-              <ul className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
+            <div className="pt-0.5 pr-2 pb-3 pl-9">
+              <ul className="text-sm">
                 {checks.map((c) => (
-                  <li key={c.name} className="flex items-start gap-1.5">
-                    {c.passed ? <Check className="mt-0.5 size-3.5 shrink-0 text-foreground" strokeWidth={3} /> : <X className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" strokeWidth={3} />}
-                    <span className={c.passed ? "text-foreground" : "text-muted-foreground"}>{c.name}</span>
+                  <li key={c.name} className={`flex h-6 items-center gap-2 ${c.passed ? "text-muted-foreground" : "font-medium text-foreground"}`}>
+                    {c.passed ? <Check aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={2.5} /> : <X aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={3} />}
+                    <span className="truncate" title={c.name}>
+                      {c.name}
+                    </span>
+                    <span className="sr-only">{c.passed ? "passed" : "failed"}</span>
                   </li>
                 ))}
               </ul>
-              {t.reason ? <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t.reason}</p> : null}
+              {judged(t.reason) ? <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">{judged(t.reason)}</p> : null}
             </div>
           </motion.div>
         ) : null}
