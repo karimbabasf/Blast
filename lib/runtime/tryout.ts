@@ -21,7 +21,7 @@ async function ask(model: string, prompt: string): Promise<string> {
     method: "POST",
     headers: { authorization: `Bearer ${process.env.AI_GATEWAY_API_KEY}`, "content-type": "application/json" },
     body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }] }),
-    signal: AbortSignal.timeout(30_000),
+    signal: AbortSignal.timeout(20_000),
   });
   if (!res.ok) throw new Error(`judge ${model} ${res.status}`);
   const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
@@ -92,15 +92,17 @@ async function runOne(tryoutId: string, agent: MarketAgent, role: Role, jobText:
   }
   const verdict = await judge(agent, task, steps, reply);
   const share = passedShare(checks);
-  const score = verdict ? Math.round((7 * share + 3 * (verdict.score / 10)) * 10) / 10 : null;
+  // When no judge answers, the checks carry the whole score, so a passing agent can still win.
+  const judged = verdict ? verdict.score : share * 10;
+  const score = Math.round((7 * share + 3 * (judged / 10)) * 10) / 10;
   const failed = checks.filter((c) => !c.passed).map((c) => c.name);
   const reason = [
     failed.length ? `Failed: ${failed.join("; ")}.` : "All checks passed.",
-    verdict ? `Judges ${verdict.score.toFixed(1)}/10: ${verdict.reason}` : "Judges did not answer.",
+    verdict ? `Judges ${verdict.score.toFixed(1)}/10: ${verdict.reason}` : "Judges did not answer; scored on checks alone.",
   ].join(" ");
   await db
     .from("tryouts")
-    .update({ status: verdict ? "scored" : "failed", score, checks, reason, steps: toolSteps, usage })
+    .update({ status: "scored", score, checks, reason, steps: toolSteps, usage })
     .eq("id", tryoutId);
 }
 
