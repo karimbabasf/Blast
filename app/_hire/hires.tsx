@@ -3,7 +3,7 @@
 import { Bot, Check, ExternalLink, Loader2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { db } from "./db";
+import { db, postJson } from "./db";
 import { clock, money, outcome, summarize } from "./format";
 import { capturedCents, type LiveNeed, stripeLinks, workLine } from "./proof";
 import { useNeed } from "./use-need";
@@ -64,6 +64,7 @@ export function Hires() {
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-10">
       <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">My hires</h1>
       <p className="mt-1 text-sm text-muted-foreground">Specialists Claude Code hired for you over MCP, with the work and the payment.</p>
+      <Policy />
 
       {!data ? (
         <div className="mt-8 flex items-center gap-2 text-sm text-muted-foreground">
@@ -144,6 +145,84 @@ function HireRow({ need: n, builder }: { need: Row; builder?: string }) {
         )}
       </div>
     </li>
+  );
+}
+
+// The standing approval: lets Claude Code hire within one hold without asking.
+function Policy() {
+  const [cents, setCents] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const refresh = () =>
+      fetch("/api/policy")
+        .then((r) => r.json())
+        .then((d: { auto_approve_cents?: number }) => {
+          if (active) setCents(d.auto_approve_cents ?? 0);
+        })
+        .catch(() => {});
+    const channel = db()
+      .channel("spend-policy")
+      .on("postgres_changes", { event: "*", schema: "public", table: "spend_policy" }, refresh)
+      .subscribe();
+    refresh();
+    return () => {
+      active = false;
+      db().removeChannel(channel);
+    };
+  }, []);
+
+  const on = (cents ?? 0) > 0;
+  const cap = money(on ? (cents ?? 0) : 4000);
+
+  async function flip() {
+    setBusy(true);
+    setError(null);
+    try {
+      const d = await postJson<{ auto_approve_cents: number }>("/api/policy", { auto_approve: !on });
+      setCents(d.auto_approve_cents);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not change the setting");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-5 flex items-start gap-3 rounded-xl border bg-card p-4">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-labelledby="policy-label"
+        disabled={busy || cents == null}
+        onClick={flip}
+        className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ease-out disabled:opacity-60 ${
+          on ? "bg-(--hire)" : "bg-muted-foreground/30"
+        }`}
+      >
+        <span
+          className={`inline-block size-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out motion-reduce:transition-none ${
+            on ? "translate-x-5.5" : "translate-x-0.5"
+          }`}
+        />
+      </button>
+      <div className="min-w-0">
+        <p id="policy-label" className="font-medium">
+          Let my agents hire without asking, up to {cap} per job
+        </p>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          {cents == null
+            ? "Loading"
+            : on
+              ? `Claude Code hires within ${cap} without asking you. Stripe caps its payment token at the same ${cap}.`
+              : "Claude Code asks you before every hire."}
+        </p>
+        {error ? <p className="mt-1 text-sm text-destructive">{error}</p> : null}
+      </div>
+    </div>
   );
 }
 
