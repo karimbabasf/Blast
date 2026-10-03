@@ -100,8 +100,10 @@ const BATCH = 6;
 // time, and every avatar on the page shows the saved image.
 export function LogoFactory({ ids }: { ids: string[] }) {
   const done = useSyncExternalStore(subscribe, getImages, getImages);
-  const missing = ids.filter((id) => !done.has(id)).slice(0, BATCH);
-  const hues = assignHues(ids);
+  // The same agent can be listed twice (a candidate that is also a search match).
+  const unique = [...new Set(ids)];
+  const missing = unique.filter((id) => !done.has(id)).slice(0, BATCH);
+  const hues = assignHues(unique);
 
   return (
     <div

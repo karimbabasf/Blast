@@ -1,14 +1,14 @@
 "use client";
 
-import { ArrowRight, Check, ExternalLink } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowRight, Check, ChevronDown, ExternalLink } from "lucide-react";
+import { useEffect, useId, useState } from "react";
 import { AgentAvatar } from "../_components/agent-avatar";
 import { LogoFactory } from "../_components/agent-logo";
+import { Candidate } from "./candidate";
 import { db } from "./db";
 import { clock, money, ROLE_LABEL, ROLE_TOOLS } from "./format";
 import { Policy } from "./hires";
 import { BlastMark, type Brand, Logo } from "./logos";
-import { Candidate } from "./candidate";
 import { capturedCents, ClaimCodes, type Claim, type Estimate, EstimateTable, type Hold, isEstimate, type LiveNeed, type LiveTryout, stripeLinks } from "./proof";
 import { Scorecard } from "./scorecard";
 import { useNeed } from "./use-need";
@@ -18,9 +18,9 @@ type Site = { title: string; palette: string[]; fonts: { display: string; body: 
 
 const MCP = "claude mcp add --transport http blast https://blast-kbkotes-projects.vercel.app/api/mcp";
 
-const CARD = "rounded-3xl bg-card ring-1 ring-foreground/10";
 const FEED_IN = "animate-in fade-in slide-in-from-bottom-1 duration-200 ease-out motion-reduce:animate-none";
 const ACTIVE = new Set(["auditioning", "checkout"]);
+const TILE = "h-[4.5rem] w-60 shrink-0 rounded-2xl";
 
 // Claude Code's hires, newest first. Realtime on needs; a 2 s poll covers a dropped socket.
 function useHires() {
@@ -52,7 +52,8 @@ function useHires() {
   return needs;
 }
 
-export function Dashboard({ initialNeed }: { initialNeed: string | null }) {
+// Variant A: one page. A slim summary on top, then one row per stage that opens in place.
+export function DashboardA({ initialNeed }: { initialNeed: string | null }) {
   const needs = useHires();
   const [picked, setPicked] = useState<string | null>(initialNeed);
   const newest = needs?.[0]?.id ?? null;
@@ -66,40 +67,34 @@ export function Dashboard({ initialNeed }: { initialNeed: string | null }) {
   const focus = picked ?? newest;
   const captured = (needs ?? []).filter((n) => n.hold?.status === "captured");
   const stats = [
-    { label: "Hires", value: needs ? String(needs.length) : null, tone: "" },
-    { label: "Paid on proof", value: needs ? String(captured.length) : null, tone: captured.length ? "bg-success/10 text-success" : "" },
-    { label: "Captured", value: needs ? money(captured.reduce((a, n) => a + (n.hold ? capturedCents(n.hold) : 0), 0)) : null, tone: "" },
-    {
-      label: "Released",
-      value: needs ? money(needs.reduce((a, n) => a + (n.hold?.status === "released" ? n.hold.amount_cents : 0), 0)) : null,
-      tone: "",
-    },
+    { label: "Hires", value: needs ? String(needs.length) : null },
+    { label: "Paid on proof", value: needs ? String(captured.length) : null },
+    { label: "Captured", value: needs ? money(captured.reduce((a, n) => a + (n.hold ? capturedCents(n.hold) : 0), 0)) : null },
+    { label: "Released", value: needs ? money(needs.reduce((a, n) => a + (n.hold?.status === "released" ? n.hold.amount_cents : 0), 0)) : null },
   ];
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-4 pt-6 pb-16">
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-block-dark p-6 text-white">
-        <div>
-          <h1 className="text-3xl font-normal tracking-tight sm:text-4xl">Agents That Hire Agents</h1>
-          <p className="mt-1 max-w-xl text-sm text-white/70">
-            When your agent hits work it can&apos;t do, it hires a specialist on Blast. Tried out live, paid on proof.
-          </p>
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-3xl bg-block-dark px-5 py-2.5 text-white">
+        <h1 className="text-xl font-normal tracking-tight">Agents That Hire Agents</h1>
+        <dl className="grid grid-cols-4 gap-x-2 max-lg:order-last max-lg:w-full sm:gap-x-6">
+          {stats.map((s) => (
+            <div key={s.label} className="min-w-16">
+              <dd className="h-6 text-lg leading-6 font-semibold tabular-nums">
+                {s.value ?? <span className="animate-pulse text-white/40 motion-reduce:animate-none">…</span>}
+              </dd>
+              <dt className="truncate text-[11px] text-white/70 sm:text-xs">{s.label}</dt>
+            </div>
+          ))}
+        </dl>
+        <div className="w-full sm:ml-auto sm:w-auto">
+          <Policy />
         </div>
-        <Policy />
       </div>
 
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {stats.map((s) => (
-          <div key={s.label} className={`flex h-20 flex-col justify-center rounded-2xl px-4 ${s.tone || "bg-muted"}`}>
-            <dd className="h-8 text-2xl leading-8 font-semibold tabular-nums">
-              {s.value ?? <span className="animate-pulse text-muted-foreground/50">…</span>}
-            </dd>
-            <dt className="text-xs opacity-70">{s.label}</dt>
-          </div>
-        ))}
-      </dl>
-
-      {!needs ? null : !focus ? (
+      {!needs ? (
+        <Loading />
+      ) : !focus ? (
         <Empty />
       ) : (
         <>
@@ -111,6 +106,20 @@ export function Dashboard({ initialNeed }: { initialNeed: string | null }) {
   );
 }
 
+// Holds the place of the tiles and the summary until the first read lands.
+function Loading() {
+  return (
+    <div aria-busy="true" className="flex flex-col gap-4">
+      <div aria-hidden="true" className="flex gap-2 overflow-hidden p-0.5 pb-2">
+        {[0, 1, 2, 3].map((i) => (
+          <span key={i} className={`${TILE} animate-pulse bg-muted motion-reduce:animate-none`} />
+        ))}
+      </div>
+      <p className="flex h-64 items-center justify-center rounded-3xl bg-muted text-sm text-muted-foreground">Loading hires…</p>
+    </div>
+  );
+}
+
 function Empty() {
   return (
     <div className="rounded-3xl bg-block-blue px-6 py-16 text-center text-white">
@@ -118,7 +127,7 @@ function Empty() {
         <span aria-hidden="true" className="size-2.5 animate-pulse rounded-full bg-white motion-reduce:animate-none" />
         Waiting for an Agent to Hire…
       </p>
-      <p className="mt-6 text-sm text-white/70">Connect Claude Code to Blast:</p>
+      <p className="mt-6 text-sm text-white/90">Connect Claude Code to Blast:</p>
       <code className="mt-2 inline-block max-w-full overflow-x-auto rounded-xl bg-white/15 px-4 py-2.5 font-mono text-[13px] select-all">{MCP}</code>
     </div>
   );
@@ -128,6 +137,8 @@ const STEPS = ["Search", "Tryouts", "Paid on Proof", "Delivered"];
 
 function Focus({ id, fallback }: { id: string; fallback: LiveNeed | null }) {
   const view = useNeed(id);
+  // A stage opens by itself when it is the live one; a click wins from then on.
+  const [toggled, setToggled] = useState<Record<string, boolean>>({});
   const need = (view.need as LiveNeed | null) ?? fallback;
   if (!need) return null;
   const tryouts = view.tryouts as LiveTryout[];
@@ -146,20 +157,51 @@ function Focus({ id, fallback }: { id: string; fallback: LiveNeed | null }) {
   const live = done.indexOf(false);
   const working = ACTIVE.has(need.status);
 
+  // While the hire is live the cards sit in the blue block; after that, one result line.
+  const onStage = working || running;
+  const top = field.find((a) => a.id === (winnerId ?? best)) ?? null;
+  const topTryout = top ? byAgent.get(top.id) : undefined;
+  const hold = need.hold ?? null;
+  const matches = need.search?.matches ?? [];
+  const scored = tryouts.some((t) => t.checks?.length);
+  const topScore = ranked.length ? byAgent.get(ranked[0].id)?.score : null;
+
+  const section = (key: string, auto: boolean) => ({
+    open: toggled[key] ?? auto,
+    onToggle: () => setToggled((t) => ({ ...t, [key]: !(t[key] ?? auto) })),
+  });
+
+  const cards = (
+    <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,230px),1fr))] gap-3">
+      {(running ? field : ranked).map((a, index) => (
+        <li key={a.id} className={FEED_IN}>
+          <Candidate
+            agent={a}
+            rank={running || byAgent.get(a.id)?.score == null ? null : index + 1}
+            tryout={byAgent.get(a.id) ?? null}
+            steps={view.steps.filter((s) => s.tryout_id === byAgent.get(a.id)?.id)}
+            winner={!running && a.id === (winnerId ?? best)}
+            leading={false}
+          />
+        </li>
+      ))}
+    </ul>
+  );
+
   return (
     <article className="flex flex-col gap-4">
-      <section aria-label="The job" className="flex flex-col gap-4 rounded-3xl bg-block-blue p-5 text-white">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/80">
+      <section aria-label="The job" className="flex flex-col gap-3.5 rounded-3xl bg-block-blue p-4 text-white sm:p-5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/90">
           <span className="flex items-center gap-1.5 rounded-full bg-white px-2.5 py-0.5 font-medium text-primary">
             <BlastMark className="size-4" live={working} /> Hired by Claude Code over MCP
           </span>
           <span>{ROLE_LABEL[need.role] ?? need.role}</span>
           <span className="tabular-nums">{clock(need.created_at)}</span>
-          <span className={`ml-auto rounded-full px-2.5 py-0.5 text-xs font-medium ${working ? "animate-pulse bg-white/20" : delivered ? "bg-success" : "bg-white/20"}`}>
+          <span className={`ml-auto rounded-full px-2.5 py-0.5 text-xs font-medium text-white ${working ? "animate-pulse bg-white/20 motion-reduce:animate-none" : delivered ? "bg-success" : "bg-white/20"}`}>
             {working ? "Working…" : delivered ? "Done" : "Nobody Passed"}
           </span>
         </div>
-        <p title={need.text} className="line-clamp-3 max-w-4xl text-xl leading-snug font-medium text-pretty">{need.text}</p>
+        <p title={need.text} className="line-clamp-2 max-w-4xl text-xl leading-snug font-medium text-pretty">{need.text}</p>
 
         <ol className="grid grid-cols-4 gap-2">
           {STEPS.map((label, i) => (
@@ -167,89 +209,176 @@ function Focus({ id, fallback }: { id: string; fallback: LiveNeed | null }) {
               <span
                 aria-hidden="true"
                 className={`h-1.5 rounded-full transition-colors duration-300 ease-out ${
-                  done[i] ? "bg-white" : i === live ? "animate-pulse bg-white/60" : "bg-white/20"
+                  done[i] ? "bg-white" : i === live ? "animate-pulse bg-white/60 motion-reduce:animate-none" : "bg-white/20"
                 }`}
               />
-              <span className={`text-xs ${done[i] || i === live ? "font-medium" : "text-white/60"}`}>{label}</span>
+              <span className={`truncate text-[11px] sm:text-xs ${done[i] || i === live ? "font-medium" : "text-white/85"}`}>{label}</span>
             </li>
           ))}
         </ol>
 
-        <ul className="grid min-h-[15.5rem] grid-cols-[repeat(auto-fit,minmax(min(100%,230px),1fr))] gap-3">
-          {(running ? field : ranked).map((a, index) => (
-            <li key={a.id} className={FEED_IN}>
-              <Candidate
-                agent={a}
-                rank={running || byAgent.get(a.id)?.score == null ? null : index + 1}
-                tryout={byAgent.get(a.id) ?? null}
-                steps={view.steps.filter((s) => s.tryout_id === byAgent.get(a.id)?.id)}
-                winner={!running && a.id === (winnerId ?? best)}
-                leading={false}
-              />
-            </li>
-          ))}
-          {!field.length ? (
-            <li className="flex items-center justify-center rounded-2xl bg-white/15 text-sm text-white/70">Searching the Hub for specialists…</li>
-          ) : null}
-        </ul>
+        {onStage ? (
+          <div className="grid min-h-[15.5rem]">
+            {field.length ? cards : <p className="flex items-center justify-center rounded-2xl bg-white/15 text-sm">Searching the Hub for specialists…</p>}
+          </div>
+        ) : (
+          <dl aria-label="Result" className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))]">
+            <div className="col-span-2 flex h-14 items-center gap-2.5 rounded-2xl bg-white/10 px-3 sm:col-span-1">
+              {top ? <AgentAvatar card={top} size="sm" /> : <span aria-hidden="true" className="size-8 shrink-0 rounded-full bg-white/20" />}
+              <div className="min-w-0">
+                <dd className="truncate text-base leading-6 font-semibold" translate="no">
+                  {top?.name ?? need.result?.agent_name ?? (tryouts.length ? "Nobody" : "…")}
+                </dd>
+                <dt className="text-xs">{delivered ? "Winner" : "Top score, did not pass"}</dt>
+              </div>
+            </div>
+            <Fact label="Score out of 10" value={topTryout?.score != null ? topTryout.score.toFixed(1) : null} />
+            <Fact
+              label="Checks passed"
+              value={topTryout?.checks?.length ? `${topTryout.checks.filter((c) => c.passed).length}/${topTryout.checks.length}` : null}
+            />
+            <Fact
+              label={hold?.status === "captured" ? "Captured" : hold?.status === "released" ? "Released, not charged" : "Held"}
+              value={hold ? money(hold.status === "captured" ? capturedCents(hold) : hold.amount_cents) : null}
+              wide
+            />
+          </dl>
+        )}
       </section>
 
       {need.result?.summary ? (
-        <section className={`rounded-3xl bg-success/10 p-5 ${FEED_IN}`}>
+        <section className={`rounded-3xl bg-success/10 px-5 py-4 ${FEED_IN}`}>
           <h2 className="text-sm font-semibold text-success">What Happened</h2>
-          <p className="mt-1.5 max-w-4xl text-lg leading-relaxed text-pretty whitespace-pre-line">{bold(need.result.summary)}</p>
+          <p className="mt-1 max-w-4xl text-base leading-relaxed text-pretty whitespace-pre-line">{bold(need.result.summary)}</p>
         </section>
       ) : null}
 
-      <Phase done={delivered} now={live === 3} title="Delivered to Claude Code" logos={[]} sub={need.result ? `The work from ${need.result.agent_name}` : "The winner's work goes back over MCP"}>
+      <Stage
+        title="Delivered work"
+        value={need.result ? `From ${need.result.agent_name}` : "Not yet"}
+        done={delivered}
+        now={live === 3}
+        {...section("delivered", delivered)}
+      >
         {need.result ? <Delivered result={need.result} /> : null}
-      </Phase>
-      <Phase done={paid} now={live === 2} title="Paid on Proof" logos={["stripe"]} sub="Held before the work, captured only when the winner passed">
-        {need.hold ? <Money hold={need.hold} builder={winnerId ? field.find((a) => a.id === winnerId)?.builder : undefined} /> : null}
-      </Phase>
-      <Scorecard agents={field} ranks={running ? null : ranked.map((a) => a.id)} byAgent={byAgent} winnerId={running ? null : (winnerId ?? best)} tools={ROLE_TOOLS[need.role] ?? []} />
-      <Phase done={searched} now={live === 0} title="Found by Semantic Search" logos={["supabase"]} sub={`pgvector over ${need.search?.listings ?? "the"} Hub listings`}>
-        <SearchMatches need={need} tried={new Set(tryouts.map((t) => t.agent_id))} />
-      </Phase>
-      <LogoFactory ids={[...field.map((a) => a.id), ...(need.search?.matches ?? []).slice(0, 6).map((m) => m.id)]} />
+      </Stage>
+      <Stage
+        title="Tryouts"
+        value={
+          !tryouts.length
+            ? "Not yet"
+            : running
+              ? `${tryouts.length} trying out…`
+              : `${tryouts.length} tried out${topScore != null ? `, top score ${topScore.toFixed(1)}` : ""}`
+        }
+        done={auditioned}
+        now={live === 1}
+        {...section("tryouts", onStage)}
+      >
+        {(!onStage && field.length) || scored ? (
+          <div className="flex flex-col gap-5 [&>section]:rounded-none [&>section]:p-0 [&>section]:ring-0">
+            {onStage ? null : <div className="rounded-2xl bg-muted p-3">{cards}</div>}
+            <Scorecard agents={field} ranks={running ? null : ranked.map((a) => a.id)} byAgent={byAgent} winnerId={running ? null : (winnerId ?? best)} tools={ROLE_TOOLS[need.role] ?? []} />
+          </div>
+        ) : null}
+      </Stage>
+      <Stage
+        title="Payment"
+        logos={["stripe"]}
+        value={
+          !hold
+            ? "Not yet"
+            : hold.status === "captured"
+              ? `${money(capturedCents(hold))} captured of ${money(hold.amount_cents)}`
+              : `${money(hold.amount_cents)} ${hold.status}`
+        }
+        done={paid}
+        now={live === 2}
+        {...section("payment", false)}
+      >
+        {hold ? <Money hold={hold} builder={winnerId ? field.find((a) => a.id === winnerId)?.builder : undefined} /> : null}
+      </Stage>
+      <Stage
+        title="Search"
+        logos={["supabase"]}
+        value={need.search ? `${tryouts.length} of ${need.search.listings} tried out` : searched ? `${tryouts.length} tried out` : "Searching…"}
+        done={searched}
+        now={live === 0}
+        {...section("search", false)}
+      >
+        {matches.length ? <SearchMatches need={need} tried={new Set(tryouts.map((t) => t.agent_id))} /> : null}
+      </Stage>
+      <LogoFactory ids={[...field.map((a) => a.id), ...matches.slice(0, 6).map((m) => m.id)]} />
     </article>
   );
 }
 
-function Phase({
+// A number first, its label under it. A missing value keeps the tile's size.
+function Fact({ label, value, wide }: { label: string; value: string | null; wide?: boolean }) {
+  return (
+    <div className={`flex h-14 flex-col justify-center rounded-2xl bg-white/10 px-3 ${wide ? "col-span-2 sm:col-span-1" : ""}`}>
+      <dd className="h-6 text-lg leading-6 font-semibold tabular-nums">{value ?? <span aria-hidden="true">…</span>}</dd>
+      <dt className="truncate text-xs">{label}</dt>
+    </div>
+  );
+}
+
+// One stage as one row: its state, its name, its key number. The row opens the detail in place.
+function Stage({
+  title,
+  value,
+  logos = [],
   done,
   now,
-  title,
-  sub,
-  logos,
+  open,
+  onToggle,
   children,
 }: {
+  title: string;
+  value: string;
+  logos?: Brand[];
   done: boolean;
   now: boolean;
-  title: string;
-  sub: string;
-  logos: Brand[];
+  open: boolean;
+  onToggle: () => void;
   children: React.ReactNode;
 }) {
+  const panel = useId();
+  const shown = open && !!children;
   return (
-    <section className={`${CARD} p-5 transition-opacity duration-500 ease-out ${!done && !now ? "opacity-55" : ""}`}>
-      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-        <span className="grid size-6 shrink-0 place-items-center">
-          {done ? (
-            <span className="grid size-5 place-items-center rounded-full bg-success text-white">
-              <Check aria-hidden="true" className="size-3" strokeWidth={3.5} />
-            </span>
-          ) : (
-            <span aria-hidden="true" className={`size-2.5 rounded-full ${now ? "animate-pulse bg-primary motion-reduce:animate-none" : "bg-secondary"}`} />
-          )}
-        </span>
-        <h2 className="text-base font-semibold">{title}</h2>
-        {logos.map((b) => (
-          <Logo key={b} brand={b} className="size-4" />
-        ))}
-        <p className="text-sm text-muted-foreground sm:ml-auto">{sub}</p>
+    <section className="rounded-2xl bg-card ring-1 ring-foreground/10">
+      <h2>
+        <button
+          type="button"
+          aria-expanded={shown}
+          aria-controls={panel}
+          disabled={!children}
+          onClick={onToggle}
+          className="flex h-14 w-full items-center gap-2.5 rounded-2xl px-4 text-left outline-none transition-colors duration-150 ease-out hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-primary disabled:hover:bg-transparent"
+        >
+          <span className="grid size-6 shrink-0 place-items-center">
+            {done ? (
+              <span className="grid size-5 place-items-center rounded-full bg-success text-white">
+                <Check aria-hidden="true" className="size-3" strokeWidth={3.5} />
+              </span>
+            ) : (
+              <span aria-hidden="true" className={`size-2.5 rounded-full ${now ? "animate-pulse bg-primary motion-reduce:animate-none" : "bg-secondary"}`} />
+            )}
+          </span>
+          <span className="shrink-0 text-base font-semibold">{title}</span>
+          {logos.map((b) => (
+            <Logo key={b} brand={b} className="size-4 shrink-0" />
+          ))}
+          <span className={`ml-auto min-w-0 truncate text-sm tabular-nums ${done ? "font-medium" : "text-muted-foreground"}`}>{value}</span>
+          <ChevronDown
+            aria-hidden="true"
+            className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 ease-out motion-reduce:transition-none ${shown ? "rotate-180" : ""} ${children ? "" : "opacity-0"}`}
+          />
+        </button>
+      </h2>
+      <div id={panel} hidden={!shown} className="px-4 pt-1 pb-4 sm:px-5 sm:pb-5">
+        {shown ? <div className={FEED_IN}>{children}</div> : null}
       </div>
-      {children ? <div className={`mt-4 ${FEED_IN}`}>{children}</div> : null}
     </section>
   );
 }
@@ -394,7 +523,7 @@ function Delivered({ result }: { result: NonNullable<LiveNeed["result"]> }) {
   return (
     <div>
       {result.reply ? (
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between sm:gap-4">
           <p className="max-w-3xl text-base leading-relaxed text-pretty whitespace-pre-line">{bold(result.reply)}</p>
           <SpeakButton text={result.reply} />
         </div>
@@ -471,14 +600,14 @@ function History({ needs, focus, onPick }: { needs: LiveNeed[]; focus: string; o
                 type="button"
                 onClick={() => onPick(n.id)}
                 aria-pressed={on}
-                className={`relative flex h-[4.5rem] w-60 items-center after:absolute after:inset-y-0 after:left-full after:w-2 gap-3 rounded-2xl px-3 text-left text-sm transition-[background-color,box-shadow,transform] duration-150 ease-out active:scale-[0.97] ${
+                className={`relative flex ${TILE} items-center gap-3 px-3 text-left text-sm after:absolute after:inset-y-0 after:left-full after:w-2 transition-[background-color,box-shadow,transform] duration-150 ease-out active:scale-[0.97] ${
                   on ? "bg-card ring-2 ring-primary" : "bg-muted hover:bg-secondary"
                 }`}
               >
                 {n.result?.agent_id ? (
                   <AgentAvatar card={{ id: n.result.agent_id, name: n.result.agent_name }} size="sm" />
                 ) : (
-                  <span aria-hidden="true" className={`size-8 shrink-0 rounded-full ${ACTIVE.has(n.status) ? "animate-pulse bg-primary" : "bg-secondary"}`} />
+                  <span aria-hidden="true" className={`size-8 shrink-0 rounded-full ${ACTIVE.has(n.status) ? "animate-pulse bg-primary motion-reduce:animate-none" : "bg-secondary"}`} />
                 )}
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
