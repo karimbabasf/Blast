@@ -4,7 +4,7 @@ import { Loader2, Square, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 const round =
-  "inline-flex shrink-0 items-center justify-center rounded-full transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.97] disabled:opacity-50";
+  "inline-flex shrink-0 items-center justify-center transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.97] disabled:opacity-50";
 
 // Reads the text aloud through /api/speak. The audio is made once and replayed after that.
 export function SpeakButton({ text }: { text: string }) {
@@ -50,7 +50,7 @@ export function SpeakButton({ text }: { text: string }) {
       type="button"
       onClick={() => void toggle()}
       disabled={state === "busy"}
-      className={`${round} h-9 w-44 gap-2 bg-(--hire) text-sm font-medium text-white hover:bg-(--hire)/90`}
+      className={`${round} h-9 w-44 gap-2 rounded-lg bg-(--hire) text-sm font-medium text-white hover:bg-(--hire)/90`}
     >
       {state === "busy" ? (
         <Loader2 aria-hidden="true" className="size-4 animate-spin" />

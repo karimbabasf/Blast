@@ -5,7 +5,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import type { MarketAgent, Role } from "@/lib/market/types";
 import { AgentAvatar } from "../_components/agent-avatar";
 import { scoreTone } from "../_components/score-tone";
-import { modelName, money, ROLE_LABEL, ROLE_TOOLS, toolLabel } from "./format";
+import { modelName, money, ROLE_LABEL, toolLabel } from "./format";
 import { labOf, Logo } from "./logos";
 
 export type Listing = Omit<MarketAgent, "system_prompt"> & {
@@ -81,15 +81,11 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
   const groups = !data ? [] : q ? [{ role: null, agents: data.agents }] : boards(data.agents);
 
   return (
-    <main className="mx-auto w-full max-w-[1360px] flex-1 px-4 py-8 sm:py-10">
-      <div className="flex flex-wrap items-end justify-between gap-4 rounded-3xl bg-block-dark p-6 text-white">
-        <div>
-          <h1 className="text-3xl font-normal tracking-tight sm:text-4xl">Blast Hub</h1>
-          <p className="mt-1 text-sm text-white/70">Specialists built by other people, ranked by how they did in real tryouts.</p>
-        </div>
-      </div>
+    <main className="mx-auto w-full max-w-[1360px] flex-1 px-4 pt-6 pb-16">
+      <h1 className="text-xl font-semibold tracking-tight">Hub</h1>
+      <p className="mt-1 text-sm text-muted-foreground">Specialists built by other people, ranked by how they did in real tryouts.</p>
 
-      <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-start">
+      <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-start">
         <label className="relative w-full shrink-0 lg:w-64">
           <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -123,13 +119,13 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
 
       {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
 
-      <div className="mt-5 overflow-x-auto rounded-2xl ring-1 ring-foreground/10">
+      <div className="mt-5 overflow-x-auto rounded-xl border">
         <table className="w-full min-w-[44rem] text-sm tabular-nums">
           <thead className="text-left text-xs text-muted-foreground">
             <tr>
               <th scope="col" className="w-14 py-2.5 pl-4 font-normal">#</th>
-              <th scope="col" className="py-2.5 font-normal">Specialist</th>
-              <th scope="col" className="py-2.5 font-normal">Tools It Brings</th>
+              <th scope="col" className="w-80 py-2.5 font-normal">Specialist</th>
+              <th scope="col" className="py-2.5 font-normal">Tools</th>
               <th scope="col" className="w-20 py-2.5 text-right font-normal">Score</th>
               <th scope="col" className="w-20 py-2.5 text-right font-normal">Tryouts</th>
               <th scope="col" className="w-16 py-2.5 text-right font-normal">Hires</th>
@@ -193,7 +189,7 @@ function Row({
           {rank ? (
             <span
               className={`flex size-6 items-center justify-center rounded-full text-xs font-semibold ${
-                rank === 1 ? "bg-success text-white" : "bg-muted text-muted-foreground"
+                rank === 1 ? "bg-foreground text-background" : "bg-muted text-muted-foreground"
               }`}
             >
               {rank}
@@ -218,21 +214,10 @@ function Row({
             </div>
           </div>
         </td>
-        <td className="py-2.5 pr-4">
-          <ul className="flex flex-wrap gap-1">
-            {(ROLE_TOOLS[a.role] ?? a.tools).map((t) => {
-              const has = a.tools.includes(t);
-              return (
-                <li
-                  key={t}
-                  title={has ? t : `${t}: not available to this agent`}
-                  className={`h-5 rounded-full px-2 text-xs leading-5 ${has ? "bg-muted" : "text-muted-foreground/60 line-through"}`}
-                >
-                  {toolLabel(t)}
-                </li>
-              );
-            })}
-          </ul>
+        <td className="max-w-0 py-2.5 pr-4">
+          <p className="truncate text-muted-foreground" title={a.tools.join(", ")}>
+            {a.tools.length ? a.tools.map(toolLabel).join(" · ") : "No tools"}
+          </p>
         </td>
         <td className="py-2.5 text-right">
           {average != null ? (

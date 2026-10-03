@@ -29,7 +29,7 @@ export function Scorecard({
   const names = agents.map((a) => byAgent.get(a.id)?.checks ?? []).find((c) => c.length)?.map((c) => c.name);
   if (!names) return null;
 
-  const col = (id: string) => (id === winnerId ? "bg-success/8" : "");
+  const col = (id: string) => (id === winnerId ? "bg-success/5" : "");
   const rows: { label: string; hint?: string; cell: (t: LiveTryout | undefined) => React.ReactNode }[] = [
     {
       label: "Checks passed",
@@ -49,9 +49,9 @@ export function Scorecard({
   ];
 
   return (
-    <section aria-label="Scorecard" className="rounded-3xl bg-card p-5 ring-1 ring-foreground/10">
+    <section aria-label="Scorecard" className="rounded-xl border p-4">
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-        <h2 className="text-base font-semibold">How They Were Scored</h2>
+        <h2 className="text-sm font-semibold">How they were scored</h2>
         <p className="flex flex-wrap items-center gap-1.5 text-xs">
           <span className="rounded-full bg-muted px-2.5 py-1">
             <b className="font-semibold">7 pts</b> machine checks on the result, in Supabase Postgres
@@ -71,7 +71,7 @@ export function Scorecard({
                 What each one brings
               </th>
               {agents.map((a) => (
-                <th key={a.id} scope="col" className={`rounded-t-xl px-2 pt-2 pb-2 font-medium ${col(a.id)}`}>
+                <th key={a.id} scope="col" className={`rounded-t-lg px-2 pt-2 pb-2 font-medium ${col(a.id)}`}>
                   <span className="flex items-center justify-center gap-1.5">
                     <span className="text-xs text-muted-foreground">{ranks && byAgent.get(a.id)?.score != null ? ranks.indexOf(a.id) + 1 : ""}</span>
                     <AgentAvatar card={a} size="xs" />
@@ -155,7 +155,7 @@ export function Scorecard({
               {agents.map((a) => {
                 const score = byAgent.get(a.id)?.score;
                 return (
-                  <td key={a.id} className={`rounded-b-xl border-t py-2 text-center ${col(a.id)}`}>
+                  <td key={a.id} className={`rounded-b-lg border-t py-2 text-center ${col(a.id)}`}>
                     {score == null ? (
                       <span className="text-muted-foreground/50">…</span>
                     ) : (

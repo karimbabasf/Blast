@@ -1,16 +1,17 @@
 "use client";
 
-import { ArrowRight, ExternalLink } from "lucide-react";
-import { TabTrack } from "./tab-track";
+import { Check, ExternalLink, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import type { MarketAgent, TryoutStep } from "@/lib/market/types";
 import { AgentAvatar } from "../_components/agent-avatar";
-import { Candidate } from "./candidate";
+import { scoreTone } from "../_components/score-tone";
 import { db } from "./db";
-import { clock, money, ROLE_LABEL, ROLE_TOOLS } from "./format";
+import { clock, modelName, money, ROLE_LABEL, ROLE_TOOLS, summarize, tokenCost } from "./format";
 import { Policy } from "./hires";
 import { type Brand, Logo } from "./logos";
 import { capturedCents, ClaimCodes, type Claim, type Estimate, EstimateTable, type Hold, isEstimate, type LiveNeed, type LiveTryout, stripeLinks } from "./proof";
 import { Scorecard } from "./scorecard";
+import { TabTrack } from "./tab-track";
 import { useNeed } from "./use-need";
 import { SpeakButton } from "./voice";
 
@@ -18,7 +19,6 @@ type Site = { title: string; palette: string[]; fonts: { display: string; body: 
 
 const MCP = "claude mcp add --transport http blast https://blast-kbkotes-projects.vercel.app/api/mcp";
 
-const CARD = "rounded-3xl bg-card ring-1 ring-foreground/10";
 const FEED_IN = "animate-in fade-in slide-in-from-bottom-1 duration-200 ease-out motion-reduce:animate-none";
 const ACTIVE = new Set(["auditioning", "checkout"]);
 
@@ -60,7 +60,19 @@ function useHires() {
   return needs;
 }
 
-// The hire tiles and the spend switch, one blue summary, then tabs for the detail.
+// One small pill for how a hire stands. The only filled colour on the page besides the agent dots.
+function Status({ need }: { need: LiveNeed }) {
+  const working = ACTIVE.has(need.status);
+  const released = need.status === "waiting" || need.hold?.status === "released";
+  const tone = working ? "bg-primary/10 text-primary" : released ? "bg-muted text-muted-foreground" : "bg-success/10 text-success";
+  return (
+    <span className={`inline-flex h-6 shrink-0 items-center rounded-full px-2 text-xs font-medium ${tone} ${working ? "animate-pulse motion-reduce:animate-none" : ""}`}>
+      {working ? "Working…" : released ? "Nobody passed" : "Completed"}
+    </span>
+  );
+}
+
+// The list of hires on the left, the picked hire on the right.
 export function Dashboard({ initialNeed, initialTab }: { initialNeed: string | null; initialTab: string | null }) {
   const needs = useHires();
   const [picked, setPicked] = useState<string | null>(initialNeed);
@@ -87,18 +99,21 @@ export function Dashboard({ initialNeed, initialTab }: { initialNeed: string | n
   }, [tab]);
 
   const focus = picked ?? newest;
+
   return (
-    <main className="mx-auto flex w-full max-w-[1360px] flex-1 flex-col gap-4 px-4 pt-6 pb-16">
-      <h1 className="sr-only">Agents That Hire Agents</h1>
-      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-        <div className="min-w-0 flex-1">{needs && focus ? <History needs={needs} focus={focus} onPick={setPicked} /> : <div className="h-[4.5rem]" />}</div>
+    <main className="mx-auto flex w-full max-w-[1360px] flex-1 flex-col gap-6 px-4 pt-6 pb-16">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-xl font-semibold tracking-tight">Hires</h1>
         <Policy />
       </div>
 
       {!needs ? null : !focus ? (
         <Empty />
       ) : (
-        <Focus key={focus} id={focus} fallback={needs.find((n) => n.id === focus) ?? null} tab={tab} onTab={setTab} />
+        <div className="grid items-start gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
+          <Hires needs={needs} focus={focus} onPick={setPicked} />
+          <Focus key={focus} id={focus} fallback={needs.find((n) => n.id === focus) ?? null} tab={tab} onTab={setTab} />
+        </div>
       )}
     </main>
   );
@@ -106,18 +121,52 @@ export function Dashboard({ initialNeed, initialTab }: { initialNeed: string | n
 
 function Empty() {
   return (
-    <div className="rounded-3xl bg-block-blue px-6 py-16 text-center text-white">
-      <p className="mx-auto flex w-fit items-center gap-2.5 text-xl">
-        <span aria-hidden="true" className="size-2.5 animate-pulse rounded-full bg-white motion-reduce:animate-none" />
-        Waiting for an Agent to Hire…
+    <div className="rounded-xl border px-6 py-16 text-center">
+      <p className="mx-auto flex w-fit items-center gap-2.5 text-base font-medium">
+        <span aria-hidden="true" className="size-2 animate-pulse rounded-full bg-primary motion-reduce:animate-none" />
+        Waiting for an agent to hire…
       </p>
-      <p className="mt-6 text-sm text-white/70">Connect Claude Code to Blast:</p>
-      <code className="mt-2 inline-block max-w-full overflow-x-auto rounded-xl bg-white/15 px-4 py-2.5 font-mono text-sm select-all">{MCP}</code>
+      <p className="mt-4 text-sm text-muted-foreground">Connect Claude Code to Blast:</p>
+      <code className="mt-2 inline-block max-w-full overflow-x-auto rounded-lg bg-muted px-3 py-2 font-mono text-sm select-all">{MCP}</code>
     </div>
   );
 }
 
-const STEPS = ["Search", "Tryouts", "Paid on Proof", "Delivered"];
+// Every hire as a row. Picking one swaps the view beside it in place; nothing navigates.
+function Hires({ needs, focus, onPick }: { needs: LiveNeed[]; focus: string; onPick: (id: string) => void }) {
+  return (
+    <ul aria-label="Hires" className="flex gap-2 overflow-x-auto lg:max-h-[calc(100dvh-10rem)] lg:flex-col lg:gap-0 lg:overflow-x-visible lg:overflow-y-auto">
+      {needs.map((n) => {
+        const on = n.id === focus;
+        return (
+          <li key={n.id} className="shrink-0 lg:border-b">
+            <button
+              type="button"
+              onClick={() => onPick(n.id)}
+              aria-pressed={on}
+              className={`flex h-16 w-64 items-center gap-3 rounded-lg px-3 text-left text-sm transition-colors duration-150 ease-out lg:w-full ${on ? "bg-muted" : "hover:bg-muted/60"}`}
+            >
+              {n.result?.agent_id ? (
+                <AgentAvatar card={{ id: n.result.agent_id, name: n.result.agent_name }} size="sm" />
+              ) : (
+                <span aria-hidden="true" className={`size-8 shrink-0 rounded-full bg-secondary ${ACTIVE.has(n.status) ? "animate-pulse motion-reduce:animate-none" : ""}`} />
+              )}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium">{n.text}</span>
+                <span className="block truncate text-xs text-muted-foreground tabular-nums">
+                  {n.result?.agent_name ?? (ACTIVE.has(n.status) ? "Working…" : "Nobody passed")}
+                  {n.hold?.status === "captured" ? ` · ${money(capturedCents(n.hold))}` : ""} · {clock(n.created_at)}
+                </span>
+              </span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+const STEPS = ["Search", "Tryouts", "Paid on proof", "Delivered"];
 
 function Focus({ id, fallback, tab, onTab }: { id: string; fallback: LiveNeed | null; tab: TabId | null; onTab: (t: TabId) => void }) {
   const view = useNeed(id);
@@ -131,6 +180,7 @@ function Focus({ id, fallback, tab, onTab }: { id: string; fallback: LiveNeed | 
   const field = view.agents.filter((a) => byAgent.has(a.id));
   const ranked = [...field].sort((x, y) => (byAgent.get(y.id)?.score ?? -1) - (byAgent.get(x.id)?.score ?? -1));
   const best = running ? null : (ranked[0]?.id ?? null);
+  const winner = winnerId ? (byAgent.get(winnerId) ?? null) : null;
 
   const searched = !!need.search || tryouts.length > 0;
   const auditioned = tryouts.length > 0 && !running;
@@ -139,170 +189,95 @@ function Focus({ id, fallback, tab, onTab }: { id: string; fallback: LiveNeed | 
   const done = [searched, auditioned, paid, delivered];
   const live = done.indexOf(false);
   const working = ACTIVE.has(need.status);
+  const hold = need.hold ?? null;
 
   // A running hire opens on the live tryouts, a finished one on its result.
   const current = tab ?? (working ? "tryouts" : "overview");
-  const hold = need.hold ?? null;
+  const checks = winner?.checks ?? [];
+  const facts = [
+    need.result ? `${need.result.agent_name} won` : working ? (tryouts.length ? `Trying out ${tryouts.length}` : "Searching the Hub") : "Nobody passed",
+    winner?.score != null ? `${winner.score.toFixed(1)} score` : null,
+    checks.length ? `${checks.filter((c) => c.passed).length}/${checks.length} checks` : null,
+    hold ? (hold.status === "captured" ? `${money(capturedCents(hold))} captured` : hold.status === "released" ? `${money(hold.amount_cents)} released` : `${money(hold.amount_cents)} held`) : null,
+  ].filter((f): f is string => !!f);
 
   return (
-    <article className="flex flex-col gap-4">
-      <Summary need={need} working={working} delivered={delivered} done={done} live={live} loaded={loaded} tried={tryouts.length} winner={winnerId ? (byAgent.get(winnerId) ?? null) : null} />
+    <article className="flex min-w-0 flex-col gap-5">
+      <header className="flex flex-col gap-2">
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <span className="truncate">
+            {ROLE_LABEL[need.role] ?? need.role} · {clock(need.created_at)} · Hired by Claude Code
+          </span>
+          <span className="ml-auto">
+            <Status need={need} />
+          </span>
+        </div>
+        <h2 title={need.text} className="line-clamp-2 h-14 max-w-4xl text-xl leading-7 font-semibold tracking-tight text-pretty">
+          {need.text}
+        </h2>
+        <p className="flex h-8 items-center gap-2 text-sm text-muted-foreground tabular-nums">
+          {need.result ? <AgentAvatar card={{ id: need.result.agent_id, name: need.result.agent_name }} size="xs" /> : null}
+          {facts.map((f, i) => (
+            <span key={f} className={i === 0 ? "font-medium text-foreground" : ""}>
+              {i ? "· " : ""}
+              {f}
+            </span>
+          ))}
+        </p>
+        <ol className="grid grid-cols-4 gap-1.5">
+          {STEPS.map((label, i) => (
+            <li key={label} aria-current={i === live ? "step" : undefined} className="flex flex-col gap-1.5">
+              <span
+                aria-hidden="true"
+                className={`h-1 rounded-full transition-colors duration-300 ease-out ${done[i] ? "bg-foreground" : i === live ? "animate-pulse bg-primary motion-reduce:animate-none" : "bg-secondary"}`}
+              />
+              <span className={`truncate text-xs ${done[i] || i === live ? "text-foreground" : "text-muted-foreground"}`}>{label}</span>
+            </li>
+          ))}
+        </ol>
+      </header>
+
       <Tabs current={current} onPick={onTab} />
 
-      <div className="min-h-[30rem]">
+      <div className="min-h-[28rem]">
         <Panel id="overview" current={current}>
-          <section className={`${CARD} p-5`}>
-            {need.result ? (
-              <div className={FEED_IN}>
-                <Delivered result={need.result} />
-              </div>
-            ) : (
-              <Nothing>{working ? "The winner's work lands here…" : "Nobody passed the proof, so nothing was delivered."}</Nothing>
-            )}
-          </section>
+          {need.result ? (
+            <div className={FEED_IN}>
+              <Delivered result={need.result} />
+            </div>
+          ) : (
+            <Nothing>{working ? "The winner's work lands here…" : "Nobody passed the proof, so nothing was delivered."}</Nothing>
+          )}
         </Panel>
 
         <Panel id="tryouts" current={current}>
-          <ul className="grid min-h-[17rem] grid-cols-[repeat(auto-fit,minmax(min(100%,230px),1fr))] gap-3">
-            {(running ? field : ranked).map((a, index) => (
-              <li key={a.id} className={FEED_IN}>
-                <Candidate
-                  agent={a}
-                  rank={running || byAgent.get(a.id)?.score == null ? null : index + 1}
-                  tryout={byAgent.get(a.id) ?? null}
-                  steps={view.steps.filter((s) => s.tryout_id === byAgent.get(a.id)?.id)}
-                  winner={!running && a.id === (winnerId ?? best)}
-                  leading={false}
-                />
-              </li>
-            ))}
-            {!field.length ? (
-              <li className="flex items-center justify-center text-sm text-muted-foreground">
-                {!loaded ? "Loading the tryouts…" : working ? "Searching the Hub for specialists…" : "No specialist was tried out for this hire."}
-              </li>
-            ) : null}
-          </ul>
+          {field.length ? (
+            <Tryouts agents={running ? field : ranked} byAgent={byAgent} steps={view.steps} winnerId={running ? null : (winnerId ?? best)} running={running} />
+          ) : (
+            <Nothing>{!loaded ? "Loading the tryouts…" : working ? "Searching the Hub for specialists…" : "No specialist was tried out for this hire."}</Nothing>
+          )}
           <Scorecard agents={field} ranks={running ? null : ranked.map((a) => a.id)} byAgent={byAgent} winnerId={running ? null : (winnerId ?? best)} tools={ROLE_TOOLS[need.role] ?? []} />
         </Panel>
 
         <Panel id="payment" current={current}>
-          <section className={`${CARD} p-5`}>
-            <Caption logo="stripe">Held before the work, captured only when the winner passed.</Caption>
-            {hold ? (
-              <div className="mt-4">
-                <Money hold={hold} builder={winnerId ? field.find((a) => a.id === winnerId)?.builder : undefined} />
-              </div>
-            ) : (
-              <Nothing>{working ? "The hold is placed once a specialist is picked…" : "No payment was held for this hire."}</Nothing>
-            )}
-          </section>
+          <Caption logo="stripe">Held before the work, captured only when the winner passed.</Caption>
+          {hold ? (
+            <Money hold={hold} builder={winnerId ? field.find((a) => a.id === winnerId)?.builder : undefined} />
+          ) : (
+            <Nothing>{working ? "The hold is placed once a specialist is picked…" : "No payment was held for this hire."}</Nothing>
+          )}
         </Panel>
 
         <Panel id="search" current={current}>
-          <section className={`${CARD} p-5`}>
-            <Caption logo="supabase">Semantic search (pgvector) over {need.search?.listings ?? "the"} Hub listings.</Caption>
-            {need.search?.matches.length ? (
-              <div className="mt-4">
-                <SearchMatches need={need} tried={new Set(tryouts.map((t) => t.agent_id))} />
-              </div>
-            ) : (
-              <Nothing>{working && !searched ? "Searching the Hub…" : "No search record was kept for this hire."}</Nothing>
-            )}
-          </section>
+          <Caption logo="supabase">Semantic search (pgvector) over {need.search?.listings ?? "the"} Hub listings.</Caption>
+          {need.search?.matches.length ? (
+            <SearchMatches need={need} tried={new Set(tryouts.map((t) => t.agent_id))} />
+          ) : (
+            <Nothing>{working && !searched ? "Searching the Hub…" : "No search record was kept for this hire."}</Nothing>
+          )}
         </Panel>
       </div>
     </article>
-  );
-}
-
-// The picked hire at a glance: the job, how far it got, and how it ended.
-function Summary({
-  need,
-  working,
-  delivered,
-  done,
-  live,
-  loaded,
-  tried,
-  winner,
-}: {
-  need: LiveNeed;
-  working: boolean;
-  delivered: boolean;
-  done: boolean[];
-  live: number;
-  loaded: boolean;
-  tried: number;
-  winner: LiveTryout | null;
-}) {
-  const hold = need.hold ?? null;
-  // "…" while the answer can still arrive, "None" once it cannot.
-  const blank = working || !loaded ? "…" : "None";
-  const checks = winner?.checks ?? [];
-  const facts = [
-    { label: "score", value: winner?.score != null ? winner.score.toFixed(1) : blank },
-    { label: "checks", value: checks.length ? `${checks.filter((c) => c.passed).length}/${checks.length}` : blank },
-    hold?.status === "captured"
-      ? { label: "captured", value: money(capturedCents(hold)) }
-      : hold?.status === "released"
-        ? { label: "released", value: money(hold.amount_cents) }
-        : { label: hold ? "held" : "captured", value: hold ? money(hold.amount_cents) : blank },
-  ];
-
-  return (
-    <section aria-label="The job" className="flex flex-col gap-3.5 rounded-3xl bg-block-blue p-5 text-white">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/80">
-        <span>Hired by Claude Code</span>
-        <span>{ROLE_LABEL[need.role] ?? need.role}</span>
-        <span className="tabular-nums">{clock(need.created_at)}</span>
-        <span className={`ml-auto font-medium text-white ${working ? "animate-pulse motion-reduce:animate-none" : ""}`}>
-          {working ? "Working…" : delivered ? "Done" : "Nobody passed"}
-        </span>
-      </div>
-      <p title={need.text} className="line-clamp-2 h-14 max-w-4xl text-lg leading-7 font-medium text-pretty sm:text-xl">
-        {need.text}
-      </p>
-
-      <ol className="grid grid-cols-4 gap-2">
-        {STEPS.map((label, i) => (
-          <li key={label} aria-current={i === live ? "step" : undefined} className="flex flex-col gap-1.5">
-            <span
-              aria-hidden="true"
-              className={`h-1 rounded-full transition-colors duration-300 ease-out ${done[i] ? "bg-white" : i === live ? "animate-pulse bg-white/60" : "bg-white/20"}`}
-            />
-            <span className={`truncate text-[11px] sm:text-xs ${done[i] || i === live ? "font-medium" : "text-white/70"}`}>{label}</span>
-          </li>
-        ))}
-      </ol>
-
-      <div className="grid grid-cols-3 gap-x-6 gap-y-3 sm:flex sm:items-center sm:gap-x-8">
-        <div className="col-span-3 flex h-10 min-w-0 items-center gap-3 sm:mr-auto">
-          {need.result ? (
-            <>
-              <AgentAvatar card={{ id: need.result.agent_id, name: need.result.agent_name }} size="md" className="ring-2 ring-white" />
-              <span className="truncate text-base font-semibold" translate="no">
-                {need.result.agent_name} won
-              </span>
-            </>
-          ) : (
-            <>
-              <span aria-hidden="true" className={`size-10 shrink-0 rounded-full bg-white/20 ${working ? "animate-pulse motion-reduce:animate-none" : ""}`} />
-              <span className="truncate text-base font-medium">
-                {working ? (tried ? `Trying out ${tried} specialist${tried === 1 ? "" : "s"}…` : "Searching the Hub for specialists…") : "Nobody passed the proof"}
-              </span>
-            </>
-          )}
-        </div>
-        <dl className="contents">
-          {facts.map((f) => (
-            <div key={f.label} className="flex h-10 flex-col justify-center sm:flex-row-reverse sm:items-baseline sm:gap-1.5">
-              <dt className="truncate text-xs text-white/80 sm:text-sm">{f.label}</dt>
-              <dd className="text-base font-semibold tabular-nums">{f.value}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-    </section>
   );
 }
 
@@ -351,7 +326,7 @@ function Panel({ id, current, children }: { id: TabId; current: TabId; children:
       aria-labelledby={`hire-tab-${id}`}
       hidden={id !== current}
       tabIndex={0}
-      className="flex flex-col gap-4 rounded-3xl animate-in fade-in duration-200 ease-out motion-reduce:animate-none"
+      className="flex animate-in flex-col gap-4 rounded-lg duration-200 ease-out fade-in motion-reduce:animate-none"
     >
       {children}
     </div>
@@ -368,132 +343,185 @@ function Caption({ logo, children }: { logo: Brand; children: React.ReactNode })
 }
 
 function Nothing({ children }: { children: React.ReactNode }) {
-  return <p className="mt-4 rounded-2xl bg-muted px-4 py-6 text-center text-sm text-muted-foreground">{children}</p>;
+  return <p className="rounded-xl border px-4 py-10 text-center text-sm text-muted-foreground">{children}</p>;
+}
+
+const TH = "py-2 pr-4 text-left text-xs font-normal text-muted-foreground";
+
+// One row per candidate: who it is, how it scored, and where it stands right now.
+function Tryouts({
+  agents,
+  byAgent,
+  steps,
+  winnerId,
+  running,
+}: {
+  agents: MarketAgent[];
+  byAgent: Map<string, LiveTryout>;
+  steps: TryoutStep[];
+  winnerId: string | null;
+  running: boolean;
+}) {
+  return (
+    <div className="overflow-x-auto rounded-xl border">
+      <table className="w-full min-w-[40rem] text-sm tabular-nums">
+        <thead>
+          <tr>
+            <th scope="col" className={`${TH} w-72 pl-4`}>
+              Specialist
+            </th>
+            <th scope="col" className={`${TH} w-20`}>
+              Score
+            </th>
+            <th scope="col" className={`${TH} w-20`}>
+              Checks
+            </th>
+            <th scope="col" className={`${TH} w-24`}>
+              Tokens
+            </th>
+            <th scope="col" className={`${TH} w-20`}>
+              Per job
+            </th>
+            <th scope="col" className={TH}>
+              Result
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {agents.map((a) => {
+            const t = byAgent.get(a.id);
+            const checks = t?.checks ?? [];
+            const failed = checks.find((c) => !c.passed);
+            const last = steps.filter((s) => s.tryout_id === t?.id && s.kind === "tool").at(-1);
+            return (
+              <tr key={a.id} className={`h-14 border-t ${a.id === winnerId ? "bg-success/5" : ""}`}>
+                <td className="py-2 pr-4 pl-4">
+                  <div className="flex items-center gap-3">
+                    <AgentAvatar card={a} size="sm" status={t?.status === "running" ? "working" : undefined} />
+                    <div className="min-w-0">
+                      <div className="truncate font-medium" translate="no">
+                        {a.name}
+                      </div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {modelName(a.model)} · {a.builder}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td className="pr-4">
+                  {t?.score != null ? (
+                    <span className={`inline-block rounded-full px-2 py-0.5 font-semibold ${scoreTone(t.score)}`}>{t.score.toFixed(1)}</span>
+                  ) : (
+                    <span className="text-muted-foreground">{t?.status === "failed" ? "Failed" : "…"}</span>
+                  )}
+                </td>
+                <td className="pr-4">{checks.length ? `${checks.filter((c) => c.passed).length}/${checks.length}` : <span className="text-muted-foreground">…</span>}</td>
+                <td className="pr-4 text-muted-foreground">{t?.usage?.cost_usd != null ? tokenCost(t.usage.cost_usd) : "…"}</td>
+                <td className="pr-4">{money(a.price_action_cents)}</td>
+                <td className="max-w-0 pr-4">
+                  <span className="flex items-center gap-1.5 truncate">
+                    {a.id === winnerId ? (
+                      <span className="font-medium text-success">Hired</span>
+                    ) : failed ? (
+                      <>
+                        <X aria-hidden="true" className="size-3.5 shrink-0 text-destructive" strokeWidth={3} />
+                        <span className="truncate text-muted-foreground" title={failed.name}>
+                          {failed.name}
+                        </span>
+                      </>
+                    ) : checks.length ? (
+                      <>
+                        <Check aria-hidden="true" className="size-3.5 shrink-0 text-success" strokeWidth={3} />
+                        <span className="truncate text-muted-foreground">All checks passed</span>
+                      </>
+                    ) : last ? (
+                      <span className="truncate font-mono text-xs text-muted-foreground">
+                        {last.name} {summarize(last.name, last.input)}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">{running ? "Starting…" : ""}</span>
+                    )}
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 function SearchMatches({ need, tried }: { need: LiveNeed; tried: Set<string> }) {
   const matches = need.search?.matches ?? [];
-  if (!matches.length) return null;
   return (
-    <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      {matches.slice(0, 6).map((m) => {
-        const on = tried.has(m.id);
-        return (
-          <li key={m.id} className={`flex items-center gap-3 rounded-2xl p-3 text-sm ${on ? "bg-(--hire-soft)" : "bg-muted"}`}>
-            <AgentAvatar card={m} size="sm" />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="truncate font-semibold" translate="no">
-                  {m.name}
-                </span>
-                <span className="shrink-0 font-semibold tabular-nums">{Math.round(m.similarity * 100)}%</span>
-              </div>
-              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-foreground/10">
-                <div className={`h-full rounded-full ${on ? "bg-primary" : "bg-foreground/30"}`} style={{ width: `${Math.max(4, Math.min(100, m.similarity * 100))}%` }} />
-              </div>
-              <p className="mt-1 truncate text-xs text-muted-foreground">
-                {m.builder}
-                {on ? <span className="font-medium text-primary"> · tried out</span> : null}
-              </p>
-            </div>
-          </li>
-        );
-      })}
+    <ul className="rounded-xl border">
+      {matches.slice(0, 8).map((m, i) => (
+        <li key={m.id} className={`flex h-12 items-center gap-3 px-4 text-sm ${i ? "border-t" : ""}`}>
+          <AgentAvatar card={m} size="xs" />
+          <span className="w-40 truncate font-medium" translate="no">
+            {m.name}
+          </span>
+          <span className="hidden min-w-0 flex-1 truncate text-muted-foreground sm:block">{m.builder}</span>
+          {tried.has(m.id) ? <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">Tried out</span> : null}
+          <span className="ml-auto w-12 text-right font-medium tabular-nums">{Math.round(m.similarity * 100)}%</span>
+        </li>
+      ))}
     </ul>
   );
 }
 
-function useCountUp(target: number | null) {
-  const [v, setV] = useState(target ?? 0);
-  useEffect(() => {
-    if (target == null) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      const id = requestAnimationFrame(() => setV(target));
-      return () => cancelAnimationFrame(id);
-    }
-    const start = performance.now();
-    let id = 0;
-    const tick = (t: number) => {
-      const p = Math.min(1, (t - start) / 700);
-      setV(target * (1 - Math.pow(1 - p, 3)));
-      if (p < 1) id = requestAnimationFrame(tick);
-    };
-    id = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(id);
-  }, [target]);
-  return v;
-}
-
+// The money as a short ledger: what was paid, held, captured and paid out.
 function Money({ hold: h, builder }: { hold: Hold; builder?: string }) {
   const captured = h.status === "captured";
   const released = h.status === "released";
-  const steps: { key: string; on: boolean; title: React.ReactNode; detail: React.ReactNode }[] = [
-    { key: "pay", on: true, title: h.via === "mpp" ? "MPP 402" : "Card", detail: h.via === "mpp" ? "Claude Code paid the HTTP 402" : "Card on file" },
+  const rows: { label: string; value: React.ReactNode; note: React.ReactNode; on: boolean }[] = [
+    { label: "Paid by", value: h.via === "mpp" ? "MPP 402" : "Card", note: h.via === "mpp" ? "Claude Code paid the HTTP 402" : "Card on file", on: true },
     {
-      key: "hold",
+      label: "Held",
+      value: money(h.amount_cents),
+      note: h.spt ? <span className="font-mono text-xs">{h.spt}</span> : <Ref href={stripeLinks.payment(h.payment_intent)} id={h.payment_intent} />,
       on: true,
-      title: <><Cents value={h.amount_cents} /> held</>,
-      detail: h.spt ? <span className="font-mono text-xs">Shared Payment Token {h.spt}</span> : <Ref href={stripeLinks.payment(h.payment_intent)} id={h.payment_intent} />,
     },
     released
-      ? { key: "release", on: true, title: "Released", detail: "No specialist passed, nothing charged" }
+      ? { label: "Released", value: money(h.amount_cents), note: "No specialist passed, nothing charged", on: true }
       : {
-          key: "capture",
+          label: "Captured",
+          value: captured ? money(capturedCents(h)) : "…",
+          note: captured ? <Ref href={stripeLinks.payment(h.payment_intent)} id={h.payment_intent} /> : "Waits for the proof",
           on: captured,
-          title: captured ? <><Cents value={capturedCents(h)} /> captured</> : "Capture",
-          detail: captured ? <Ref href={stripeLinks.payment(h.payment_intent)} id={h.payment_intent} label="proof passed" /> : "Waits for the proof",
         },
     ...(released
       ? []
       : [
           {
-            key: "payout",
+            label: `Paid out to ${builder ?? "the builder"}`,
+            value: h.builder_cents != null && h.transfer ? money(h.builder_cents) : "…",
+            note: h.transfer ? <Ref href={stripeLinks.transfer(h.transfer)} id={h.transfer} /> : "Through Stripe Connect",
             on: !!h.transfer,
-            title: <>{h.builder_cents != null && h.transfer ? <Cents value={h.builder_cents} /> : "Payout"} to {builder ?? "the builder"}</>,
-            detail: h.transfer ? <Ref href={stripeLinks.transfer(h.transfer)} id={h.transfer} label="via Connect" /> : "via Connect",
           },
+          ...(captured && h.blast_cents != null ? [{ label: "Blast kept", value: money(h.blast_cents), note: "", on: true }] : []),
         ]),
   ];
   return (
-    <div>
-      <ol className="flex flex-col gap-2 md:flex-row md:items-stretch">
-        {steps.map((s, i) => (
-          <li key={s.key} className="flex items-center gap-2 md:flex-1">
-            <div
-              key={String(s.on)}
-              style={{ animationDelay: `${i * 160}ms` }}
-              className={`flex-1 rounded-2xl px-3.5 py-3 transition-colors duration-500 ease-out ${s.on ? `bg-muted text-foreground ${FEED_IN} fill-mode-both` : "bg-muted/50 text-muted-foreground"}`}
-            >
-              <div className="text-base font-semibold tabular-nums">{s.title}</div>
-              <div className="mt-0.5 text-sm text-pretty [overflow-wrap:anywhere]">{s.detail}</div>
-            </div>
-            {i < steps.length - 1 ? <ArrowRight aria-hidden="true" className={`hidden size-4 shrink-0 md:block ${steps[i + 1].on ? "text-foreground" : "text-muted-foreground/40"}`} /> : null}
-          </li>
-        ))}
-      </ol>
-      {captured && h.blast_cents != null ? (
-        <p className="mt-2 text-sm text-muted-foreground">
-          Blast kept <Cents value={h.blast_cents} />.
-        </p>
-      ) : null}
-    </div>
+    <dl className="rounded-xl border text-sm">
+      {rows.map((r, i) => (
+        <div key={r.label} className={`flex h-12 items-center gap-4 px-4 ${i ? "border-t" : ""} ${r.on ? "" : "text-muted-foreground"}`}>
+          <dt className="w-48 shrink-0 truncate">{r.label}</dt>
+          <dd className="w-20 shrink-0 font-semibold tabular-nums">{r.value}</dd>
+          <dd className="min-w-0 flex-1 truncate text-right text-muted-foreground">{r.note}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
-function Cents({ value }: { value: number }) {
-  const v = useCountUp(value);
-  return <span className="tabular-nums">{money(Math.round(v))}</span>;
-}
-
-function Ref({ href, id, label }: { href: string; id: string; label?: string }) {
+function Ref({ href, id }: { href: string; id: string }) {
   return (
-    <span>
-      {label ? `${label} ` : null}
-      <a href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-xs text-(--hire) hover:underline">
-        {id}
-        <ExternalLink aria-hidden="true" className="size-3 shrink-0" />
-      </a>
-    </span>
+    <a href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-xs text-primary hover:underline">
+      {id}
+      <ExternalLink aria-hidden="true" className="size-3 shrink-0" />
+    </a>
   );
 }
 
@@ -524,11 +552,11 @@ function Delivered({ result }: { result: NonNullable<LiveNeed["result"]> }) {
 function SitePreview({ site }: { site: Site }) {
   return (
     <div className="mt-4">
-      <div className="relative h-[420px] overflow-hidden rounded-2xl bg-white ring-1 ring-foreground/10">
+      <div className="relative h-[420px] overflow-hidden rounded-xl border bg-white">
         <iframe title={site.title} srcDoc={site.html} sandbox="" className="absolute top-0 left-0 h-[840px] w-[200%] origin-top-left scale-50 border-0" />
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-        <span className="font-semibold">{site.title}</span>
+        <span className="font-medium">{site.title}</span>
         <span aria-label={`Palette: ${site.palette.join(", ")}`} role="img" className="flex gap-1">
           {site.palette.map((c) => (
             <span key={c} className="size-4 rounded-full ring-1 ring-foreground/10" style={{ background: c }} />
@@ -542,56 +570,12 @@ function SitePreview({ site }: { site: Site }) {
             href={site.live_url}
             target="_blank"
             rel="noreferrer"
-            className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-full bg-muted px-4 font-medium transition-colors duration-150 ease-out hover:bg-secondary"
+            className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 font-medium transition-colors duration-150 ease-out hover:bg-muted"
           >
-            Open Live Site <ExternalLink aria-hidden="true" className="size-3.5" />
+            Open live site <ExternalLink aria-hidden="true" className="size-3.5" />
           </a>
         ) : null}
       </div>
     </div>
-  );
-}
-
-// Every hire as a tile. Picking one swaps the view below in place; nothing navigates.
-function History({ needs, focus, onPick }: { needs: LiveNeed[]; focus: string; onPick: (id: string) => void }) {
-  return (
-    <section aria-label="Hires">
-      <ul className="flex gap-2 overflow-x-auto p-0.5">
-        {needs.map((n) => {
-          const on = n.id === focus;
-          const released = n.status === "waiting" || n.hold?.status === "released";
-          return (
-            <li key={n.id} className="shrink-0">
-              <button
-                type="button"
-                onClick={() => onPick(n.id)}
-                aria-pressed={on}
-                className={`relative flex h-[4.5rem] w-60 items-center after:absolute after:inset-y-0 after:left-full after:w-2 gap-3 rounded-2xl px-3 text-left text-sm transition-[background-color,box-shadow,transform] duration-150 ease-out active:scale-[0.97] ${
-                  on ? "bg-card ring-2 ring-primary" : "bg-muted hover:bg-secondary"
-                }`}
-              >
-                {n.result?.agent_id ? (
-                  <AgentAvatar card={{ id: n.result.agent_id, name: n.result.agent_name }} size="sm" />
-                ) : (
-                  <span aria-hidden="true" className={`size-8 shrink-0 rounded-full ${ACTIVE.has(n.status) ? "animate-pulse bg-primary" : "bg-secondary"}`} />
-                )}
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                    <span className="truncate">{ROLE_LABEL[n.role] ?? n.role}</span>
-                    <span className="tabular-nums">{clock(n.created_at)}</span>
-                  </span>
-                  <span className="block truncate font-medium">{n.text}</span>
-                  <span className={`block truncate text-xs tabular-nums ${released ? "text-muted-foreground" : "font-medium"}`}>
-                    {released
-                      ? "Released, nobody passed"
-                      : `${n.result?.agent_name ?? (ACTIVE.has(n.status) ? "In progress…" : "Done")}${n.hold?.status === "captured" ? ` · ${money(capturedCents(n.hold))}` : ""}`}
-                  </span>
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
   );
 }

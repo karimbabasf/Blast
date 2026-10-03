@@ -40,8 +40,6 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   /* From DESIGN.md (Figma): pastel colour blocks, one per screen, on a black and white frame. */
-  --color-block-blue: #0052ff;
-  --color-block-dark: #0a0b0d;
   --color-success: #05a35f;
   --color-warning: oklch(0.68 0.16 65);
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
