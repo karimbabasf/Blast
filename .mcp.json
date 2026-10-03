@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "blast": {
+      "type": "http",
+      "url": "https://blast-kbkotes-projects.vercel.app/api/mcp"
+    }
+  }
+}

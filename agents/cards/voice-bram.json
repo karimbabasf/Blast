@@ -1,8 +1,0 @@
-{
-  "id": "voice-bram",
-  "name": "Bram",
-  "skills": ["voice"],
-  "description": "Deep, calm voice. Late night FM.",
-  "price_cents": 350,
-  "real": true
-}

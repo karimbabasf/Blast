@@ -2,9 +2,11 @@
 
 import type { CalendarBackend, CalEvent, Check, MailBackend, Role } from "@/lib/market/types";
 import { GRACE_EMAIL, GRACE_ID, NEWSLETTER_IDS, laClock, seedEvents, seedMail, tuesday } from "./seed";
+import { AUTO_TOOLS, MEDICAL_TOOLS, SPECIALIST_TASKS, SPECIALIST_TOOL_NAMES, autoChecks, callSpecialistTool, medicalChecks } from "./specialists";
 import { worldState } from "./world";
 
-export type Backends = { calendar?: CalendarBackend; mail?: MailBackend };
+// worldId and builder reach the specialist tools: hand-ins land in the world, private data is the builder's.
+export type Backends = { calendar?: CalendarBackend; mail?: MailBackend; worldId?: string; builder?: string };
 
 export type ToolSpec = {
   type: "function";
@@ -49,7 +51,16 @@ const EMAIL_TOOLS: ToolSpec[] = [
 ];
 
 export function toolsFor(role: Role, allowed: string[]): ToolSpec[] {
-  const all = role === "calendar" ? CALENDAR_TOOLS : role === "email" ? EMAIL_TOOLS : [];
+  const all =
+    role === "calendar"
+      ? CALENDAR_TOOLS
+      : role === "email"
+        ? EMAIL_TOOLS
+        : role === "auto_repair"
+          ? AUTO_TOOLS
+          : role === "medical_billing"
+            ? MEDICAL_TOOLS
+            : [];
   return allowed.length ? all.filter((t) => allowed.includes(t.function.name)) : all;
 }
 
@@ -57,6 +68,7 @@ type Args = Record<string, unknown>;
 const s = (v: unknown) => (typeof v === "string" ? v : String(v ?? ""));
 
 export async function callTool(name: string, args: Args, b: Backends): Promise<unknown> {
+  if (SPECIALIST_TOOL_NAMES.has(name)) return callSpecialistTool(name, args, { worldId: b.worldId, builder: b.builder ?? "*" });
   const cal = () => {
     if (!b.calendar) throw new Error("no calendar connected");
     return b.calendar;
@@ -104,6 +116,7 @@ export const TASKS: Partial<Record<Role, string>> = {
     "Book a 30 minute call titled 'Rakha sync' with rakha@xochitl.coffee next Tuesday afternoon. Do not double book.",
   email:
     "Clean up the inbox: archive the newsletters, label the investor email 'Important', and draft a reply to Grace confirming Thursday at 3pm.",
+  ...SPECIALIST_TASKS,
 };
 
 const overlaps = (a: CalEvent, b: CalEvent) =>
@@ -158,5 +171,7 @@ async function emailChecks(worldId: string): Promise<Check[]> {
 export function checksFor(role: Role, worldId: string): Promise<Check[]> {
   if (role === "calendar") return calendarChecks(worldId);
   if (role === "email") return emailChecks(worldId);
+  if (role === "auto_repair") return autoChecks(worldId);
+  if (role === "medical_billing") return medicalChecks(worldId);
   return Promise.resolve([]);
 }

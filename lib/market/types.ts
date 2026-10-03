@@ -1,6 +1,6 @@
 // Contract for the agent marketplace (docs/plans/market-contract.md). Change only after telling the lead.
 
-export type Role = "calendar" | "email" | "coding" | "research";
+export type Role = "calendar" | "email" | "auto_repair" | "medical_billing" | "coding" | "research";
 export type Capability = "talk" | "act";
 export type RunsIn = "blast" | "sandbox" | "builder_url";
 

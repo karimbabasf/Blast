@@ -4,10 +4,12 @@ import type { MarketAgent, Role } from "@/lib/market/types";
 import { ensureBuilderAccount } from "@/lib/pay/stripe-market";
 import { admin } from "@/lib/supabase-admin";
 
-const ROLES: Role[] = ["calendar", "email", "coding", "research"];
+const ROLES: Role[] = ["calendar", "email", "auto_repair", "medical_billing", "coding", "research"];
 const ROLE_TOOLS: Record<Role, string[]> = {
   calendar: ["list_events", "create_event", "move_event", "cancel_event"],
   email: ["list_threads", "read_thread", "label_thread", "archive_thread", "create_draft"],
+  auto_repair: ["lookup_dtc", "search_tsb", "parts_price", "labor_time", "write_estimate"],
+  medical_billing: ["search_icd10", "search_cpt", "payer_rules", "submit_claim"],
   coding: [],
   research: [],
 };

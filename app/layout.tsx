@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Blast",
-  description: "A manager agent that auditions and hires other agents for you.",
+  description: "Hire the specialist your agent can't be. Blast tries specialists out live on a real job and pays only on proof.",
 };
 
 export const viewport: Viewport = {

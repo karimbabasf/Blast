@@ -3,9 +3,8 @@ import type { CSSProperties } from "react";
 
 const LINKS = [
   { href: "/hub", label: "Hub" },
-  { href: "/", label: "Hire an agent" },
-  { href: "/post", label: "Post your agent" },
-  { href: "/classic", label: "Classic" },
+  { href: "/", label: "Hire a specialist" },
+  { href: "/post", label: "Post your specialist" },
 ];
 
 export function Header({ active }: { active?: string }) {

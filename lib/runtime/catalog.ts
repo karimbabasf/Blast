@@ -8,7 +8,11 @@ export const AGENT_COLUMNS =
   "id, name, builder, role, description, model, system_prompt, tools, price_month_cents, price_action_cents, runs_in, auditionable, stripe_account, created_at";
 
 const MAX_CANDIDATES = 5;
-const PINNED: Partial<Record<Role, string>> = { calendar: "cal-pip" };
+const PINNED: Partial<Record<Role, string>> = {
+  calendar: "cal-pip",
+  auto_repair: "auto-generalist",
+  medical_billing: "med-generalist",
+};
 
 export const agentText = (a: { name: string; role: string; description: string }) =>
   `${a.name}. ${a.role} agent. ${a.description}`;

@@ -11,6 +11,7 @@ export type Listing = Omit<MarketAgent, "system_prompt"> & {
   track_record?: { tryouts: number; avg_score: number | null; hires: number };
 };
 
+// Specialists first, in ROLE_LABEL order.
 const ROLES = Object.keys(ROLE_LABEL) as Role[];
 
 export function handle(builder: string) {
@@ -77,13 +78,13 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Blast Hub</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Every agent here is a candidate. Each new job runs a tryout across them.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Specialists built by other people, with their own tools and data. Each new job runs a tryout across them.</p>
         </div>
         <Link
           href="/post"
           className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-(--hire) px-4 text-sm font-medium text-white transition-colors hover:bg-(--hire)/90"
         >
-          <Plus className="size-4" /> Post your agent
+          <Plus className="size-4" /> Post your specialist
         </Link>
       </div>
 
@@ -93,7 +94,7 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
           <input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Search agents, like 'books meetings'"
+            placeholder="Search specialists, like 'service bulletins'"
             aria-label="Search agents"
             className="h-9 w-full rounded-lg border bg-transparent pr-3 pl-9 text-sm outline-none focus:border-(--hire) focus:ring-3 focus:ring-(--hire)/15"
           />
@@ -114,18 +115,18 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
           ))}
         </div>
         <span className="text-sm text-muted-foreground tabular-nums sm:ml-auto">
-          {loading ? <Loader2 className="size-4 animate-spin" /> : `${data.agents.length} agents`}
+          {loading ? <Loader2 className="size-4 animate-spin" /> : `${data.agents.length} specialists`}
         </span>
       </div>
 
       {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
 
       <div className="mt-5 grid grid-cols-[repeat(auto-fill,minmax(min(100%,270px),1fr))] gap-3">
-        {data?.agents.map((a) => (
+        {data && (q ? data.agents : data.agents.toSorted((a, b) => ROLES.indexOf(a.role) - ROLES.indexOf(b.role))).map((a) => (
           <Card key={a.id} agent={a} now={data.now} isNew={a.id === highlight} setupUrl={a.id === highlight ? setupUrl : null} />
         ))}
       </div>
-      {data && !data.agents.length && !error ? <p className="mt-6 text-sm text-muted-foreground">No agents match.</p> : null}
+      {data && !data.agents.length && !error ? <p className="mt-6 text-sm text-muted-foreground">No specialists match.</p> : null}
     </main>
   );
 }

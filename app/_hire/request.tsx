@@ -2,24 +2,19 @@
 
 import { Check, Loader2, Mic, MousePointerClick, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { Capability, MarketAgent, Need, Role, Tryout, TryoutStep } from "@/lib/market/types";
 import { postJson } from "./db";
-import { modelName, money, replyText, ROLE_LABEL, runsIn, summarize } from "./format";
+import { modelName, money, outcome, tokenCost, replyText, ROLE_LABEL, runsIn, summarize } from "./format";
+import { HoldStrip, type LiveNeed, type LiveTryout, ResultCard, RunsOn, SourceBadge } from "./proof";
 import { useNeed } from "./use-need";
+import { useWatch, Waiting } from "./watch";
 
 const EXAMPLES: { label: string; text: string; caps: Capability[] }[] = [
-  {
-    label: "Calendar",
-    text: "I need an agent that manages my calendar. It should talk and book meetings for me.",
-    caps: ["talk", "act"],
-  },
-  {
-    label: "Email",
-    text: "I need an agent that keeps my inbox clean. It should archive newsletters, flag what matters and draft replies for me.",
-    caps: ["act"],
-  },
+  { label: "Mechanic", text: "Diagnose my 2014 Civic: check engine light, P0301, rough idle", caps: ["act"] },
+  { label: "Medical billing", text: "Code this clinic visit for billing", caps: ["act"] },
+  { label: "Calendar", text: "Manage my calendar", caps: ["talk", "act"] },
 ];
 
 type Question = { id: string; question: string; options: string[] };
@@ -51,7 +46,7 @@ const TASKS: Partial<Record<Role, string>> = {
   email: "Clean up the inbox: archive the newsletters, label the investor email 'Important', and draft a reply to Grace confirming Thursday at 3pm.",
 };
 
-export function Request({ initialNeed }: { initialNeed: string | null }) {
+export function Request({ initialNeed, watch = false }: { initialNeed: string | null; watch?: boolean }) {
   const [text, setText] = useState(EXAMPLES[0].text);
   const [caps, setCaps] = useState<Capability[]>(EXAMPLES[0].caps);
   const [needId, setNeedId] = useState<string | null>(initialNeed);
@@ -63,6 +58,14 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [tags, setTags] = useState<Answer[]>([]);
   const view = useNeed(needId);
+  const follow = useCallback((id: string) => {
+    setPosted([]);
+    setListed(null);
+    setTags([]);
+    setNeedId(id);
+    window.history.replaceState(null, "", `/?need=${id}&watch=1`);
+  }, []);
+  useWatch(watch, follow);
 
   const toggle = (c: Capability) =>
     setCaps((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
@@ -114,12 +117,15 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-12">
-      <form onSubmit={submit} className="mx-auto max-w-2xl">
-        <label htmlFor="need" className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          Describe the agent you need
+      {watch && !needId ? <Waiting /> : null}
+      <form onSubmit={submit} className={watch ? "hidden" : "mx-auto max-w-2xl"}>
+        <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">Blast</h1>
+        <label htmlFor="need" className="mt-3 block text-xl font-medium tracking-tight sm:text-2xl">
+          Hire the specialist your agent can&apos;t be.
         </label>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Every listed agent for the job tries the same task on a private copy of your account. You hire the one that did it best.
+        <p className="mt-2 text-base text-muted-foreground">
+          Specialists are built by other people, with their own tools and data. Blast tries them out live on your real job, holds
+          the money, and pays only when the work proves out.
         </p>
         <div className="mt-5 rounded-xl border bg-card shadow-xs focus-within:border-(--hire) focus-within:ring-3 focus-within:ring-(--hire)/15">
           <textarea
@@ -141,7 +147,7 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
             </Toggle>
             <Button type="submit" disabled={busy || !text.trim()} className="ml-auto h-9 bg-(--hire) px-4 hover:bg-(--hire)/90">
               {busy ? <Loader2 className="animate-spin" /> : null}
-              {busy && !questions ? "Reading" : "Find agents"}
+              {busy && !questions ? "Reading" : "Find specialists"}
             </Button>
           </div>
         </div>
@@ -209,7 +215,7 @@ function Candidates({
   steps,
 }: {
   needId: string;
-  need: Need | null;
+  need: LiveNeed | null;
   agents: MarketAgent[];
   tags: Answer[];
   listed: number;
@@ -244,24 +250,39 @@ function Candidates({
     }
   }
 
-  const task = need ? TASKS[need.role] : undefined;
+  const task = need ? (TASKS[need.role] ?? need.text) : undefined;
 
   return (
     <section className="mt-12">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <h2 className="text-lg font-semibold tracking-tight">
-          {need ? `${ROLE_LABEL[need.role]} agents` : "Finding agents"}
+      <SourceBadge need={need} />
+      <div className="mt-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+        <h2 className="text-2xl font-semibold tracking-tight">
+          {need ? `${ROLE_LABEL[need.role] ?? need.role} specialists` : "Finding specialists"}
           <span className="ml-2 font-normal text-muted-foreground tabular-nums">{field.length || ""}</span>
         </h2>
-        <p className="text-sm text-muted-foreground">
-          {!tryouts.length ? "Starting tryouts" : running ? "Tryouts running" : winnerId ? "Tryouts done" : "No agent passed"}
+        <p className="text-base text-muted-foreground">
+          {need?.status === "checkout"
+            ? "Winner doing the real job"
+            : need?.status === "hired"
+              ? "Done"
+              : need?.status === "waiting"
+                ? "Nobody passed, hold released"
+                : !tryouts.length
+                  ? "Starting tryouts"
+                  : running
+                    ? "Tryouts running"
+                    : winnerId
+                      ? "Tryouts done"
+                      : "No specialist passed"}
         </p>
       </div>
       {task ? (
-        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-          <span className="text-foreground">The task:</span> {task}
+        <p className="mt-2 max-w-3xl text-lg text-muted-foreground">
+          <span className="text-foreground">The job:</span> {task}
         </p>
       ) : null}
+      <HoldStrip hold={need?.hold} />
+      <ResultCard result={need?.result} />
       {tags.length ? (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {tags.map((t) => (
@@ -293,13 +314,14 @@ function Candidates({
           ))}
         </div>
       )}
+      <RunsOn need={need} models={[...new Set(field.map((a) => a.model))]} />
       {need ? (
         <p className="mt-6 text-sm text-muted-foreground">
           Candidates come from{" "}
           <Link href={`/hub?role=${need.role}`} className="font-medium text-(--hire) hover:underline">
             Blast Hub
           </Link>
-          : <span className="tabular-nums">{listed}</span> agents for this role.
+          : <span className="tabular-nums">{listed}</span> specialists for this role.
         </p>
       ) : null}
     </section>
@@ -316,7 +338,7 @@ function Candidate({
   onHire,
 }: {
   agent: MarketAgent;
-  tryout: Tryout | null;
+  tryout: LiveTryout | null;
   steps: TryoutStep[];
   winner: boolean;
   leading: boolean;
@@ -333,7 +355,7 @@ function Candidate({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="truncate font-semibold">{agent.name}</h3>
+            <h3 className="truncate text-lg font-semibold">{agent.name}</h3>
             {winner ? <span className="rounded-full bg-(--hire) px-2 py-0.5 text-xs font-medium text-white">Winner</span> : null}
             {leading ? <span className="rounded-full bg-(--hire-soft) px-2 py-0.5 text-xs font-medium text-(--hire)">Leading</span> : null}
           </div>
@@ -352,26 +374,37 @@ function Candidate({
         <div className="tabular-nums">
           <span className="text-foreground">{money(agent.price_action_cents)}</span> per action
         </div>
+        {tryout?.usage?.cost_usd != null ? (
+          <div className="tabular-nums" title={`${tryout.usage.input_tokens ?? 0} in, ${tryout.usage.output_tokens ?? 0} out`}>
+            <span className="text-foreground">{tokenCost(tryout.usage.cost_usd)}</span> in tokens
+          </div>
+        ) : null}
       </dl>
 
       {!agent.auditionable ? (
         <p className="mt-4 text-sm text-muted-foreground">Listed only. Blast cannot test this role yet.</p>
       ) : (
         <>
-          <ol className="mt-4 max-h-64 space-y-1 overflow-y-auto rounded-lg bg-muted/60 p-3 font-mono text-xs leading-relaxed">
+          <ol className="mt-4 max-h-80 space-y-1.5 overflow-y-auto rounded-lg bg-muted/60 p-3 font-mono text-sm leading-relaxed">
             {!steps.length ? (
               <li className="text-muted-foreground">{tryout ? "Waiting for the first step" : "Queued"}</li>
             ) : (
               steps.map((s) =>
                 s.kind === "say" ? (
-                  <li key={s.id} className="font-sans text-[13px] text-foreground">
+                  <li key={s.id} className="font-sans text-base text-foreground">
                     &ldquo;{replyText(s.input, s.output)}&rdquo;
                   </li>
                 ) : (
                   <li key={s.id} className="flex gap-2 animate-in fade-in slide-in-from-bottom-1 duration-300">
-                    <span className="w-4 shrink-0 text-right text-muted-foreground tabular-nums">{s.n}</span>
-                    <span className="min-w-0">
+                    <span className="w-5 shrink-0 text-right text-muted-foreground tabular-nums">{s.n}</span>
+                    <span className="min-w-0 break-words">
                       <span className="text-(--hire)">{s.name}</span> {summarize(s.name, s.input)}
+                      {outcome(s.name, s.output) ? (
+                        <span className="text-foreground">
+                          {" "}
+                          <span className="text-muted-foreground">-&gt;</span> {outcome(s.name, s.output)}
+                        </span>
+                      ) : null}
                     </span>
                   </li>
                 ),

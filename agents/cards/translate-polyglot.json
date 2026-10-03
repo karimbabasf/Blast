@@ -1,8 +1,0 @@
-{
-  "id": "translate-polyglot",
-  "name": "Polyglot",
-  "skills": ["translate"],
-  "description": "Translates copy into 30 languages.",
-  "price_cents": 200,
-  "real": false
-}
