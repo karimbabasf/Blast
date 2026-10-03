@@ -1,5 +1,4 @@
 import { Check } from "lucide-react";
-import type { AgentCard } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAgentLogo } from "./agent-logo";
 
@@ -7,6 +6,7 @@ const SIZES = {
   xs: { box: "size-6", icon: "size-3", text: "text-[0.625rem]" },
   sm: { box: "size-8", icon: "size-3.5", text: "text-xs" },
   md: { box: "size-10", icon: "size-4.5", text: "text-sm" },
+  lg: { box: "size-12", icon: "size-5", text: "text-base" },
 };
 
 export function AgentAvatar({
@@ -16,7 +16,7 @@ export function AgentAvatar({
   verified,
   className,
 }: {
-  card: Pick<AgentCard, "id" | "name">;
+  card: { id: string; name: string };
   size?: keyof typeof SIZES;
   status?: "working";
   verified?: boolean;

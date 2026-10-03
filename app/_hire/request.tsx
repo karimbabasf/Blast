@@ -3,14 +3,14 @@
 import { Check, Loader2, Mic, MousePointerClick, X } from "lucide-react";
 import { motion } from "motion/react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AgentAvatar } from "../_components/agent-avatar";
 import { LogoFactory } from "../_components/agent-logo";
-import { scoreTone } from "../_components/audition-card";
+import { scoreTone } from "../_components/score-tone";
 import type { Capability, MarketAgent, Need, Role, Tryout, TryoutStep } from "@/lib/market/types";
 import { postJson } from "./db";
-import { modelName, money, replyText, ROLE_LABEL, runsIn, summarize } from "./format";
+import { modelName, money, ROLE_LABEL, summarize } from "./format";
 import { useNeed } from "./use-need";
 
 const EXAMPLES: { label: string; text: string; caps: Capability[] }[] = [
@@ -164,9 +164,15 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
                 {ex.label}
               </button>
             ))}
-            <Button type="submit" disabled={busy || !text.trim()} className="ml-auto h-9 w-28">
-              {busy ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
-              {busy && !questions ? "Reading…" : "Find Agents"}
+            <Button type="submit" disabled={busy || !text.trim()} className="ml-auto h-9 w-32">
+              {busy ? (
+                <>
+                  <Loader2 aria-hidden="true" className="animate-spin" />
+                  {questions ? "Finding…" : "Reading…"}
+                </>
+              ) : (
+                "Find Agents"
+              )}
             </Button>
           </div>
         </div>
@@ -219,7 +225,7 @@ function Steps({ phase }: { phase: number }) {
             <span
               aria-hidden="true"
               className={`h-1 rounded-full transition-colors duration-200 ease-out ${
-                phase >= index ? "bg-foreground" : "bg-muted"
+                phase > index || phase === 3 ? "bg-success" : phase === index ? "bg-foreground" : "bg-muted"
               } ${index === phase && phase < 3 ? "animate-pulse" : ""}`}
             />
             <span
@@ -367,6 +373,7 @@ function Candidates({
           >
             <Candidate
               agent={a}
+              rank={running || !byAgent.get(a.id)?.score ? null : index + 1}
               tryout={byAgent.get(a.id) ?? null}
               steps={steps.filter((s) => s.tryout_id === byAgent.get(a.id)?.id)}
               winner={a.id === winnerId}
@@ -379,7 +386,7 @@ function Candidates({
         {Array.from({ length: empty }, (_, index) => (
           <li
             key={`slot-${index}`}
-            className={`${CARD_HEIGHT} flex items-center justify-center rounded-xl bg-muted/50 text-sm text-muted-foreground/70`}
+            className={`${CARD_HEIGHT} flex items-center justify-center rounded-2xl bg-muted/50 text-sm text-muted-foreground/70`}
           >
             Waiting for a candidate
           </li>
@@ -402,10 +409,13 @@ function Candidates({
 }
 
 // Every card and every empty slot is this tall, so nothing below ever moves.
-const CARD_HEIGHT = "h-[27rem]";
+const CARD_HEIGHT = "h-[17.5rem]";
+
+const SHORT_MODEL = /^(Claude|Gemini) /;
 
 function Candidate({
   agent,
+  rank,
   tryout,
   steps,
   winner,
@@ -414,6 +424,7 @@ function Candidate({
   onHire,
 }: {
   agent: MarketAgent;
+  rank: number | null;
   tryout: Tryout | null;
   steps: TryoutStep[];
   winner: boolean;
@@ -422,97 +433,93 @@ function Candidate({
   onHire: () => void;
 }) {
   const status = tryout?.status;
-  const log = useRef<HTMLOListElement>(null);
-
-  // Keep the newest tool call in view while the agent works.
-  useEffect(() => {
-    log.current?.scrollTo({ top: log.current.scrollHeight });
-  }, [steps.length]);
+  const checks = tryout?.checks ?? [];
+  const passed = checks.filter((c) => c.passed).length;
+  const failed = checks.find((c) => !c.passed);
+  const lastStep = steps.filter((s) => s.kind === "tool").at(-1);
+  const scored = status === "scored" && tryout?.score != null;
 
   return (
     <article
-      className={`${CARD_HEIGHT} flex flex-col gap-2 overflow-hidden rounded-xl bg-card p-3 ring-1 ring-foreground/10 transition-shadow duration-200 ease-out ${
-        winner ? "ring-2 ring-success" : ""
+      title={tryout?.reason ?? undefined}
+      className={`${CARD_HEIGHT} relative flex flex-col gap-3 overflow-hidden rounded-2xl p-3.5 ring-1 transition-[box-shadow,background-color] duration-200 ease-out ${
+        winner ? "bg-success/5 ring-2 ring-success" : "bg-card ring-foreground/10"
       }`}
     >
-      <div className="flex items-center gap-2.5">
-        <AgentAvatar card={agent} status={status === "running" ? "working" : undefined} verified={winner} />
-        <h3 className="min-w-0 flex-1 truncate text-base font-semibold" translate="no">
-          {agent.name}
-        </h3>
-        <Score tryout={tryout} auditionable={agent.auditionable} />
+      {rank ? (
+        <span
+          className={`absolute top-3 right-3 flex size-6 items-center justify-center rounded-full text-xs font-semibold tabular-nums ${
+            rank === 1 ? "bg-success text-white" : "bg-muted text-muted-foreground"
+          }`}
+          aria-label={`Rank ${rank}`}
+        >
+          {rank}
+        </span>
+      ) : null}
+
+      <div className="flex items-center gap-3">
+        <CheckRing checks={checks} running={status === "running"}>
+          <AgentAvatar card={agent} size="lg" />
+        </CheckRing>
+        <div className="min-w-0 flex-1 pr-6">
+          <h3 className="truncate text-base leading-5 font-semibold" translate="no">
+            {agent.name}
+          </h3>
+          <p className="truncate text-xs text-muted-foreground" title={`${modelName(agent.model)} by ${agent.builder}`}>
+            {modelName(agent.model).replace(SHORT_MODEL, "")} · {agent.builder}
+          </p>
+          <p className="mt-0.5 h-4 text-xs font-medium">
+            {winner ? (
+              <span className="text-success">Winner</span>
+            ) : leading ? (
+              <span className="text-success">Leading</span>
+            ) : status === "running" ? (
+              <span className="animate-pulse text-muted-foreground">Trying out…</span>
+            ) : !agent.auditionable ? (
+              <span className="text-muted-foreground">Listed only</span>
+            ) : null}
+          </p>
+        </div>
       </div>
 
-      <div className="flex h-5 items-center gap-1.5">
-        {winner ? <span className="shrink-0 rounded-full bg-success px-2 py-0.5 text-xs font-medium text-white">Winner</span> : null}
-        {leading ? <span className="shrink-0 rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success">Leading</span> : null}
-        <p className="truncate text-sm text-muted-foreground" title={`${modelName(agent.model)} by ${agent.builder}`}>
-          {modelName(agent.model)} by {agent.builder}
-        </p>
-      </div>
+      <dl className="grid grid-cols-3 gap-1.5">
+        <Stat
+          label="Score"
+          tone={scored ? scoreTone(tryout.score ?? 0) : status === "failed" ? "bg-destructive/10 text-destructive" : ""}
+          value={scored ? (tryout.score ?? 0).toFixed(1) : status === "failed" ? "Fail" : null}
+        />
+        <Stat
+          label="Checks"
+          tone={checks.length ? (failed ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success") : ""}
+          value={checks.length ? `${passed}/${checks.length}` : null}
+        />
+        <Stat label="Monthly" tone="" value={money(agent.price_month_cents)} />
+      </dl>
 
-      <p className="truncate text-xs text-muted-foreground tabular-nums" title={runsIn(agent.runs_in)}>
-        <span className="text-foreground">{money(agent.price_month_cents)}</span>/mo ·{" "}
-        <span className="text-foreground">{money(agent.price_action_cents)}</span> per action · {runsIn(agent.runs_in)}
-      </p>
-
-      <ol ref={log} className="h-[5.25rem] shrink-0 space-y-1 overflow-y-auto overscroll-contain rounded-lg bg-muted/60 p-2.5 font-mono text-xs leading-relaxed">
-        {!agent.auditionable ? (
-          <li className="font-sans text-muted-foreground">Listed only. Blast cannot test this role yet.</li>
-        ) : !steps.length ? (
-          <li className="text-muted-foreground">{tryout ? "Waiting for the first step…" : "Queued"}</li>
+      {/* One line, always present: what the agent is doing, or how it ended. */}
+      <p className="flex h-5 items-center gap-1.5 text-[13px]">
+        {failed ? (
+          <>
+            <X aria-hidden="true" className="size-3.5 shrink-0 text-destructive" strokeWidth={3} />
+            <span className="truncate font-medium text-destructive" title={failed.name}>
+              {failed.name}
+            </span>
+          </>
+        ) : checks.length ? (
+          <>
+            <Check aria-hidden="true" className="size-3.5 shrink-0 text-success" strokeWidth={3} />
+            <span className="truncate font-medium text-success">All checks passed</span>
+          </>
+        ) : lastStep ? (
+          <>
+            <span aria-hidden="true" className="size-1.5 shrink-0 animate-pulse rounded-full bg-foreground" />
+            <span className="truncate font-mono text-xs text-muted-foreground">
+              <span className="text-foreground">{lastStep.name}</span> {summarize(lastStep.name, lastStep.input)}
+            </span>
+          </>
         ) : (
-          steps.map((s) =>
-            s.kind === "say" ? (
-              <li key={s.id} className="font-sans text-[13px] text-foreground">
-                &ldquo;{replyText(s.input, s.output)}&rdquo;
-              </li>
-            ) : (
-              <li key={s.id} className="flex gap-2">
-                <span className="w-4 shrink-0 text-right text-muted-foreground tabular-nums">{s.n}</span>
-                <span className="min-w-0">
-                  <span className="font-medium text-foreground">{s.name}</span>{" "}
-                  <span className="text-muted-foreground">{summarize(s.name, s.input)}</span>
-                </span>
-              </li>
-            ),
-          )
+          <span className="text-muted-foreground/70">{tryout ? "Starting…" : agent.auditionable ? "Queued" : ""}</span>
         )}
-        {status === "running" && steps.length ? (
-          <li className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 aria-hidden="true" className="size-3 animate-spin" /> working…
-          </li>
-        ) : null}
-      </ol>
-
-      {/* Six rows are reserved, so the checks land without growing the card. */}
-      <ul className="flex h-[8.25rem] shrink-0 flex-col text-[13px]">
-        {tryout?.checks?.length ? (
-          tryout.checks.slice(0, 6).map((c) => (
-            <li
-              key={c.name}
-              title={c.name}
-              className={`flex h-[1.375rem] items-center gap-1.5 rounded px-1 ${
-                c.passed ? "" : "bg-destructive/10 font-semibold text-destructive"
-              }`}
-            >
-              {c.passed ? (
-                <Check className="size-3.5 shrink-0 text-success" aria-label="Passed" />
-              ) : (
-                <X className="size-3.5 shrink-0" strokeWidth={3} aria-label="Failed" />
-              )}
-              <span className="truncate">{c.name}</span>
-            </li>
-          ))
-        ) : (
-          <li className="px-1 text-muted-foreground/70">
-            {agent.auditionable ? "Checks land when the tryout ends." : ""}
-          </li>
-        )}
-      </ul>
-
-      <p className="line-clamp-2 h-8 shrink-0 text-xs text-muted-foreground" title={tryout?.reason ?? undefined}>
-        {tryout?.reason}
       </p>
 
       <Button
@@ -528,28 +535,77 @@ function Candidate({
   );
 }
 
-function Score({ tryout, auditionable }: { tryout: Tryout | null; auditionable: boolean }) {
-  if (!auditionable) return null;
-  if (!tryout || tryout.status === "running") {
-    return (
-      <p className="flex h-7 w-12 shrink-0 animate-pulse items-center justify-end text-sm text-muted-foreground">
-        …<span className="sr-only">Running</span>
-      </p>
-    );
-  }
-  if (tryout.status === "failed" || tryout.score == null) {
-    return <p className="shrink-0 rounded-md bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive">Failed</p>;
-  }
+// A number first, its label under it. A missing value keeps the tile's size.
+function Stat({ label, value, tone }: { label: string; value: string | null; tone: string }) {
   return (
-    <motion.p
-      initial={{ opacity: 0, filter: "blur(4px)", transform: "scale(0.96)" }}
-      animate={{ opacity: 1, filter: "blur(0px)", transform: "scale(1)" }}
-      transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
-      className={`shrink-0 rounded-md px-1.5 py-0.5 text-lg leading-none font-semibold tabular-nums ${scoreTone(tryout.score)}`}
-    >
-      {tryout.score.toFixed(1)}
-      <span className="text-xs font-normal opacity-70">/10</span>
-    </motion.p>
+    <div className={`flex h-13 flex-col justify-center rounded-lg px-2 transition-colors duration-200 ease-out ${tone || "bg-muted/60"}`}>
+      <dd className="h-6 text-lg leading-6 font-semibold tabular-nums">
+        {value ? (
+          <motion.span
+            key={value}
+            initial={{ opacity: 0, filter: "blur(4px)" }}
+            animate={{ opacity: 1, filter: "blur(0px)" }}
+            transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
+            className="block"
+          >
+            {value}
+          </motion.span>
+        ) : (
+          <span className="animate-pulse text-muted-foreground/50">…</span>
+        )}
+      </dd>
+      <dt className="truncate text-[11px] leading-4 opacity-70">{label}</dt>
+    </div>
+  );
+}
+
+const RING = 64;
+const RADIUS = 29;
+const CIRCLE = 2 * Math.PI * RADIUS;
+
+// The checks as a ring around the logo: one arc per check, green or red.
+function CheckRing({
+  checks,
+  running,
+  children,
+}: {
+  checks: { name: string; passed: boolean }[];
+  running: boolean;
+  children: React.ReactNode;
+}) {
+  const count = checks.length || 6;
+  const gap = 5;
+  const arc = CIRCLE / count - gap;
+
+  return (
+    <div className="relative flex size-16 shrink-0 items-center justify-center">
+      <svg
+        aria-hidden="true"
+        viewBox={`0 0 ${RING} ${RING}`}
+        className={`absolute inset-0 -rotate-90 ${running ? "animate-pulse" : ""}`}
+      >
+        {Array.from({ length: count }, (_, index) => {
+          const check = checks[index];
+          return (
+            <circle
+              key={index}
+              cx={RING / 2}
+              cy={RING / 2}
+              r={RADIUS}
+              fill="none"
+              strokeWidth={3.5}
+              strokeLinecap="round"
+              strokeDasharray={`${arc} ${CIRCLE - arc}`}
+              strokeDashoffset={-(index * (arc + gap))}
+              className={`transition-[stroke] duration-300 ease-out ${
+                !check ? "stroke-muted" : check.passed ? "stroke-success" : "stroke-destructive"
+              }`}
+            />
+          );
+        })}
+      </svg>
+      {children}
+    </div>
   );
 }
 
@@ -628,9 +684,15 @@ function Questions({
       </ol>
       <div className="mt-4 flex items-center justify-end gap-3">
         <span className="hidden text-xs text-muted-foreground sm:inline">Number keys pick, Enter sends</span>
-        <Button type="button" onClick={onDone} disabled={busy} className="h-9 px-4">
-          {busy ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
-          Find Agents
+        <Button type="button" onClick={onDone} disabled={busy} className="h-9 w-32">
+          {busy ? (
+            <>
+              <Loader2 aria-hidden="true" className="animate-spin" />
+              Finding…
+            </>
+          ) : (
+            "Find Agents"
+          )}
         </Button>
       </div>
     </div>

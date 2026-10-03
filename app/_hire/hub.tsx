@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import type { MarketAgent, Role } from "@/lib/market/types";
 import { AgentAvatar } from "../_components/agent-avatar";
 import { LogoFactory } from "../_components/agent-logo";
+import { scoreTone } from "../_components/score-tone";
 import { modelName, money, ROLE_LABEL, runsIn } from "./format";
 
 export type Listing = Omit<MarketAgent, "system_prompt"> & {
@@ -135,58 +136,62 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
 
 function Card({ agent: a, now, isNew, setupUrl }: { agent: Listing; now: number; isNew: boolean; setupUrl: string | null }) {
   const tr = a.track_record;
+  const average = tr?.avg_score ?? null;
   return (
     <article
       id={`agent-${a.id}`}
-      className={`flex flex-col rounded-xl border bg-card p-3.5 text-sm ${isNew ? "border-(--hire) shadow-[0_0_0_1px_var(--hire)]" : ""}`}
+      className={`flex flex-col gap-3 rounded-2xl bg-card p-3.5 text-sm ring-1 ${isNew ? "ring-2 ring-success" : "ring-foreground/10"}`}
     >
-      <div className="flex items-start justify-between gap-2.5">
-        <AgentAvatar card={a} />
+      <div className="flex items-center gap-3">
+        <AgentAvatar card={a} size="lg" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h2 className="truncate font-semibold">{a.name}</h2>
-            {isNew ? <span className="rounded-full bg-(--hire) px-2 py-px text-xs font-medium text-white">Just posted</span> : null}
+            <h2 className="truncate text-base leading-5 font-semibold">{a.name}</h2>
+            {isNew ? <span className="rounded-full bg-success px-2 py-px text-xs font-medium text-white">Just posted</span> : null}
           </div>
-          <p className="truncate text-muted-foreground">{handle(a.builder)}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {handle(a.builder)} · {modelName(a.model)}
+          </p>
         </div>
         <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs">{ROLE_LABEL[a.role] ?? a.role}</span>
       </div>
-      {a.description ? <p className="mt-2 line-clamp-2 text-muted-foreground">{a.description}</p> : null}
-      <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-xs">
-        <dt className="text-muted-foreground">Model</dt>
-        <dd className="truncate">{modelName(a.model)}</dd>
-        <dt className="text-muted-foreground">Runs</dt>
-        <dd className="truncate">{runsIn(a.runs_in).replace(/^Runs /, "")}</dd>
-        <dt className="text-muted-foreground">Price</dt>
-        <dd className="tabular-nums">
-          {money(a.price_month_cents)}/mo · {money(a.price_action_cents)}/action
-        </dd>
-        <dt className="text-muted-foreground">Record</dt>
-        <dd className="tabular-nums">
-          {!tr || (!tr.tryouts && !tr.hires) ? (
-            <span className="text-(--hire)">New</span>
-          ) : (
-            <>
-              {tr.tryouts} {tr.tryouts === 1 ? "tryout" : "tryouts"} · {tr.avg_score != null ? `avg ${tr.avg_score.toFixed(1)}` : "no score"} · {tr.hires} hired
-            </>
-          )}
-        </dd>
+
+      <dl className="grid grid-cols-4 gap-1.5">
+        <Stat label="Score" value={average != null ? average.toFixed(1) : "New"} tone={average != null ? scoreTone(average) : ""} />
+        <Stat label="Tryouts" value={String(tr?.tryouts ?? 0)} tone="" />
+        <Stat label="Hires" value={String(tr?.hires ?? 0)} tone={tr?.hires ? "bg-success/10 text-success" : ""} />
+        <Stat label="Monthly" value={money(a.price_month_cents)} tone="" />
       </dl>
-      <div className="mt-auto flex items-center justify-between gap-2 pt-3 text-xs text-muted-foreground">
-        <span>{ago(a.created_at, now)}</span>
-        {!a.auditionable ? <span>Listed only</span> : null}
+
+      {a.description ? <p className="line-clamp-1 text-muted-foreground" title={a.description}>{a.description}</p> : null}
+
+      <div className="mt-auto flex items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span className="truncate">
+          {runsIn(a.runs_in)} · {money(a.price_action_cents)}/action
+        </span>
+        <span className="shrink-0">{a.auditionable ? ago(a.created_at, now) : "Listed only"}</span>
       </div>
       {isNew ? (
-        <div className="mt-3 flex items-center gap-2 border-t pt-3 text-xs">
+        <div className="flex items-center gap-2 border-t pt-3 text-xs">
           <span className={`size-2 rounded-full ${a.stripe_account ? "bg-success" : "bg-warning"}`} />
           {a.stripe_account ? "Payouts through Stripe Connect" : "Payout account not set up yet"}
           {setupUrl ? (
-            <a href={setupUrl} className="ml-auto font-medium text-(--hire) hover:underline">
+            <a href={setupUrl} className="ml-auto font-medium underline-offset-4 hover:underline">
               Finish payout setup
             </a>
           ) : null}
         </div>
       ) : null}
     </article>
+  );
+}
+
+// A number first, its label under it.
+function Stat({ label, value, tone }: { label: string; value: string; tone: string }) {
+  return (
+    <div className={`flex h-13 flex-col justify-center rounded-lg px-2 ${tone || "bg-muted/60"}`}>
+      <dd className="text-lg leading-6 font-semibold tabular-nums">{value}</dd>
+      <dt className="truncate text-[11px] leading-4 opacity-70">{label}</dt>
+    </div>
   );
 }
