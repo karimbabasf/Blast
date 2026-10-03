@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 export function GoalForm({
   defaultGoal,
@@ -24,18 +24,17 @@ export function GoalForm({
       <label htmlFor="goal" className="text-sm font-medium">
         Your Goal
       </label>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-        <Textarea
+      <div className="flex gap-3">
+        <Input
           id="goal"
           name="goal"
-          rows={2}
           required
           autoComplete="off"
           defaultValue={defaultGoal}
           placeholder="Make me a 15 second radio ad for my coffee shop…"
-          className="min-h-16 flex-1 text-base"
+          className="h-11 flex-1 px-3.5 text-base md:text-base"
         />
-        <Button type="submit" size="lg" disabled={busy} className="sm:mt-0.5">
+        <Button type="submit" disabled={busy} className="h-11 w-36 text-sm">
           {busy ? "Working…" : done ? "Run Again" : "Start Auditions"}
         </Button>
       </div>
