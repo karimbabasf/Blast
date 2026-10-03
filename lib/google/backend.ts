@@ -1,20 +1,21 @@
-// The hired agent's live backends: the real Google Calendar and Gmail of the connected demo account.
-// Every write also refreshes the live_* mirror rows so the app streams the change. Without a connected
-// account the same interfaces run on a Supabase demo account kept in the live_* tables, so the demo never breaks.
-// Mail has no send function on purpose: the agent can only draft.
+// The hired agent's live backends on the connected Google account, fenced to demo data only: one secondary
+// calendar named "Blast demo" (never primary) and the Gmail threads labelled "Blast demo". Nothing else in the
+// account is listed, read or changed. Every write also refreshes the live_* mirror rows so the app streams the
+// change. Without a connected account the same interfaces run on a Supabase demo account kept in the live_*
+// tables, so the demo never breaks. Mail has no send function on purpose: the agent can only draft.
 
-import { account, accessToken } from "@/lib/google/oauth";
+import { account, accessToken, type Account } from "@/lib/google/oauth";
 import type { CalEvent, CalendarBackend, Draft, MailBackend, MailThread } from "@/lib/market/types";
 import { seedEvents, seedMail, TZ } from "@/lib/roles/seed";
 import { admin } from "@/lib/supabase-admin";
 
-type Account = NonNullable<Awaited<ReturnType<typeof account>>>;
+export const DEMO_NAME = "Blast demo";
 
-const CAL = "https://www.googleapis.com/calendar/v3/calendars/primary";
+const CALS = "https://www.googleapis.com/calendar/v3";
 const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
-const SYSTEM_LABELS = ["INBOX", "IMPORTANT", "STARRED", "UNREAD", "SPAM", "TRASH"];
-// Everything but sent, drafts, spam and trash, so archived threads stay visible in the mirror as archived.
-const MIRROR_QUERY = "-in:sent -in:drafts -in:spam -in:trash";
+const SYSTEM_LABELS = ["INBOX", "IMPORTANT", "STARRED", "UNREAD"];
+// Demo events never carry alarms: the owner's Mac fires full-screen alerts on events that do.
+const NO_REMINDERS = { useDefault: false, overrides: [] };
 
 async function gfetch<T>(acct: Account, url: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   const token = await accessToken(acct);
@@ -34,6 +35,36 @@ async function gfetch<T>(acct: Account, url: string, init: { method?: string; bo
 
 function check(error: { message: string } | null, what: string) {
   if (error) throw new Error(`${what}: ${error.message}`);
+}
+
+type Scoped = Account & { calendar_id: string; label_id: string };
+
+// Finds or creates the "Blast demo" calendar and label, and stores their ids on the account row.
+export async function demoScope(acct: Account): Promise<Scoped> {
+  let { calendar_id, label_id } = acct;
+  if (!calendar_id) {
+    const { items = [] } = await gfetch<{ items?: { id: string; summary: string; primary?: boolean }[] }>(
+      acct,
+      `${CALS}/users/me/calendarList?minAccessRole=owner`,
+    );
+    calendar_id =
+      items.find((c) => c.summary === DEMO_NAME && !c.primary)?.id ??
+      (await gfetch<{ id: string }>(acct, `${CALS}/calendars`, { method: "POST", body: { summary: DEMO_NAME, timeZone: TZ } })).id;
+  }
+  if (!label_id) {
+    const { labels = [] } = await gfetch<{ labels?: GLabel[] }>(acct, `${GMAIL}/labels`);
+    label_id =
+      labels.find((l) => l.name === DEMO_NAME)?.id ??
+      (await gfetch<GLabel>(acct, `${GMAIL}/labels`, {
+        method: "POST",
+        body: { name: DEMO_NAME, labelListVisibility: "labelShow", messageListVisibility: "show" },
+      })).id;
+  }
+  if (calendar_id !== acct.calendar_id || label_id !== acct.label_id) {
+    check((await admin().from("google_accounts").update({ calendar_id, label_id }).eq("id", acct.id)).error, "google_accounts scope update failed");
+  }
+  if (calendar_id === "primary" || calendar_id === acct.email) throw new Error("Refusing to use the primary calendar");
+  return { ...acct, calendar_id, label_id };
 }
 
 // ---------- Calendar ----------
@@ -69,7 +100,11 @@ async function mirrorEvent(e: CalEvent) {
   check(error, "live_events upsert failed");
 }
 
-async function googleEvents(acct: Account, fromIso: string, toIso: string): Promise<CalEvent[]> {
+function calUrl(acct: Scoped, path = ""): string {
+  return `${CALS}/calendars/${encodeURIComponent(acct.calendar_id)}/events${path}`;
+}
+
+async function googleEvents(acct: Scoped, fromIso: string, toIso: string): Promise<CalEvent[]> {
   const q = new URLSearchParams({
     timeMin: new Date(fromIso).toISOString(),
     timeMax: new Date(toIso).toISOString(),
@@ -77,38 +112,43 @@ async function googleEvents(acct: Account, fromIso: string, toIso: string): Prom
     orderBy: "startTime",
     maxResults: "250",
   });
-  const { items = [] } = await gfetch<{ items?: GEvent[] }>(acct, `${CAL}/events?${q}`);
+  const { items = [] } = await gfetch<{ items?: GEvent[] }>(acct, `${calUrl(acct)}?${q}`);
   return items.filter((e) => e.status !== "cancelled").map(toCalEvent);
 }
 
-function googleCalendar(acct: Account): CalendarBackend {
+export async function createDemoEvent(acct: Scoped, e: { title: string; start: string; end: string; attendees?: string[] }) {
+  const made = await gfetch<GEvent>(acct, `${calUrl(acct)}?sendUpdates=none`, {
+    method: "POST",
+    body: {
+      summary: e.title,
+      start: { dateTime: e.start, timeZone: TZ },
+      end: { dateTime: e.end, timeZone: TZ },
+      attendees: (e.attendees ?? []).map((email) => ({ email })),
+      reminders: NO_REMINDERS,
+    },
+  });
+  return toCalEvent(made);
+}
+
+function googleCalendar(acct: Scoped): CalendarBackend {
   return {
     listEvents: (fromIso, toIso) => googleEvents(acct, fromIso, toIso),
-    async createEvent({ title, start, end, attendees = [] }) {
-      const e = await gfetch<GEvent>(acct, `${CAL}/events?sendUpdates=none`, {
-        method: "POST",
-        body: {
-          summary: title,
-          start: { dateTime: start, timeZone: TZ },
-          end: { dateTime: end, timeZone: TZ },
-          attendees: attendees.map((email) => ({ email })),
-        },
-      });
-      const ev = toCalEvent(e);
+    async createEvent(e) {
+      const ev = await createDemoEvent(acct, e);
       await mirrorEvent(ev);
       return ev;
     },
     async moveEvent(id, start, end) {
-      const e = await gfetch<GEvent>(acct, `${CAL}/events/${encodeURIComponent(id)}?sendUpdates=none`, {
+      const e = await gfetch<GEvent>(acct, `${calUrl(acct, `/${encodeURIComponent(id)}`)}?sendUpdates=none`, {
         method: "PATCH",
-        body: { start: { dateTime: start, timeZone: TZ }, end: { dateTime: end, timeZone: TZ } },
+        body: { start: { dateTime: start, timeZone: TZ }, end: { dateTime: end, timeZone: TZ }, reminders: NO_REMINDERS },
       });
       const ev = toCalEvent(e);
       await mirrorEvent(ev);
       return ev;
     },
     async cancelEvent(id) {
-      await gfetch(acct, `${CAL}/events/${encodeURIComponent(id)}?sendUpdates=none`, { method: "DELETE" });
+      await gfetch(acct, `${calUrl(acct, `/${encodeURIComponent(id)}`)}?sendUpdates=none`, { method: "DELETE" });
       const { error } = await admin().from("live_events").delete().eq("id", id);
       check(error, "live_events delete failed");
       return { id };
@@ -116,7 +156,7 @@ function googleCalendar(acct: Account): CalendarBackend {
   };
 }
 
-// ---------- Gmail ----------
+// ---------- Gmail (only threads labelled "Blast demo") ----------
 
 type GHeader = { name: string; value: string };
 type GPart = { mimeType?: string; body?: { data?: string }; parts?: GPart[]; headers?: GHeader[] };
@@ -148,12 +188,18 @@ async function labelNames(acct: Account): Promise<Map<string, string>> {
   return new Map(labels.map((l) => [l.id, l.type === "system" ? l.id : l.name]));
 }
 
-function toMailThread(t: GThread, names: Map<string, string>): MailThread {
+function threadLabelIds(t: GThread): Set<string> {
+  return new Set((t.messages ?? []).flatMap((m) => m.labelIds ?? []));
+}
+
+function toMailThread(acct: Scoped, t: GThread, names: Map<string, string>): MailThread {
   const msgs = t.messages ?? [];
   const first = msgs[0];
   const last = msgs[msgs.length - 1];
-  const ids = new Set(msgs.flatMap((m) => m.labelIds ?? []));
-  const labels = [...ids].filter((id) => !id.startsWith("CATEGORY_")).map((id) => names.get(id) ?? id);
+  const ids = threadLabelIds(t);
+  const labels = [...ids]
+    .filter((id) => id !== acct.label_id && !id.startsWith("CATEGORY_"))
+    .map((id) => names.get(id) ?? id);
   return {
     id: t.id,
     from: header(first, "From"),
@@ -165,19 +211,22 @@ function toMailThread(t: GThread, names: Map<string, string>): MailThread {
   };
 }
 
-async function getThread(acct: Account, id: string, names: Map<string, string>): Promise<MailThread> {
-  const q = "format=metadata&metadataHeaders=From&metadataHeaders=Subject";
+// Fetches a thread and refuses it unless it carries the demo label, so the agent can never reach other mail.
+async function demoThread(acct: Scoped, id: string, format: "metadata" | "full"): Promise<GThread> {
+  const q = format === "full" ? "format=full" : "format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Message-ID";
   const t = await gfetch<GThread>(acct, `${GMAIL}/threads/${encodeURIComponent(id)}?${q}`);
-  return toMailThread(t, names);
+  if (!threadLabelIds(t).has(acct.label_id)) throw new Error(`No thread ${id}`);
+  return t;
 }
 
-async function googleThreads(acct: Account, query: string, max: number): Promise<MailThread[]> {
-  const q = new URLSearchParams({ q: query, maxResults: String(Math.min(Math.max(max, 1), 50)) });
+async function googleThreads(acct: Scoped, query: string, max: number): Promise<MailThread[]> {
+  const q = new URLSearchParams({ q: `${query} -in:spam -in:trash`.trim(), labelIds: acct.label_id, maxResults: String(Math.min(Math.max(max, 1), 50)) });
   const [{ threads = [] }, names] = await Promise.all([
     gfetch<{ threads?: { id: string }[] }>(acct, `${GMAIL}/threads?${q}`),
     labelNames(acct),
   ]);
-  return Promise.all(threads.map((t) => getThread(acct, t.id, names)));
+  const full = await Promise.all(threads.map((t) => demoThread(acct, t.id, "metadata")));
+  return full.map((t) => toMailThread(acct, t, names));
 }
 
 async function mirrorThread(t: MailThread) {
@@ -192,22 +241,24 @@ async function mirrorDraft(d: Draft) {
   check(error, "live_drafts upsert failed");
 }
 
-async function modify(acct: Account, id: string, change: { addLabelIds?: string[]; removeLabelIds?: string[] }) {
+async function modify(acct: Scoped, id: string, change: { addLabelIds?: string[]; removeLabelIds?: string[] }) {
+  await demoThread(acct, id, "metadata");
   await gfetch(acct, `${GMAIL}/threads/${encodeURIComponent(id)}/modify`, { method: "POST", body: change });
-  const t = await getThread(acct, id, await labelNames(acct));
+  const t = toMailThread(acct, await demoThread(acct, id, "metadata"), await labelNames(acct));
   await mirrorThread(t);
   return t;
 }
 
-async function labelId(acct: Account, label: string): Promise<string> {
-  const system = SYSTEM_LABELS.find((s) => s === label.trim().toUpperCase());
+async function labelId(acct: Scoped, label: string): Promise<string> {
+  const name = label.trim();
+  const system = SYSTEM_LABELS.find((s) => s === name.toUpperCase());
   if (system) return system;
   const { labels = [] } = await gfetch<{ labels?: GLabel[] }>(acct, `${GMAIL}/labels`);
-  const found = labels.find((l) => l.name.toLowerCase() === label.trim().toLowerCase());
+  const found = labels.find((l) => l.type !== "system" && l.name.toLowerCase() === name.toLowerCase());
   if (found) return found.id;
   const made = await gfetch<GLabel>(acct, `${GMAIL}/labels`, {
     method: "POST",
-    body: { name: label.trim(), labelListVisibility: "labelShow", messageListVisibility: "show" },
+    body: { name, labelListVisibility: "labelShow", messageListVisibility: "show" },
   });
   return made.id;
 }
@@ -221,18 +272,15 @@ function rawMessage(h: Record<string, string>, body: string): string {
   return Buffer.from(msg).toString("base64url");
 }
 
-function googleMail(acct: Account): MailBackend {
+function googleMail(acct: Scoped): MailBackend {
   return {
     listThreads: (query, max = 25) => googleThreads(acct, query?.trim() || "in:inbox", max),
     async readThread(id) {
-      const [t, names] = await Promise.all([
-        gfetch<GThread>(acct, `${GMAIL}/threads/${encodeURIComponent(id)}?format=full`),
-        labelNames(acct),
-      ]);
+      const [t, names] = await Promise.all([demoThread(acct, id, "full"), labelNames(acct)]);
       const body = (t.messages ?? [])
         .map((m) => `From: ${header(m, "From")}\n${plainText(m.payload).trim()}`)
         .join("\n\n---\n\n");
-      return { ...toMailThread(t, names), body };
+      return { ...toMailThread(acct, t, names), body };
     },
     async labelThread(id, label) {
       return modify(acct, id, { addLabelIds: [await labelId(acct, label)] });
@@ -241,9 +289,7 @@ function googleMail(acct: Account): MailBackend {
     async createDraft({ thread_id, to, subject, body }) {
       let inReplyTo = "";
       if (thread_id) {
-        const q = "format=metadata&metadataHeaders=Message-ID";
-        const t = await gfetch<GThread>(acct, `${GMAIL}/threads/${encodeURIComponent(thread_id)}?${q}`);
-        const msgs = t.messages ?? [];
+        const msgs = (await demoThread(acct, thread_id, "metadata")).messages ?? [];
         inReplyTo = header(msgs[msgs.length - 1], "Message-ID");
       }
       const raw = rawMessage({ To: to, Subject: subject, "In-Reply-To": inReplyTo, References: inReplyTo }, body);
@@ -384,26 +430,28 @@ function demoMail(): MailBackend {
 
 export async function liveCalendar(): Promise<CalendarBackend> {
   const acct = await account();
-  if (acct) return googleCalendar(acct);
+  if (acct) return googleCalendar(await demoScope(acct));
   await ensureDemoSeed();
   return demoCalendar();
 }
 
 export async function liveMail(): Promise<MailBackend> {
   const acct = await account();
-  if (acct) return googleMail(acct);
+  if (acct) return googleMail(await demoScope(acct));
   await ensureDemoSeed();
   return demoMail();
 }
 
-// Pulls the next 14 days of events and the latest 25 threads into the live_* mirror; deletes rows that disappeared.
+// Pulls the demo calendar's next 14 days and the latest 25 demo-labelled threads (archived ones too) into the
+// live_* mirror; deletes rows that disappeared.
 export async function syncLive(): Promise<{ email: string; events: number; threads: number; removed: number }> {
-  const acct = await account();
-  if (!acct) throw new Error("No Google account connected");
+  const found = await account();
+  if (!found) throw new Error("No Google account connected");
+  const acct = await demoScope(found);
   const now = new Date();
   const [events, threads] = await Promise.all([
     googleEvents(acct, now.toISOString(), new Date(now.getTime() + 14 * 86_400_000).toISOString()),
-    googleThreads(acct, MIRROR_QUERY, 25),
+    googleThreads(acct, "", 25),
   ]);
   const db = admin();
   const synced_at = now.toISOString();

@@ -88,7 +88,7 @@ function GoogleStatus() {
   const [state, setState] = useState<{ connected: boolean; email?: string } | null>(null);
   useEffect(() => {
     let active = true;
-    fetch("/api/google/sync")
+    fetch("/api/google/status")
       .then((r) => (r.ok ? r.json() : { connected: false }))
       .then((d: { connected?: boolean; email?: string }) => {
         if (active) setState({ connected: d.connected === true, email: d.email });

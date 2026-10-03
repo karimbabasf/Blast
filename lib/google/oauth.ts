@@ -12,12 +12,14 @@ export const SCOPES = [
 
 export const STATE_COOKIE = "blast_google_state";
 
-type Account = {
+export type Account = {
   id: string;
   email: string;
   refresh_token: string;
   access_token: string | null;
   expires_at: string | null;
+  calendar_id: string | null; // the secondary "Blast demo" calendar, the only one the agent may touch
+  label_id: string | null; // the "Blast demo" Gmail label, the only threads the agent may touch
 };
 
 function client() {
@@ -94,7 +96,7 @@ export async function connectAccount(code: string, origin: string): Promise<stri
 export async function account(): Promise<Account | null> {
   const { data } = await admin()
     .from("google_accounts")
-    .select("id, email, refresh_token, access_token, expires_at")
+    .select("id, email, refresh_token, access_token, expires_at, calendar_id, label_id")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
