@@ -3,17 +3,20 @@
 import { Check, Loader2, X } from "lucide-react";
 import { motion } from "motion/react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AgentAvatar } from "../_components/agent-avatar";
 import { LogoFactory } from "../_components/agent-logo";
 import { scoreTone } from "../_components/score-tone";
-import type { Capability, MarketAgent, Need, Role, Tryout, TryoutStep } from "@/lib/market/types";
+import type { Capability, MarketAgent, Need, Role, TryoutStep } from "@/lib/market/types";
 import { postJson } from "./db";
-import { modelName, money, ROLE_LABEL, summarize } from "./format";
+import { modelName, money, ROLE_LABEL, ROLE_TOOLS, summarize, toolLabel } from "./format";
+import { HoldStrip, type LiveNeed, type LiveTryout, ResultCard, RunsOn, SourceBadge } from "./proof";
+import { Scorecard } from "./scorecard";
 import { useNeed } from "./use-need";
+import { useWatch, Waiting } from "./watch";
 
-const DEFAULT_NEED = "I need an agent that manages my calendar. It should talk and book meetings for me.";
+const DEFAULT_NEED = "Diagnose my 2014 Civic: check engine light, P0301, rough idle";
 
 // What the agent must be able to do, read from the request itself.
 function capabilities(text: string): Capability[] {
@@ -49,7 +52,7 @@ const TASKS: Partial<Record<Role, string>> = {
   email: "Clean up the inbox: archive the newsletters, label the investor email 'Important', and draft a reply to Grace confirming Thursday at 3pm.",
 };
 
-export function Request({ initialNeed }: { initialNeed: string | null }) {
+export function Request({ initialNeed, watch = false }: { initialNeed: string | null; watch?: boolean }) {
   const [text, setText] = useState(DEFAULT_NEED);
   const [needId, setNeedId] = useState<string | null>(initialNeed);
   const [posted, setPosted] = useState<MarketAgent[]>([]);
@@ -60,6 +63,14 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [tags, setTags] = useState<Answer[]>([]);
   const view = useNeed(needId);
+  const follow = useCallback((id: string) => {
+    setPosted([]);
+    setListed(null);
+    setTags([]);
+    setNeedId(id);
+    window.history.replaceState(null, "", `/?need=${id}&watch=1`);
+  }, []);
+  useWatch(watch, follow);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -112,12 +123,13 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-4 py-5">
-      <form onSubmit={submit} className="relative mx-auto w-full max-w-2xl">
+      {watch && !needId ? <Waiting /> : null}
+      <form onSubmit={submit} className={watch ? "hidden" : "relative mx-auto w-full max-w-2xl"}>
         <label htmlFor="need" className="text-2xl font-semibold tracking-tight">
-          Describe the Agent You Need
+          Hire the Specialist Your Agent Can&apos;t Be
         </label>
         <p className="mt-1 text-sm text-muted-foreground">
-          Every listed agent for the job tries the same task on a private copy of your account. You hire the one that did it best.
+          Specialists try your real job live. Blast holds the money and pays only when the work proves out.
         </p>
         <div className="mt-3 rounded-xl border bg-card shadow-xs focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
           <textarea
@@ -133,14 +145,14 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
             className="block w-full resize-none rounded-t-xl bg-transparent px-4 pt-3 pb-1 text-base outline-none"
           />
           <div className="flex items-center px-3 pb-3">
-            <Button type="submit" disabled={busy || !text.trim()} className="ml-auto h-9 w-32 rounded-full">
+            <Button type="submit" disabled={busy || !text.trim()} className="ml-auto h-9 w-36 rounded-full">
               {busy ? (
                 <>
                   <Loader2 aria-hidden="true" className="animate-spin" />
                   {questions ? "Finding…" : "Reading…"}
                 </>
               ) : (
-                "Find Agents"
+                "Find Specialists"
               )}
             </Button>
           </div>
@@ -170,7 +182,7 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
 
       <Candidates
         needId={needId}
-        need={view.need}
+        need={view.need as LiveNeed | null}
         agents={agents}
         tags={tags.length ? tags : ((view.need as (Need & { answers?: Answer[] }) | null)?.answers ?? [])}
         listed={listed ?? view.agents.length}
@@ -228,11 +240,11 @@ function Candidates({
   steps,
 }: {
   needId: string | null;
-  need: Need | null;
+  need: LiveNeed | null;
   agents: MarketAgent[];
   tags: Answer[];
   listed: number;
-  tryouts: Tryout[];
+  tryouts: LiveTryout[];
   steps: TryoutStep[];
 }) {
   const [hiring, setHiring] = useState<string | null>(null);
@@ -240,7 +252,7 @@ function Candidates({
   const byAgent = new Map(tryouts.map((t) => [t.agent_id, t]));
   const running = tryouts.some((t) => t.status === "running");
   const scored = tryouts.filter((t) => t.status === "scored" && t.score != null);
-  const best = scored.reduce<Tryout | null>((a, t) => (!a || (t.score ?? 0) > (a.score ?? 0) ? t : a), null);
+  const best = scored.reduce<LiveTryout | null>((a, t) => (!a || (t.score ?? 0) > (a.score ?? 0) ? t : a), null);
   const winnerId = best && !running ? best.agent_id : null;
 
   // Agents posted after the tryouts started were not part of this run.
@@ -250,7 +262,8 @@ function Candidates({
     const sb = byAgent.get(b.id)?.score ?? -1;
     return running ? 0 : sb - sa;
   });
-  const empty = Math.max(0, SLOTS - ordered.length);
+  // Empty slots hold the space until the candidates are known.
+  const empty = ordered.length ? 0 : SLOTS;
 
   async function hire(agentId: string) {
     if (!needId) return;
@@ -265,25 +278,31 @@ function Candidates({
     }
   }
 
-  const task = need ? TASKS[need.role] : undefined;
+  const task = need ? (TASKS[need.role] ?? need.text) : undefined;
   const status = !needId
     ? "Idle"
     : !agents.length
-      ? "Looking for Agents…"
-      : !tryouts.length
-        ? "Starting Tryouts…"
-        : running
-          ? "Tryouts Running…"
-          : winnerId
-            ? "Tryouts Done"
-            : "No Agent Passed";
+      ? "Looking for Specialists…"
+      : need?.status === "checkout"
+        ? "Winner Doing the Job…"
+        : need?.status === "hired"
+          ? "Done"
+          : !tryouts.length
+            ? "Starting Tryouts…"
+            : running
+              ? "Tryouts Running…"
+              : winnerId
+                ? "Tryouts Done"
+                : "No Specialist Passed";
+  const working = running || need?.status === "checkout";
 
   return (
+    <>
     <section aria-label="Tryouts" className="flex flex-col gap-3 rounded-3xl bg-block-lime p-5">
       <div className="flex h-12 items-start justify-between gap-6">
         <div className="min-w-0">
           <h2 className="flex items-center gap-2 text-base leading-6 font-semibold">
-            {need ? `${ROLE_LABEL[need.role]} Agents` : "Candidates"}
+            {need ? `${ROLE_LABEL[need.role] ?? need.role} Specialists` : "Candidates"}
             <span className="font-normal text-muted-foreground tabular-nums">{field.length || ""}</span>
             {tags.map((t) => (
               <span key={t.id} title={t.question} className="rounded-full bg-background/70 px-2 py-0.5 text-xs font-normal text-foreground/70">
@@ -296,20 +315,23 @@ function Candidates({
               <span className="text-destructive">{error}</span>
             ) : task ? (
               <>
-                <span className="text-foreground">The task:</span> {task}
+                <span className="text-foreground">The job:</span> {task}
               </>
             ) : (
-              "Five agents try the same task on a copy of your account."
+              "Specialists try the same job on a private test copy."
             )}
           </p>
         </div>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-            winnerId ? "bg-success text-white" : "bg-background/70 text-foreground/70"
-          } ${running ? "animate-pulse" : ""}`}
-        >
-          {status}
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <SourceBadge need={need} />
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+              winnerId && !working ? "bg-success text-white" : "bg-background/70 text-foreground/70"
+            } ${working ? "animate-pulse" : ""}`}
+          >
+            {status}
+          </span>
+        </div>
       </div>
 
       <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-3">
@@ -332,6 +354,7 @@ function Candidates({
               winner={a.id === winnerId}
               leading={running && a.id === best?.agent_id}
               hiring={hiring === a.id}
+              closed={need?.status === "checkout" || need?.status === "hired"}
               onHire={() => hire(a.id)}
             />
           </motion.li>
@@ -353,16 +376,21 @@ function Candidates({
             <Link href={`/hub?role=${need.role}`} className="font-medium text-foreground underline-offset-4 hover:underline">
               Blast Hub
             </Link>
-            : <span className="tabular-nums">{listed}</span> agents for this role.
+            : <span className="tabular-nums">{listed}</span> specialists for this role.
           </>
         ) : null}
       </p>
     </section>
+    <Scorecard agents={ordered} byAgent={byAgent} winnerId={winnerId} tools={need ? (ROLE_TOOLS[need.role] ?? []) : []} />
+    <HoldStrip hold={need?.hold} />
+    <ResultCard result={need?.result} />
+    <RunsOn need={need} models={[...new Set(field.map((a) => a.model))]} />
+    </>
   );
 }
 
 // Every card and every empty slot is this tall, so nothing below ever moves.
-const CARD_HEIGHT = "h-[16rem]";
+const CARD_HEIGHT = "h-[19rem]";
 
 const SHORT_MODEL = /^(Claude|Gemini) /;
 
@@ -374,15 +402,17 @@ function Candidate({
   winner,
   leading,
   hiring,
+  closed,
   onHire,
 }: {
   agent: MarketAgent;
   rank: number | null;
-  tryout: Tryout | null;
+  tryout: LiveTryout | null;
   steps: TryoutStep[];
   winner: boolean;
   leading: boolean;
   hiring: boolean;
+  closed: boolean;
   onHire: () => void;
 }) {
   const status = tryout?.status;
@@ -449,6 +479,24 @@ function Candidate({
         <Stat label="Per mo" tone="" value={money(agent.price_month_cents)} />
       </dl>
 
+      {/* What it brings to the job: the role's tools, the ones it lacks struck out. */}
+      <ul aria-label="Tools" className="flex h-11 flex-wrap content-start gap-x-0.5 gap-y-1 overflow-hidden">
+        {(ROLE_TOOLS[agent.role] ?? agent.tools).map((t) => {
+          const has = agent.tools.includes(t);
+          return (
+            <li
+              key={t}
+              title={has ? t : `${t}: not available to this agent`}
+              className={`h-5 rounded-full px-1.5 text-[11px] leading-5 ${
+                has ? "bg-foreground/8 text-foreground" : "text-muted-foreground/60 line-through"
+              }`}
+            >
+              {toolLabel(t)}
+            </li>
+          );
+        })}
+      </ul>
+
       {/* One line, always present: what the agent is doing, or how it ended. */}
       <p className="flex h-5 items-center gap-1.5 text-[13px]">
         {failed ? (
@@ -477,12 +525,12 @@ function Candidate({
 
       <Button
         onClick={onHire}
-        disabled={hiring || status !== "scored"}
+        disabled={hiring || closed || status !== "scored"}
         variant={winner ? "default" : "outline"}
         className={`mt-auto h-9 w-full shrink-0 rounded-full ${winner ? "bg-success text-white hover:bg-success/90" : "bg-background"}`}
       >
         {hiring ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
-        Hire {agent.name}
+        {closed && winner ? "Hired" : `Hire ${agent.name}`}
       </Button>
     </article>
   );

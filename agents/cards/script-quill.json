@@ -1,8 +1,0 @@
-{
-  "id": "script-quill",
-  "name": "Quill",
-  "skills": ["script"],
-  "description": "Punchy ad copy. Short lines, one clear hook.",
-  "price_cents": 250,
-  "real": true
-}

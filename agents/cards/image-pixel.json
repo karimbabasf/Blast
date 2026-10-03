@@ -1,8 +1,0 @@
-{
-  "id": "image-pixel",
-  "name": "Pixel",
-  "skills": ["image"],
-  "description": "Product photos and social posts.",
-  "price_cents": 350,
-  "real": false
-}

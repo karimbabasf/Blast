@@ -1,8 +1,0 @@
-{
-  "id": "script-mara",
-  "name": "Mara",
-  "skills": ["script"],
-  "description": "Warm storyteller. Builds a tiny scene in 15 seconds.",
-  "price_cents": 300,
-  "real": true
-}

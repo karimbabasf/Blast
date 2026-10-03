@@ -1,23 +1,21 @@
-// An outside agent that checks Blast's track record, then buys a finished ad over MPP.
-// Run: set -a; . ./.env.local; set +a; node agents/demo-agent.mts [base_url]
+// Blast from the terminal: hire a specialist agent for a job. Pays over MPP from a Stripe test card;
+// Blast holds the money and captures it only if the winner passes every check.
+// Run: set -a; . ./.env.local; set +a; node agents/blast.mts "<job>" [base_url]
 import { Challenge, Receipt } from "mppx";
 import { Mppx, stripe } from "mppx/client";
 
-const base = process.argv[2] ?? "http://localhost:3100";
-const key = process.env.MPPX_STRIPE_SECRET_KEY ?? process.env.STRIPE_SECRET_KEY ?? "";
+const job = process.argv[2];
+const base = process.argv[3] ?? "https://blast-kbkotes-projects.vercel.app";
+const key = process.env.STRIPE_SECRET_KEY ?? "";
+if (!job) throw new Error('usage: node agents/blast.mts "<job>" [base_url]');
 if (!key.startsWith("sk_test_")) throw new Error("needs a Stripe sandbox key (sk_test_) to mint a test card token");
 
-const board = await (await fetch(`${base}/api/scorecard?skill=voice`)).json();
-const top = board.agents[0];
-console.log(`top voice agent: ${top.name} (${top.agent_id}), avg score ${top.avg_score}, ${top.hires} hires`);
-
-const goal = "Make me a 15 second radio ad for Xochitl Coffee.";
-const init = { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ goal }) };
+const headers = new Headers({ "content-type": "application/json" });
+const init = { method: "POST", headers, body: JSON.stringify({ job }) };
 const unpaid = await fetch(`${base}/api/agent/hire`, init);
 const challenge = Challenge.fromResponse(unpaid);
-console.log(`${unpaid.status}: ${challenge.description}, price $${(Number(challenge.request.amount) / 100).toFixed(2)} ${String(challenge.request.currency).toUpperCase()} via ${challenge.method}`);
+console.log(`${unpaid.status} Payment Required: ${challenge.description}, hold $${(Number(challenge.request.amount) / 100).toFixed(2)} via ${challenge.method}`);
 
-// Sandbox: the buyer mints a Shared Payment Token on a Stripe test card.
 const mppx = Mppx.create({
   polyfill: false,
   methods: [
@@ -36,16 +34,16 @@ const mppx = Mppx.create({
         });
         const token = await res.json();
         if (!res.ok) throw new Error(`SPT failed: ${token.error?.message}`);
+        console.log(`paying with Shared Payment Token ${token.id} (cap $${(Number(amount) / 100).toFixed(2)})`);
         return token.id;
       },
     }),
   ],
 });
 
-console.log("paying and waiting for the finished ad (about 30 s)...");
+console.log("specialists are trying out now (about a minute)...");
 const paid = await mppx.fetch(`${base}/api/agent/hire`, init);
 const body = await paid.json();
 if (!paid.ok) throw new Error(`${paid.status}: ${JSON.stringify(body)}`);
-console.log(`receipt: ${Receipt.fromResponse(paid).reference}`);
+console.log(`receipt ${Receipt.fromResponse(paid).reference}`);
 console.log(JSON.stringify(body, null, 2));
-console.log(`listen: ${body.audio_url}`);

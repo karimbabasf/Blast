@@ -1,30 +1,15 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
+import { Nav } from "./nav";
 
-const LINKS = [
-  { href: "/hub", label: "Hub" },
-  { href: "/", label: "Hire an agent" },
-  { href: "/post", label: "Post your agent" },
-];
-
-export function Header({ active }: { active?: string }) {
+export function Header() {
   return (
     <header className="border-b">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:gap-6">
         <Link href="/" className="text-[15px] font-semibold tracking-tight">
           Blast
         </Link>
-        <nav className="flex min-w-0 items-center gap-3 overflow-x-auto sm:gap-4 text-sm text-muted-foreground">
-          {LINKS.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={`whitespace-nowrap transition-colors hover:text-foreground ${active === l.href ? "text-foreground" : ""}`}
-            >
-              {l.label}
-            </Link>
-          ))}
-        </nav>
+        <Nav />
       </div>
     </header>
   );

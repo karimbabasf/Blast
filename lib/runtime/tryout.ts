@@ -4,7 +4,7 @@ import type { Check, MarketAgent, Need, Role } from "@/lib/market/types";
 import { TASKS, checksFor } from "@/lib/roles";
 import { createWorld, worldCalendar, worldMail } from "@/lib/roles/world";
 import { admin } from "@/lib/supabase-admin";
-import { runAgent, type Step } from "./agent";
+import { runAgent, type Step, type Usage } from "./agent";
 
 type Lab = "anthropic" | "openai" | "google";
 const JUDGES: { lab: Lab; model: string }[] = [
@@ -34,7 +34,7 @@ async function judge(agent: MarketAgent, task: string, steps: Step[], reply: str
   const log = steps
     .map((s, i) => `${i + 1}. ${s.name} ${JSON.stringify(s.input)} -> ${JSON.stringify(s.output).slice(0, 400)}`)
     .join("\n");
-  const prompt = `An assistant agent was given this task on a copy of a small business's account:\n${task}\n\nIts tool calls, in order:\n${log}\n\nIts final reply to the business:\n${reply}\n\nScore 0 to 10 how well it did the job: correct actions, no harmful side effects, sensible use of tools, a clear honest reply. Reply with only a JSON object: {"score": number, "reason": string}.`;
+  const prompt = `An agent was given this job on a private test copy:\n${task}\n\nIts tool calls, in order:\n${log}\n\nIts final reply to the business:\n${reply}\n\nScore 0 to 10 how well it did the job: correct actions, no harmful side effects, sensible use of tools, a clear honest reply. Reply with only a JSON object: {"score": number, "reason": string}.`;
   const settled = await Promise.allSettled(
     panel.map(async (j) => {
       const raw = await ask(j.model, prompt);
@@ -68,9 +68,17 @@ async function runOne(tryoutId: string, agent: MarketAgent, role: Role): Promise
     ]);
   };
   let reply = "";
+  let usage: Usage | null = null;
   let runError: string | null = null;
   try {
-    reply = (await runAgent(agent, task, { calendar: worldCalendar(worldId), mail: worldMail(worldId) }, onStep)).reply;
+    const run = await runAgent(
+      agent,
+      task,
+      { calendar: worldCalendar(worldId), mail: worldMail(worldId), worldId, builder: agent.builder },
+      onStep,
+    );
+    reply = run.reply;
+    usage = run.usage;
   } catch (err) {
     runError = err instanceof Error ? err.message : String(err);
   }
@@ -89,7 +97,7 @@ async function runOne(tryoutId: string, agent: MarketAgent, role: Role): Promise
   ].join(" ");
   await db
     .from("tryouts")
-    .update({ status: verdict ? "scored" : "failed", score, checks, reason, steps: toolSteps })
+    .update({ status: verdict ? "scored" : "failed", score, checks, reason, steps: toolSteps, usage })
     .eq("id", tryoutId);
 }
 
