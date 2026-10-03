@@ -3,6 +3,7 @@
 
 import type { Check, MarketAgent, Need, Role } from "@/lib/market/types";
 import { settle, type Hold } from "@/lib/pay/proof";
+import { SCRIPTED_ROLES, deliveryFor } from "@/lib/roles/scripted";
 import { lastOutput } from "@/lib/roles/specialists";
 import { admin } from "@/lib/supabase-admin";
 import type { Usage } from "./agent";
@@ -11,6 +12,19 @@ import { mapRole } from "./route-role";
 import { createTryouts, runTryouts } from "./tryout";
 
 const OUTPUT_KIND: Partial<Record<Role, string>> = { auto_repair: "estimate", medical_billing: "claim", web_design: "design" };
+
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// A scripted winner builds and publishes the real site after the hire, streamed onto its own tryout.
+async function deliver(tryoutId: string, job: string) {
+  const db = admin();
+  const { data: last } = await db.from("tryout_steps").select("n").eq("tryout_id", tryoutId).order("n", { ascending: false }).limit(1);
+  let n = Number(last?.[0]?.n ?? 0);
+  for (const step of deliveryFor(job)) {
+    await wait(750 + Math.random() * 150);
+    await db.from("tryout_steps").insert({ tryout_id: tryoutId, n: ++n, kind: "tool", ...step });
+  }
+}
 
 type TryoutRow = { agent_id: string; score: number | null; status: string; checks: Check[]; usage: Usage | null };
 
@@ -37,6 +51,8 @@ export async function hireOnProof(need: Need, hold: Hold | null) {
   if (!picked.length) throw new Error(`no specialists listed for ${need.role}`);
   const search = { listings, query: need.text, matches };
   await db.from("needs").update({ search }).eq("id", need.id);
+  // The dashboard plays its search on needs.search; let it land before the tryouts start.
+  await wait(1500);
   const tryouts = await createTryouts(need, picked);
   await runTryouts(need, picked, tryouts, "checkout");
 
@@ -50,6 +66,7 @@ export async function hireOnProof(need: Need, hold: Hold | null) {
   let result: { agent_id: string; agent_name: string; reply: string; output: unknown; summary?: string } | null = null;
   if (winner && best) {
     const tryoutId = tryouts.find((t) => t.agent_id === winner.id)?.id;
+    if (tryoutId && SCRIPTED_ROLES.has(need.role)) await deliver(tryoutId, need.text);
     const [{ data: world }, { data: said }] = await Promise.all([
       db.from("worlds").select("id").eq("tryout_id", tryoutId).maybeSingle(),
       db.from("tryout_steps").select("output").eq("tryout_id", tryoutId).eq("kind", "say").order("n", { ascending: false }).limit(1),

@@ -63,9 +63,11 @@ async function runScripted(tryoutId: string, agent: MarketAgent, worldId: string
   const script = scriptFor(agent.id, job);
   if (!script) return false;
   const db = admin();
-  await wait(400 + Math.random() * 500);
+  // Every lane spreads its steps over the same ~8 s so all of them stay busy on stage.
+  const pace = 6800 / script.steps.length;
+  await wait(300 + Math.random() * 300);
   for (const [i, step] of script.steps.entries()) {
-    await wait(700 + Math.random() * 700);
+    await wait(pace * (0.85 + Math.random() * 0.3));
     await Promise.all([
       db.from("tryout_steps").insert({ tryout_id: tryoutId, n: i + 1, kind: "tool", ...step }),
       db.from("tryouts").update({ steps: i + 1 }).eq("id", tryoutId),
@@ -74,7 +76,7 @@ async function runScripted(tryoutId: string, agent: MarketAgent, worldId: string
   await db.from("tryout_steps").insert({ tryout_id: tryoutId, n: script.steps.length + 1, kind: "say", name: "reply", input: null, output: script.reply });
   if (agent.id === "design-ines") await db.from("world_outputs").insert({ world_id: worldId, kind: "design", body: designPage(job) });
   const share = script.checks.filter((c) => c.passed).length / script.checks.length;
-  await wait(500);
+  await wait(400);
   await db
     .from("tryouts")
     .update({
