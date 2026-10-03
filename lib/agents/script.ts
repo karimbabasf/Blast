@@ -1,22 +1,23 @@
 import type { AgentCard, JobRequest, JobResult } from "@/lib/types";
-import { gemini, LITE_MODEL, TEXT_MODEL, textOf } from "./gemini";
+import { gatewayText } from "./gateway";
+import { gemini, TEXT_MODEL, textOf } from "./gemini";
 
 type Persona = { model: string; style: string };
 
-// Each script agent is a model plus its own character.
+// Each script agent is a model plus its own character, all through the AI Gateway.
 const PERSONAS: Record<string, Persona> = {
   "script-quill": {
-    model: TEXT_MODEL,
+    model: "anthropic/claude-sonnet-5.5",
     style:
       "You are Quill, a punchy ad copywriter. Short lines, one clear hook, the shop name at least twice, end on a call to action. About 35 spoken words for 15 seconds.",
   },
   "script-mara": {
-    model: TEXT_MODEL,
+    model: "anthropic/claude-haiku-4.5",
     style:
       "You are Mara, a warm storyteller. You build a tiny scene with a person, a place and a feeling. You love detail and you usually write more than the time allows.",
   },
   "script-dex": {
-    model: LITE_MODEL,
+    model: "google/gemini-3.5-flash-lite",
     style:
       "You are Dex, a cheap and fast copywriter. Plain words, no frills, as short as you can get away with.",
   },
@@ -38,18 +39,26 @@ function spokenOnly(text: string): string {
     .trim();
 }
 
+// Fallback when the gateway is down or out of credit, so an audition never dies on it.
+async function directGemini(system: string, prompt: string): Promise<string> {
+  const res = await gemini(TEXT_MODEL, {
+    systemInstruction: { parts: [{ text: system }] },
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0.9 },
+  });
+  return textOf(res);
+}
+
 export async function runScript(card: AgentCard, req: JobRequest): Promise<JobResult> {
   const persona = PERSONAS[card.id];
   if (!persona) throw new Error(`${card.id} has no script persona`);
   const task = req.sample
     ? "Write only the opening hook of the ad: one or two short lines."
     : "Write the complete 15 second radio script.";
-  const res = await gemini(persona.model, {
-    systemInstruction: { parts: [{ text: `${persona.style} ${RULES}` }] },
-    contents: [{ role: "user", parts: [{ text: `Brief: ${req.brief}\n\n${task}` }] }],
-    generationConfig: { temperature: 0.9 },
-  });
-  const text = spokenOnly(textOf(res));
+  const system = `${persona.style} ${RULES}`;
+  const prompt = `Brief: ${req.brief}\n\n${task}`;
+  const raw = await gatewayText(persona.model, system, prompt).catch(() => directGemini(system, prompt));
+  const text = spokenOnly(raw);
   if (!text) throw new Error(`${card.id} returned no text`);
   return { agent_id: card.id, kind: "text", text };
 }
