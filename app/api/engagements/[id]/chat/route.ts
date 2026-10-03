@@ -3,6 +3,7 @@ import { pcmToWav } from "@/lib/agents/wav";
 import type { MarketAgent } from "@/lib/market/types";
 import { meterAction } from "@/lib/pay/stripe-market";
 import { runAgent, type History } from "@/lib/runtime/agent";
+import { cleanAnswers, standingInstructions } from "@/lib/runtime/clarify";
 import { liveBackends } from "@/lib/runtime/live";
 import { admin } from "@/lib/supabase-admin";
 
@@ -38,11 +39,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (!text) return Response.json({ error: "text is required" }, { status: 400 });
 
   const db = admin();
-  const { data: eng } = await db.from("engagements").select("id, agent_id, status").eq("id", id).maybeSingle();
+  const { data: eng } = await db.from("engagements").select("id, agent_id, status, need_id").eq("id", id).maybeSingle();
   if (!eng) return Response.json({ error: "engagement not found" }, { status: 404 });
   if (eng.status !== "active") return Response.json({ error: "engagement is not active" }, { status: 409 });
   const { data: agent } = await db.from("market_agents").select("*").eq("id", eng.agent_id).single();
   if (!agent) return Response.json({ error: "agent not found" }, { status: 404 });
+  const { data: need } = eng.need_id
+    ? await db.from("needs").select("answers").eq("id", eng.need_id).maybeSingle()
+    : { data: null };
+  const hired = { ...(agent as MarketAgent) };
+  hired.system_prompt += standingInstructions(cleanAnswers(need?.answers));
 
   const { data: past } = await db
     .from("engagement_messages")
@@ -60,7 +66,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const actions: unknown[] = [];
   const backends = await liveBackends();
   const { reply } = await runAgent(
-    agent as MarketAgent,
+    hired,
     text,
     backends,
     async (step) => {
