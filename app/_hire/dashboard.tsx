@@ -484,10 +484,14 @@ function History({ needs, focus, onPick }: { needs: LiveNeed[]; focus: string; o
                 <span className="tabular-nums">{clock(n.created_at)}</span>
               </div>
               <div className="mt-1 line-clamp-1 font-medium text-stone-900">{n.text}</div>
-              <div className="mt-1 text-xs text-stone-600 tabular-nums">
-                {n.result?.agent_name ?? "In progress"}
-                {n.hold?.status === "captured" ? ` · ${money(capturedCents(n.hold))} captured` : ""}
-              </div>
+              {n.status === "waiting" || n.hold?.status === "released" ? (
+                <div className="mt-1 text-xs text-stone-400">Released, nobody passed</div>
+              ) : (
+                <div className="mt-1 text-xs text-stone-600 tabular-nums">
+                  {n.result?.agent_name ?? (n.status === "auditioning" || n.status === "checkout" ? "In progress" : n.status === "hired" ? "Done" : n.status)}
+                  {n.hold?.status === "captured" ? ` · ${money(capturedCents(n.hold))} captured` : ""}
+                </div>
+              )}
             </button>
           </li>
         ))}
