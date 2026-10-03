@@ -1,0 +1,347 @@
+"use client";
+
+import { Check, Loader2, Mic, MousePointerClick, X } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import type { Capability, MarketAgent, Need, Role, Tryout, TryoutStep } from "@/lib/market/types";
+import { postJson } from "./db";
+import { modelName, money, replyText, ROLE_LABEL, runsIn, summarize } from "./format";
+import { useNeed } from "./use-need";
+
+const EXAMPLES: { label: string; text: string; caps: Capability[] }[] = [
+  {
+    label: "Calendar",
+    text: "I need an agent that manages my calendar. It should talk and book meetings for me.",
+    caps: ["talk", "act"],
+  },
+  {
+    label: "Email",
+    text: "I need an agent that keeps my inbox clean. It should archive newsletters, flag what matters and draft replies for me.",
+    caps: ["act"],
+  },
+];
+
+const TASKS: Partial<Record<Role, string>> = {
+  calendar: "Book a 30 minute call titled 'Rakha sync' with rakha@xochitl.coffee next Tuesday afternoon. Do not double book.",
+  email: "Clean up the inbox: archive the newsletters, label the investor email 'Important', and draft a reply to Grace confirming Thursday at 3pm.",
+};
+
+export function Request({ initialNeed }: { initialNeed: string | null }) {
+  const [text, setText] = useState(EXAMPLES[0].text);
+  const [caps, setCaps] = useState<Capability[]>(EXAMPLES[0].caps);
+  const [needId, setNeedId] = useState<string | null>(initialNeed);
+  const [posted, setPosted] = useState<MarketAgent[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const view = useNeed(needId);
+
+  const toggle = (c: Capability) =>
+    setCaps((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!text.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await postJson<{ need: Need; agents?: MarketAgent[] }>("/api/needs", { text, capabilities: caps });
+      setPosted(res.agents ?? []);
+      setNeedId(res.need.id);
+      window.history.replaceState(null, "", `/?need=${res.need.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not post the request");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const agents = view.agents.length ? view.agents : posted;
+
+  return (
+    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-12">
+      <form onSubmit={submit} className="mx-auto max-w-2xl">
+        <label htmlFor="need" className="text-2xl font-semibold tracking-tight sm:text-3xl">
+          Describe the agent you need
+        </label>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Every listed agent for the job tries the same task on a private copy of your account. You hire the one that did it best.
+        </p>
+        <div className="mt-5 rounded-xl border bg-card shadow-xs focus-within:border-(--hire) focus-within:ring-3 focus-within:ring-(--hire)/15">
+          <textarea
+            id="need"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={3}
+            className="block w-full resize-none rounded-t-xl bg-transparent px-4 pt-4 pb-2 text-base outline-none"
+          />
+          <div className="flex flex-wrap items-center gap-2 px-3 pb-3">
+            <Toggle on={caps.includes("talk")} onClick={() => toggle("talk")} icon={<Mic className="size-3.5" />}>
+              Can talk
+            </Toggle>
+            <Toggle on={caps.includes("act")} onClick={() => toggle("act")} icon={<MousePointerClick className="size-3.5" />}>
+              Can act
+            </Toggle>
+            <Button type="submit" disabled={busy || !text.trim()} className="ml-auto h-9 bg-(--hire) px-4 hover:bg-(--hire)/90">
+              {busy ? <Loader2 className="animate-spin" /> : null}
+              Find agents
+            </Button>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <span>Try</span>
+          {EXAMPLES.map((ex) => (
+            <button
+              key={ex.label}
+              type="button"
+              onClick={() => {
+                setText(ex.text);
+                setCaps(ex.caps);
+              }}
+              className="rounded-full border px-3 py-1 text-foreground transition-colors hover:bg-muted"
+            >
+              {ex.label}
+            </button>
+          ))}
+        </div>
+        {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
+      </form>
+
+      {needId ? <Candidates needId={needId} need={view.need} agents={agents} tryouts={view.tryouts} steps={view.steps} /> : null}
+    </main>
+  );
+}
+
+function Toggle({ on, onClick, icon, children }: { on: boolean; onClick: () => void; icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${
+        on ? "border-(--hire)/40 bg-(--hire-soft) text-(--hire)" : "text-muted-foreground hover:bg-muted"
+      }`}
+    >
+      {icon}
+      {children}
+    </button>
+  );
+}
+
+function Candidates({
+  needId,
+  need,
+  agents,
+  tryouts,
+  steps,
+}: {
+  needId: string;
+  need: Need | null;
+  agents: MarketAgent[];
+  tryouts: Tryout[];
+  steps: TryoutStep[];
+}) {
+  const [hiring, setHiring] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const byAgent = new Map(tryouts.map((t) => [t.agent_id, t]));
+  const running = tryouts.some((t) => t.status === "running");
+  const scored = tryouts.filter((t) => t.status === "scored" && t.score != null);
+  const best = scored.reduce<Tryout | null>((a, t) => (!a || (t.score ?? 0) > (a.score ?? 0) ? t : a), null);
+  const winnerId = best && !running ? best.agent_id : null;
+
+  const ordered = [...agents].sort((a, b) => {
+    const sa = byAgent.get(a.id)?.score ?? -1;
+    const sb = byAgent.get(b.id)?.score ?? -1;
+    return running ? 0 : sb - sa;
+  });
+
+  async function hire(agentId: string) {
+    setHiring(agentId);
+    setError(null);
+    try {
+      const { url } = await postJson<{ url: string }>(`/api/needs/${needId}/checkout`, { agent_id: agentId });
+      window.location.assign(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Checkout failed");
+      setHiring(null);
+    }
+  }
+
+  const task = need ? TASKS[need.role] : undefined;
+
+  return (
+    <section className="mt-12">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+        <h2 className="text-lg font-semibold tracking-tight">
+          {need ? `${ROLE_LABEL[need.role]} agents` : "Finding agents"}
+          <span className="ml-2 font-normal text-muted-foreground tabular-nums">{agents.length || ""}</span>
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {!tryouts.length ? "Starting tryouts" : running ? "Tryouts running" : winnerId ? "Tryouts done" : "No agent passed"}
+        </p>
+      </div>
+      {task ? (
+        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+          <span className="text-foreground">The task:</span> {task}
+        </p>
+      ) : null}
+      {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
+
+      {!agents.length ? (
+        <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" /> Looking for listed agents
+        </div>
+      ) : (
+        <div className="mt-6 grid grid-cols-[repeat(auto-fit,minmax(min(100%,260px),1fr))] gap-4">
+          {ordered.map((a) => (
+            <Candidate
+              key={a.id}
+              agent={a}
+              tryout={byAgent.get(a.id) ?? null}
+              steps={steps.filter((s) => s.tryout_id === byAgent.get(a.id)?.id)}
+              winner={a.id === winnerId}
+              leading={running && a.id === best?.agent_id}
+              hiring={hiring === a.id}
+              onHire={() => hire(a.id)}
+            />
+          ))}
+        </div>
+      )}
+      {need ? (
+        <p className="mt-6 text-sm text-muted-foreground">
+          Candidates come from{" "}
+          <Link href={`/hub?role=${need.role}`} className="font-medium text-(--hire) hover:underline">
+            Blast Hub
+          </Link>
+          : <span className="tabular-nums">{agents.length}</span> agents for this role.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function Candidate({
+  agent,
+  tryout,
+  steps,
+  winner,
+  leading,
+  hiring,
+  onHire,
+}: {
+  agent: MarketAgent;
+  tryout: Tryout | null;
+  steps: TryoutStep[];
+  winner: boolean;
+  leading: boolean;
+  hiring: boolean;
+  onHire: () => void;
+}) {
+  const status = tryout?.status;
+  return (
+    <article
+      className={`flex flex-col rounded-xl border bg-card p-4 transition-shadow ${
+        winner ? "border-(--hire) shadow-[0_0_0_1px_var(--hire),0_8px_24px_-12px_var(--hire)]" : ""
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="truncate font-semibold">{agent.name}</h3>
+            {winner ? <span className="rounded-full bg-(--hire) px-2 py-0.5 text-xs font-medium text-white">Winner</span> : null}
+            {leading ? <span className="rounded-full bg-(--hire-soft) px-2 py-0.5 text-xs font-medium text-(--hire)">Leading</span> : null}
+          </div>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            {modelName(agent.model)} by {agent.builder}
+          </p>
+        </div>
+        <Score tryout={tryout} auditionable={agent.auditionable} />
+      </div>
+
+      <dl className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <div>{runsIn(agent.runs_in)}</div>
+        <div className="tabular-nums">
+          <span className="text-foreground">{money(agent.price_month_cents)}</span>/mo
+        </div>
+        <div className="tabular-nums">
+          <span className="text-foreground">{money(agent.price_action_cents)}</span> per action
+        </div>
+      </dl>
+
+      {!agent.auditionable ? (
+        <p className="mt-4 text-sm text-muted-foreground">Listed only. Blast cannot test this role yet.</p>
+      ) : (
+        <>
+          <ol className="mt-4 max-h-64 space-y-1 overflow-y-auto rounded-lg bg-muted/60 p-3 font-mono text-xs leading-relaxed">
+            {!steps.length ? (
+              <li className="text-muted-foreground">{tryout ? "Waiting for the first step" : "Queued"}</li>
+            ) : (
+              steps.map((s) =>
+                s.kind === "say" ? (
+                  <li key={s.id} className="font-sans text-[13px] text-foreground">
+                    &ldquo;{replyText(s.input, s.output)}&rdquo;
+                  </li>
+                ) : (
+                  <li key={s.id} className="flex gap-2 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                    <span className="w-4 shrink-0 text-right text-muted-foreground tabular-nums">{s.n}</span>
+                    <span className="min-w-0">
+                      <span className="text-(--hire)">{s.name}</span> {summarize(s.name, s.input)}
+                    </span>
+                  </li>
+                ),
+              )
+            )}
+            {status === "running" && steps.length ? (
+              <li className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="size-3 animate-spin" /> working
+              </li>
+            ) : null}
+          </ol>
+
+          {tryout?.checks?.length ? (
+            <ul className="mt-3 space-y-1 text-sm">
+              {tryout.checks.map((c) => (
+                <li key={c.name} className="flex items-start gap-2">
+                  {c.passed ? (
+                    <Check className="mt-0.5 size-4 shrink-0 text-success" aria-label="passed" />
+                  ) : (
+                    <X className="mt-0.5 size-4 shrink-0 text-destructive" aria-label="failed" />
+                  )}
+                  <span className={c.passed ? "" : "text-muted-foreground"}>{c.name}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {tryout?.reason ? <p className="mt-3 line-clamp-3 text-sm text-muted-foreground" title={tryout.reason}>{tryout.reason}</p> : null}
+        </>
+      )}
+
+      {status === "scored" ? <div className="min-h-4 flex-1" /> : null}
+      {status === "scored" ? (
+        <Button
+          onClick={onHire}
+          disabled={hiring}
+          variant={winner ? "default" : "outline"}
+          className={`mt-auto h-9 w-full ${winner ? "bg-(--hire) hover:bg-(--hire)/90" : ""}`}
+        >
+          {hiring ? <Loader2 className="animate-spin" /> : null}
+          Hire {agent.name}
+        </Button>
+      ) : null}
+    </article>
+  );
+}
+
+function Score({ tryout, auditionable }: { tryout: Tryout | null; auditionable: boolean }) {
+  if (!auditionable) return null;
+  if (!tryout || tryout.status === "running")
+    return <Loader2 className="mt-1 size-4 shrink-0 animate-spin text-muted-foreground" aria-label="running" />;
+  if (tryout.status === "failed" || tryout.score == null)
+    return <span className="text-sm text-destructive">Failed</span>;
+  return (
+    <div className="shrink-0 text-right">
+      <div className="text-2xl font-semibold tabular-nums leading-none">{tryout.score.toFixed(1)}</div>
+      <div className="mt-1 text-xs text-muted-foreground">of 10</div>
+    </div>
+  );
+}
