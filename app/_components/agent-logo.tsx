@@ -10,10 +10,30 @@ import { Dithering } from "@paper-design/shaders-react";
 // purple. Evenly spaced hues do not work: a third of the wheel reads as green.
 const HUES = [0, 18, 32, 46, 58, 84, 135, 165, 186, 204, 224, 330];
 
-// One hue per agent. Neighbours in the list are five steps apart, so agents
-// that sit next to each other never look alike.
-function agentHue(index: number) {
-  return HUES[(index * 5) % HUES.length];
+function hash(text: string) {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) {
+    h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  }
+  return h >>> 0;
+}
+
+// Each agent's hue comes from its id, so it keeps its colour on every page.
+// If two agents on the same screen land on one hue, the later one takes the
+// next free hue, so no two logos shown together match.
+function assignHues(ids: string[]) {
+  const taken = new Set<number>();
+  const hues = new Map<string, number>();
+  for (const id of [...ids].sort()) {
+    let slot = hash(id) % HUES.length;
+    for (let tries = 0; taken.has(slot) && tries < HUES.length; tries++) {
+      slot = (slot + 5) % HUES.length;
+    }
+    taken.add(slot);
+    if (taken.size === HUES.length) taken.clear();
+    hues.set(id, HUES[slot]);
+  }
+  return hues;
 }
 
 // ---- a tiny store of the finished logo images, keyed by agent id
@@ -81,6 +101,7 @@ const BATCH = 6;
 export function LogoFactory({ ids }: { ids: string[] }) {
   const done = useSyncExternalStore(subscribe, getImages, getImages);
   const missing = ids.filter((id) => !done.has(id)).slice(0, BATCH);
+  const hues = assignHues(ids);
 
   return (
     <div
@@ -88,7 +109,7 @@ export function LogoFactory({ ids }: { ids: string[] }) {
       className="pointer-events-none fixed right-0 bottom-0 -z-10 flex opacity-0"
     >
       {missing.map((id) => (
-        <Tile key={id} id={id} hue={agentHue(ids.indexOf(id))} />
+        <Tile key={id} id={id} hue={hues.get(id) ?? HUES[0]} />
       ))}
     </div>
   );

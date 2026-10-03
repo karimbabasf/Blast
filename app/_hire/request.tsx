@@ -1,9 +1,13 @@
 "use client";
 
 import { Check, Loader2, Mic, MousePointerClick, X } from "lucide-react";
+import { motion } from "motion/react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { AgentAvatar } from "../_components/agent-avatar";
+import { LogoFactory } from "../_components/agent-logo";
+import { scoreTone } from "../_components/audition-card";
 import type { Capability, MarketAgent, Need, Role, Tryout, TryoutStep } from "@/lib/market/types";
 import { postJson } from "./db";
 import { modelName, money, replyText, ROLE_LABEL, runsIn, summarize } from "./format";
@@ -112,74 +116,126 @@ export function Request({ initialNeed }: { initialNeed: string | null }) {
   const picked = new Set(posted.map((a) => a.id));
   const agents = posted.length ? (view.agents.length ? view.agents.filter((a) => picked.has(a.id)) : posted) : view.agents;
 
+  const running = view.tryouts.some((t) => t.status === "running");
+  // Where the request is: reading it, matching agents, running tryouts, ready to pick.
+  const phase = !needId ? (busy || questions ? 0 : -1) : !view.tryouts.length ? 1 : running ? 2 : 3;
+
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-12">
-      <form onSubmit={submit} className="mx-auto max-w-2xl">
-        <label htmlFor="need" className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          Describe the agent you need
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 py-6">
+      <form onSubmit={submit} className="relative mx-auto w-full max-w-2xl">
+        <label htmlFor="need" className="text-2xl font-semibold tracking-tight">
+          Describe the Agent You Need
         </label>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-muted-foreground">
           Every listed agent for the job tries the same task on a private copy of your account. You hire the one that did it best.
         </p>
-        <div className="mt-5 rounded-xl border bg-card shadow-xs focus-within:border-(--hire) focus-within:ring-3 focus-within:ring-(--hire)/15">
+        <div className="mt-3 rounded-xl border bg-card shadow-xs focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
           <textarea
             id="need"
+            name="need"
+            autoComplete="off"
             value={text}
             onChange={(e) => {
               setText(e.target.value);
               setQuestions(null);
             }}
-            rows={3}
-            className="block w-full resize-none rounded-t-xl bg-transparent px-4 pt-4 pb-2 text-base outline-none"
+            rows={2}
+            className="block w-full resize-none rounded-t-xl bg-transparent px-4 pt-3 pb-1 text-base outline-none"
           />
           <div className="flex flex-wrap items-center gap-2 px-3 pb-3">
-            <Toggle on={caps.includes("talk")} onClick={() => toggle("talk")} icon={<Mic className="size-3.5" />}>
+            <Toggle on={caps.includes("talk")} onClick={() => toggle("talk")} icon={<Mic aria-hidden="true" className="size-3.5" />}>
               Can talk
             </Toggle>
-            <Toggle on={caps.includes("act")} onClick={() => toggle("act")} icon={<MousePointerClick className="size-3.5" />}>
+            <Toggle on={caps.includes("act")} onClick={() => toggle("act")} icon={<MousePointerClick aria-hidden="true" className="size-3.5" />}>
               Can act
             </Toggle>
-            <Button type="submit" disabled={busy || !text.trim()} className="ml-auto h-9 bg-(--hire) px-4 hover:bg-(--hire)/90">
-              {busy ? <Loader2 className="animate-spin" /> : null}
-              {busy && !questions ? "Reading" : "Find agents"}
+            <span className="ml-2 text-sm text-muted-foreground">Try</span>
+            {EXAMPLES.map((ex) => (
+              <button
+                key={ex.label}
+                type="button"
+                onClick={() => {
+                  setText(ex.text);
+                  setCaps(ex.caps);
+                  setQuestions(null);
+                }}
+                className="h-8 rounded-full border px-3 text-sm transition-colors hover:bg-muted"
+              >
+                {ex.label}
+              </button>
+            ))}
+            <Button type="submit" disabled={busy || !text.trim()} className="ml-auto h-9 w-28">
+              {busy ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
+              {busy && !questions ? "Reading…" : "Find Agents"}
             </Button>
           </div>
         </div>
+        {/* Floats over the board, so answering never pushes the page down. */}
         {questions ? (
-          <Questions
-            questions={questions}
-            answers={answers}
-            busy={busy}
-            onPick={(id, a) => setAnswers((cur) => ({ ...cur, [id]: cur[id] === a ? "" : a }))}
-            onSkip={() => {
-              setAnswers({});
-              void findAgents([]);
-            }}
-            onDone={() => void findAgents(questions)}
-          />
-        ) : null}
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <span>Try</span>
-          {EXAMPLES.map((ex) => (
-            <button
-              key={ex.label}
-              type="button"
-              onClick={() => {
-                setText(ex.text);
-                setCaps(ex.caps);
-                setQuestions(null);
+          <div className="absolute inset-x-0 top-full z-20 mt-2">
+            <Questions
+              questions={questions}
+              answers={answers}
+              busy={busy}
+              onPick={(id, a) => setAnswers((cur) => ({ ...cur, [id]: cur[id] === a ? "" : a }))}
+              onSkip={() => {
+                setAnswers({});
+                void findAgents([]);
               }}
-              className="rounded-full border px-3 py-1 text-foreground transition-colors hover:bg-muted"
-            >
-              {ex.label}
-            </button>
-          ))}
-        </div>
-        {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
+              onDone={() => void findAgents(questions)}
+            />
+          </div>
+        ) : null}
+        <p aria-live="polite" className="absolute top-full left-0 mt-1 max-w-full truncate text-sm text-destructive">
+          {error}
+        </p>
       </form>
 
-      {needId ? <Candidates needId={needId} need={view.need} agents={agents} tags={tags.length ? tags : ((view.need as (Need & { answers?: Answer[] }) | null)?.answers ?? [])} listed={listed ?? view.agents.length} tryouts={view.tryouts} steps={view.steps} /> : null}
+      <Steps phase={phase} />
+
+      <Candidates
+        needId={needId}
+        need={view.need}
+        agents={agents}
+        tags={tags.length ? tags : ((view.need as (Need & { answers?: Answer[] }) | null)?.answers ?? [])}
+        listed={listed ?? view.agents.length}
+        tryouts={view.tryouts}
+        steps={view.steps}
+      />
+      <LogoFactory ids={agents.map((a) => a.id)} />
     </main>
+  );
+}
+
+const STEPS = ["Read", "Match", "Tryouts", "Pick"];
+
+// Four equal segments, always on screen. Progress only changes their colour.
+function Steps({ phase }: { phase: number }) {
+  return (
+    <div>
+      <ol className="grid grid-cols-4 gap-2">
+        {STEPS.map((label, index) => (
+          <li key={label} aria-current={index === phase ? "step" : undefined} className="flex flex-col gap-1.5">
+            <span
+              aria-hidden="true"
+              className={`h-1 rounded-full transition-colors duration-200 ease-out ${
+                phase >= index ? "bg-foreground" : "bg-muted"
+              } ${index === phase && phase < 3 ? "animate-pulse" : ""}`}
+            />
+            <span
+              className={`text-xs transition-colors duration-200 ease-out ${
+                phase >= index ? "font-medium text-foreground" : "text-muted-foreground/60"
+              }`}
+            >
+              {label}
+            </span>
+          </li>
+        ))}
+      </ol>
+      <p className="sr-only" aria-live="polite">
+        {STEPS[phase]}
+      </p>
+    </div>
   );
 }
 
@@ -189,8 +245,8 @@ function Toggle({ on, onClick, icon, children }: { on: boolean; onClick: () => v
       type="button"
       aria-pressed={on}
       onClick={onClick}
-      className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${
-        on ? "border-(--hire)/40 bg-(--hire-soft) text-(--hire)" : "text-muted-foreground hover:bg-muted"
+      className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm outline-none transition-[scale,background-color,color] duration-150 ease-out focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.97] ${
+        on ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:bg-muted"
       }`}
     >
       {icon}
@@ -199,6 +255,10 @@ function Toggle({ on, onClick, icon, children }: { on: boolean; onClick: () => v
   );
 }
 
+const SLOTS = 5;
+
+// The board is on screen from the start with five empty slots. Candidates
+// fill the slots in place, so nothing on the page moves when they arrive.
 function Candidates({
   needId,
   need,
@@ -208,7 +268,7 @@ function Candidates({
   tryouts,
   steps,
 }: {
-  needId: string;
+  needId: string | null;
   need: Need | null;
   agents: MarketAgent[];
   tags: Answer[];
@@ -231,8 +291,10 @@ function Candidates({
     const sb = byAgent.get(b.id)?.score ?? -1;
     return running ? 0 : sb - sa;
   });
+  const empty = Math.max(0, SLOTS - ordered.length);
 
   async function hire(agentId: string) {
+    if (!needId) return;
     setHiring(agentId);
     setError(null);
     try {
@@ -245,43 +307,65 @@ function Candidates({
   }
 
   const task = need ? TASKS[need.role] : undefined;
+  const status = !needId
+    ? "Idle"
+    : !agents.length
+      ? "Looking for Agents…"
+      : !tryouts.length
+        ? "Starting Tryouts…"
+        : running
+          ? "Tryouts Running…"
+          : winnerId
+            ? "Tryouts Done"
+            : "No Agent Passed";
 
   return (
-    <section className="mt-12">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <h2 className="text-lg font-semibold tracking-tight">
-          {need ? `${ROLE_LABEL[need.role]} agents` : "Finding agents"}
-          <span className="ml-2 font-normal text-muted-foreground tabular-nums">{field.length || ""}</span>
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          {!tryouts.length ? "Starting tryouts" : running ? "Tryouts running" : winnerId ? "Tryouts done" : "No agent passed"}
-        </p>
+    <section aria-label="Tryouts" className="flex flex-col gap-3">
+      <div className="flex h-12 items-start justify-between gap-6">
+        <div className="min-w-0">
+          <h2 className="flex items-center gap-2 text-base leading-6 font-semibold">
+            {need ? `${ROLE_LABEL[need.role]} Agents` : "Candidates"}
+            <span className="font-normal text-muted-foreground tabular-nums">{field.length || ""}</span>
+            {tags.map((t) => (
+              <span key={t.id} title={t.question} className="rounded-full bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
+                {t.answer}
+              </span>
+            ))}
+          </h2>
+          <p className="truncate text-sm text-muted-foreground" title={task}>
+            {error ? (
+              <span className="text-destructive">{error}</span>
+            ) : task ? (
+              <>
+                <span className="text-foreground">The task:</span> {task}
+              </>
+            ) : (
+              "Five agents try the same task on a copy of your account."
+            )}
+          </p>
+        </div>
+        <span
+          className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+            winnerId ? "border-transparent bg-success/10 text-success" : "text-muted-foreground"
+          } ${running ? "animate-pulse" : ""}`}
+        >
+          {status}
+        </span>
       </div>
-      {task ? (
-        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-          <span className="text-foreground">The task:</span> {task}
-        </p>
-      ) : null}
-      {tags.length ? (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {tags.map((t) => (
-            <span key={t.id} title={t.question} className="rounded-full bg-(--hire-soft) px-2.5 py-0.5 text-xs text-(--hire)">
-              {t.answer}
-            </span>
-          ))}
-        </div>
-      ) : null}
-      {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
 
-      {!agents.length ? (
-        <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Looking for listed agents
-        </div>
-      ) : (
-        <div className="mt-6 grid grid-cols-[repeat(auto-fit,minmax(min(100%,260px),1fr))] gap-4">
-          {ordered.map((a) => (
+      <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-3">
+        {ordered.map((a, index) => (
+          <motion.li
+            key={a.id}
+            layout="position"
+            initial={{ opacity: 0, transform: "scale(0.97)" }}
+            animate={{ opacity: 1, transform: "scale(1)" }}
+            transition={{
+              layout: { type: "spring", stiffness: 520, damping: 34, mass: 0.45 },
+              default: { duration: 0.22, delay: index * 0.05, ease: [0.23, 1, 0.32, 1] },
+            }}
+          >
             <Candidate
-              key={a.id}
               agent={a}
               tryout={byAgent.get(a.id) ?? null}
               steps={steps.filter((s) => s.tryout_id === byAgent.get(a.id)?.id)}
@@ -290,21 +374,35 @@ function Candidates({
               hiring={hiring === a.id}
               onHire={() => hire(a.id)}
             />
-          ))}
-        </div>
-      )}
-      {need ? (
-        <p className="mt-6 text-sm text-muted-foreground">
-          Candidates come from{" "}
-          <Link href={`/hub?role=${need.role}`} className="font-medium text-(--hire) hover:underline">
-            Blast Hub
-          </Link>
-          : <span className="tabular-nums">{listed}</span> agents for this role.
-        </p>
-      ) : null}
+          </motion.li>
+        ))}
+        {Array.from({ length: empty }, (_, index) => (
+          <li
+            key={`slot-${index}`}
+            className={`${CARD_HEIGHT} flex items-center justify-center rounded-xl bg-muted/50 text-sm text-muted-foreground/70`}
+          >
+            Waiting for a candidate
+          </li>
+        ))}
+      </ul>
+
+      <p className="h-5 text-sm text-muted-foreground">
+        {need ? (
+          <>
+            Candidates come from{" "}
+            <Link href={`/hub?role=${need.role}`} className="font-medium text-foreground underline-offset-4 hover:underline">
+              Blast Hub
+            </Link>
+            : <span className="tabular-nums">{listed}</span> agents for this role.
+          </>
+        ) : null}
+      </p>
     </section>
   );
 }
+
+// Every card and every empty slot is this tall, so nothing below ever moves.
+const CARD_HEIGHT = "h-[27rem]";
 
 function Candidate({
   agent,
@@ -324,111 +422,134 @@ function Candidate({
   onHire: () => void;
 }) {
   const status = tryout?.status;
+  const log = useRef<HTMLOListElement>(null);
+
+  // Keep the newest tool call in view while the agent works.
+  useEffect(() => {
+    log.current?.scrollTo({ top: log.current.scrollHeight });
+  }, [steps.length]);
+
   return (
     <article
-      className={`flex flex-col rounded-xl border bg-card p-4 transition-shadow ${
-        winner ? "border-(--hire) shadow-[0_0_0_1px_var(--hire),0_8px_24px_-12px_var(--hire)]" : ""
+      className={`${CARD_HEIGHT} flex flex-col gap-2 overflow-hidden rounded-xl bg-card p-3 ring-1 ring-foreground/10 transition-shadow duration-200 ease-out ${
+        winner ? "ring-2 ring-success" : ""
       }`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="truncate font-semibold">{agent.name}</h3>
-            {winner ? <span className="rounded-full bg-(--hire) px-2 py-0.5 text-xs font-medium text-white">Winner</span> : null}
-            {leading ? <span className="rounded-full bg-(--hire-soft) px-2 py-0.5 text-xs font-medium text-(--hire)">Leading</span> : null}
-          </div>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {modelName(agent.model)} by {agent.builder}
-          </p>
-        </div>
+      <div className="flex items-center gap-2.5">
+        <AgentAvatar card={agent} status={status === "running" ? "working" : undefined} verified={winner} />
+        <h3 className="min-w-0 flex-1 truncate text-base font-semibold" translate="no">
+          {agent.name}
+        </h3>
         <Score tryout={tryout} auditionable={agent.auditionable} />
       </div>
 
-      <dl className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <div>{runsIn(agent.runs_in)}</div>
-        <div className="tabular-nums">
-          <span className="text-foreground">{money(agent.price_month_cents)}</span>/mo
-        </div>
-        <div className="tabular-nums">
-          <span className="text-foreground">{money(agent.price_action_cents)}</span> per action
-        </div>
-      </dl>
+      <div className="flex h-5 items-center gap-1.5">
+        {winner ? <span className="shrink-0 rounded-full bg-success px-2 py-0.5 text-xs font-medium text-white">Winner</span> : null}
+        {leading ? <span className="shrink-0 rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success">Leading</span> : null}
+        <p className="truncate text-sm text-muted-foreground" title={`${modelName(agent.model)} by ${agent.builder}`}>
+          {modelName(agent.model)} by {agent.builder}
+        </p>
+      </div>
 
-      {!agent.auditionable ? (
-        <p className="mt-4 text-sm text-muted-foreground">Listed only. Blast cannot test this role yet.</p>
-      ) : (
-        <>
-          <ol className="mt-4 max-h-64 space-y-1 overflow-y-auto rounded-lg bg-muted/60 p-3 font-mono text-xs leading-relaxed">
-            {!steps.length ? (
-              <li className="text-muted-foreground">{tryout ? "Waiting for the first step" : "Queued"}</li>
-            ) : (
-              steps.map((s) =>
-                s.kind === "say" ? (
-                  <li key={s.id} className="font-sans text-[13px] text-foreground">
-                    &ldquo;{replyText(s.input, s.output)}&rdquo;
-                  </li>
-                ) : (
-                  <li key={s.id} className="flex gap-2 animate-in fade-in slide-in-from-bottom-1 duration-300">
-                    <span className="w-4 shrink-0 text-right text-muted-foreground tabular-nums">{s.n}</span>
-                    <span className="min-w-0">
-                      <span className="text-(--hire)">{s.name}</span> {summarize(s.name, s.input)}
-                    </span>
-                  </li>
-                ),
-              )
-            )}
-            {status === "running" && steps.length ? (
-              <li className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="size-3 animate-spin" /> working
+      <p className="truncate text-xs text-muted-foreground tabular-nums" title={runsIn(agent.runs_in)}>
+        <span className="text-foreground">{money(agent.price_month_cents)}</span>/mo ·{" "}
+        <span className="text-foreground">{money(agent.price_action_cents)}</span> per action · {runsIn(agent.runs_in)}
+      </p>
+
+      <ol ref={log} className="h-[5.25rem] shrink-0 space-y-1 overflow-y-auto overscroll-contain rounded-lg bg-muted/60 p-2.5 font-mono text-xs leading-relaxed">
+        {!agent.auditionable ? (
+          <li className="font-sans text-muted-foreground">Listed only. Blast cannot test this role yet.</li>
+        ) : !steps.length ? (
+          <li className="text-muted-foreground">{tryout ? "Waiting for the first step…" : "Queued"}</li>
+        ) : (
+          steps.map((s) =>
+            s.kind === "say" ? (
+              <li key={s.id} className="font-sans text-[13px] text-foreground">
+                &ldquo;{replyText(s.input, s.output)}&rdquo;
               </li>
-            ) : null}
-          </ol>
+            ) : (
+              <li key={s.id} className="flex gap-2">
+                <span className="w-4 shrink-0 text-right text-muted-foreground tabular-nums">{s.n}</span>
+                <span className="min-w-0">
+                  <span className="font-medium text-foreground">{s.name}</span>{" "}
+                  <span className="text-muted-foreground">{summarize(s.name, s.input)}</span>
+                </span>
+              </li>
+            ),
+          )
+        )}
+        {status === "running" && steps.length ? (
+          <li className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 aria-hidden="true" className="size-3 animate-spin" /> working…
+          </li>
+        ) : null}
+      </ol>
 
-          {tryout?.checks?.length ? (
-            <ul className="mt-3 space-y-1 text-sm">
-              {tryout.checks.map((c) => (
-                <li key={c.name} className="flex items-start gap-2">
-                  {c.passed ? (
-                    <Check className="mt-0.5 size-4 shrink-0 text-success" aria-label="passed" />
-                  ) : (
-                    <X className="mt-0.5 size-4 shrink-0 text-destructive" aria-label="failed" />
-                  )}
-                  <span className={c.passed ? "" : "text-muted-foreground"}>{c.name}</span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {tryout?.reason ? <p className="mt-3 line-clamp-3 text-sm text-muted-foreground" title={tryout.reason}>{tryout.reason}</p> : null}
-        </>
-      )}
+      {/* Six rows are reserved, so the checks land without growing the card. */}
+      <ul className="flex h-[8.25rem] shrink-0 flex-col text-[13px]">
+        {tryout?.checks?.length ? (
+          tryout.checks.slice(0, 6).map((c) => (
+            <li
+              key={c.name}
+              title={c.name}
+              className={`flex h-[1.375rem] items-center gap-1.5 rounded px-1 ${
+                c.passed ? "" : "bg-destructive/10 font-semibold text-destructive"
+              }`}
+            >
+              {c.passed ? (
+                <Check className="size-3.5 shrink-0 text-success" aria-label="Passed" />
+              ) : (
+                <X className="size-3.5 shrink-0" strokeWidth={3} aria-label="Failed" />
+              )}
+              <span className="truncate">{c.name}</span>
+            </li>
+          ))
+        ) : (
+          <li className="px-1 text-muted-foreground/70">
+            {agent.auditionable ? "Checks land when the tryout ends." : ""}
+          </li>
+        )}
+      </ul>
 
-      {status === "scored" ? <div className="min-h-4 flex-1" /> : null}
-      {status === "scored" ? (
-        <Button
-          onClick={onHire}
-          disabled={hiring}
-          variant={winner ? "default" : "outline"}
-          className={`mt-auto h-9 w-full ${winner ? "bg-(--hire) hover:bg-(--hire)/90" : ""}`}
-        >
-          {hiring ? <Loader2 className="animate-spin" /> : null}
-          Hire {agent.name}
-        </Button>
-      ) : null}
+      <p className="line-clamp-2 h-8 shrink-0 text-xs text-muted-foreground" title={tryout?.reason ?? undefined}>
+        {tryout?.reason}
+      </p>
+
+      <Button
+        onClick={onHire}
+        disabled={hiring || status !== "scored"}
+        variant={winner ? "default" : "outline"}
+        className={`mt-auto h-9 w-full shrink-0 ${winner ? "bg-success text-white hover:bg-success/90" : ""}`}
+      >
+        {hiring ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
+        Hire {agent.name}
+      </Button>
     </article>
   );
 }
 
 function Score({ tryout, auditionable }: { tryout: Tryout | null; auditionable: boolean }) {
   if (!auditionable) return null;
-  if (!tryout || tryout.status === "running")
-    return <Loader2 className="mt-1 size-4 shrink-0 animate-spin text-muted-foreground" aria-label="running" />;
-  if (tryout.status === "failed" || tryout.score == null)
-    return <span className="text-sm text-destructive">Failed</span>;
+  if (!tryout || tryout.status === "running") {
+    return (
+      <p className="flex h-7 w-12 shrink-0 animate-pulse items-center justify-end text-sm text-muted-foreground">
+        …<span className="sr-only">Running</span>
+      </p>
+    );
+  }
+  if (tryout.status === "failed" || tryout.score == null) {
+    return <p className="shrink-0 rounded-md bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive">Failed</p>;
+  }
   return (
-    <div className="shrink-0 text-right">
-      <div className="text-2xl font-semibold tabular-nums leading-none">{tryout.score.toFixed(1)}</div>
-      <div className="mt-1 text-xs text-muted-foreground">of 10</div>
-    </div>
+    <motion.p
+      initial={{ opacity: 0, filter: "blur(4px)", transform: "scale(0.96)" }}
+      animate={{ opacity: 1, filter: "blur(0px)", transform: "scale(1)" }}
+      transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
+      className={`shrink-0 rounded-md px-1.5 py-0.5 text-lg leading-none font-semibold tabular-nums ${scoreTone(tryout.score)}`}
+    >
+      {tryout.score.toFixed(1)}
+      <span className="text-xs font-normal opacity-70">/10</span>
+    </motion.p>
   );
 }
 
@@ -469,7 +590,7 @@ function Questions({
   }, [busy, current, onDone, onPick]);
 
   return (
-    <div className="mt-3 rounded-xl border bg-card p-4 animate-in fade-in slide-in-from-top-1 duration-200">
+    <div className="rounded-xl border bg-card p-4 shadow-lg animate-in fade-in zoom-in-95 duration-200">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-sm font-medium">A few quick questions</h2>
         <button type="button" onClick={onSkip} disabled={busy} className="text-sm text-muted-foreground hover:text-foreground">
@@ -491,7 +612,7 @@ function Questions({
                     aria-checked={on}
                     onClick={() => onPick(q.id, o)}
                     className={`inline-flex h-8 items-center gap-2 rounded-full border px-3 text-sm transition-colors ${
-                      on ? "border-(--hire) bg-(--hire) text-white" : "hover:bg-muted"
+                      on ? "border-foreground bg-foreground text-background" : "hover:bg-muted"
                     }`}
                   >
                     {q === current ? (
@@ -507,9 +628,9 @@ function Questions({
       </ol>
       <div className="mt-4 flex items-center justify-end gap-3">
         <span className="hidden text-xs text-muted-foreground sm:inline">Number keys pick, Enter sends</span>
-        <Button type="button" onClick={onDone} disabled={busy} className="h-9 bg-(--hire) px-4 hover:bg-(--hire)/90">
-          {busy ? <Loader2 className="animate-spin" /> : null}
-          Find agents
+        <Button type="button" onClick={onDone} disabled={busy} className="h-9 px-4">
+          {busy ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
+          Find Agents
         </Button>
       </div>
     </div>

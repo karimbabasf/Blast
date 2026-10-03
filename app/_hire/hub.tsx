@@ -4,6 +4,8 @@ import { Loader2, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { MarketAgent, Role } from "@/lib/market/types";
+import { AgentAvatar } from "../_components/agent-avatar";
+import { LogoFactory } from "../_components/agent-logo";
 import { modelName, money, ROLE_LABEL, runsIn } from "./format";
 
 export type Listing = Omit<MarketAgent, "system_prompt"> & {
@@ -126,6 +128,7 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
         ))}
       </div>
       {data && !data.agents.length && !error ? <p className="mt-6 text-sm text-muted-foreground">No agents match.</p> : null}
+      <LogoFactory ids={data?.agents.map((a) => a.id) ?? []} />
     </main>
   );
 }
@@ -137,8 +140,9 @@ function Card({ agent: a, now, isNew, setupUrl }: { agent: Listing; now: number;
       id={`agent-${a.id}`}
       className={`flex flex-col rounded-xl border bg-card p-3.5 text-sm ${isNew ? "border-(--hire) shadow-[0_0_0_1px_var(--hire)]" : ""}`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
+      <div className="flex items-start justify-between gap-2.5">
+        <AgentAvatar card={a} />
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h2 className="truncate font-semibold">{a.name}</h2>
             {isNew ? <span className="rounded-full bg-(--hire) px-2 py-px text-xs font-medium text-white">Just posted</span> : null}

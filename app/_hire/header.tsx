@@ -32,4 +32,5 @@ export function Header({ active }: { active?: string }) {
 }
 
 // One accent for the market pages, set once and used as bg-(--hire), text-(--hire).
-export const ACCENT = { "--hire": "oklch(0.55 0.2 262)", "--hire-soft": "oklch(0.96 0.03 262)" } as CSSProperties;
+// Black on grey: colour is kept for meaning (green wins, red fails).
+export const ACCENT = { "--hire": "var(--foreground)", "--hire-soft": "var(--muted)" } as CSSProperties;
