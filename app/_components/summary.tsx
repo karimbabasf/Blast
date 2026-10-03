@@ -11,6 +11,7 @@ import {
 } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { AgentAvatar, EmptyAvatar } from "./agent-avatar";
 import { PlayButton, POP } from "./audition-card";
 import { SKILLS } from "./board";
 import { money, SKILL_LABEL } from "./format";
@@ -83,8 +84,13 @@ export function Summary({
         <h2 className="text-base font-semibold">Hires</h2>
         <dl className="flex flex-col gap-3">
           {rows.map(({ skill, payment, card }) => (
-            <div key={skill} className="flex h-10 items-start justify-between gap-3">
-              <dt className="min-w-0 text-sm">
+            <div key={skill} className="flex h-10 items-center gap-3">
+              {card ? (
+                <AgentAvatar card={card} size="sm" verified={Boolean(payment)} className="bg-background" />
+              ) : (
+                <EmptyAvatar />
+              )}
+              <dt className="min-w-0 flex-1 text-sm">
                 <span className="text-muted-foreground">
                   {SKILL_LABEL[skill]}
                 </span>
@@ -109,7 +115,7 @@ export function Summary({
                   </span>
                 )}
               </dt>
-              <dd className="pt-5 text-sm text-muted-foreground tabular-nums">
+              <dd className="text-sm text-muted-foreground tabular-nums">
                 {card ? money(card.price_cents) : money(0)}
               </dd>
             </div>

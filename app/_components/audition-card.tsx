@@ -4,6 +4,7 @@ import { Pause, Play } from "lucide-react";
 import type { AgentCard, Audition } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { AgentAvatar } from "./agent-avatar";
 import { money } from "./format";
 
 // Every card and every empty slot is this tall, so nothing below ever moves.
@@ -81,8 +82,13 @@ export function AuditionCard({
         hired && "ring-2 ring-foreground",
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+      <div className="flex items-start gap-3">
+        <AgentAvatar
+          card={card}
+          status={scored ? undefined : "working"}
+          verified={hired}
+        />
+        <div className="min-w-0 flex-1">
           <div className="flex h-5 items-center gap-2">
             <h3 className="text-sm font-semibold" translate="no">
               {card.name}

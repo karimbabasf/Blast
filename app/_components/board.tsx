@@ -1,6 +1,7 @@
 import { motion } from "motion/react";
 import type { AgentCard, Audition, Job, Skill } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
+import { AgentAvatar } from "./agent-avatar";
 import { AuditionCard, EmptySlot } from "./audition-card";
 import { SKILL_LABEL } from "./format";
 
@@ -90,23 +91,30 @@ export function Board({
               ))}
             </ul>
 
-            <div className="flex h-20 flex-col gap-1.5 overflow-hidden">
+            <div className="flex h-6 items-center justify-between gap-3">
               <p className="text-xs text-muted-foreground">
-                {skipped.length} skipped · wrong skill or not available
+                {skipped.length} skipped
               </p>
-              <ul className="flex flex-wrap gap-1.5">
-                {skipped.map((audition, index) => (
-                  <motion.li
-                    key={audition.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.2, delay: index * 0.03 }}
-                    className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-                    translate="no"
-                  >
-                    {byId.get(audition.agent_id)?.name}
-                  </motion.li>
-                ))}
+              <ul className="flex -space-x-1.5">
+                {skipped.map((audition, index) => {
+                  const card = byId.get(audition.agent_id);
+                  if (!card) return null;
+                  return (
+                    <motion.li
+                      key={audition.id}
+                      initial={{ opacity: 0, transform: "scale(0.9)" }}
+                      animate={{ opacity: 1, transform: "scale(1)" }}
+                      transition={{ duration: 0.2, delay: index * 0.03 }}
+                      className="flex"
+                    >
+                      <AgentAvatar
+                        card={card}
+                        size="xs"
+                        className="text-muted-foreground ring-2 ring-background"
+                      />
+                    </motion.li>
+                  );
+                })}
               </ul>
             </div>
           </div>
