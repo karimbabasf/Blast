@@ -35,7 +35,12 @@ export function Board({
         const mine = job ? auditions.filter((a) => a.job_id === job.id) : [];
         const active = mine
           .filter((a) => a.status !== "skipped")
-          .sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+          .sort(
+            (a, b) =>
+              Number(b.score ?? -1) - Number(a.score ?? -1) ||
+              (byId.get(a.agent_id)?.price_cents ?? 0) -
+                (byId.get(b.agent_id)?.price_cents ?? 0),
+          );
         const skipped = mine.filter((a) => a.status === "skipped");
         const top = active[0]?.score != null ? active[0].agent_id : null;
         const empty = Math.max(0, SLOTS - active.length);
@@ -70,7 +75,7 @@ export function Board({
                     initial={{ opacity: 0, transform: "scale(0.97)" }}
                     animate={{ opacity: 1, transform: "scale(1)" }}
                     transition={{
-                      layout: { type: "spring", duration: 0.4, bounce: 0 },
+                      layout: { type: "spring", stiffness: 520, damping: 34, mass: 0.45 },
                       default: {
                         duration: 0.22,
                         delay: index * 0.05,

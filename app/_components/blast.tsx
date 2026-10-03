@@ -24,7 +24,7 @@ export function Blast() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-6 py-6">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-6 py-5">
         <header className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-1">
             <h1 className="text-2xl font-semibold tracking-tight" translate="no">

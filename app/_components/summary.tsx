@@ -1,5 +1,4 @@
 import { motion } from "motion/react";
-import { TrendingUp } from "lucide-react";
 import {
   RUN_BUDGET_CENTS,
   RUN_PRICE_CENTS,
@@ -16,12 +15,18 @@ import { AgentAvatar, EmptyAvatar } from "./agent-avatar";
 import { PlayButton, POP } from "./audition-card";
 import { SKILLS } from "./board";
 import { money, SKILL_LABEL } from "./format";
-import { MoneyTicker } from "./money-ticker";
+import { HoldToConfirm } from "@/components/interior/hold-to-confirm";
+import { ValueFlash } from "@/components/interior/value-flash";
 
-function topAudition(job: Job, auditions: Audition[]) {
+// Best score first; on a tie the cheaper agent wins, same as the hire route.
+function topAudition(job: Job, auditions: Audition[], cards: AgentCard[]) {
+  const price = (a: Audition) =>
+    cards.find((card) => card.id === a.agent_id)?.price_cents ?? 0;
   return auditions
     .filter((a) => a.job_id === job.id && a.score !== null)
-    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0];
+    .sort(
+      (a, b) => Number(b.score) - Number(a.score) || price(a) - price(b),
+    )[0];
 }
 
 // The right rail. Every row, the button and the ad box are on screen from
@@ -57,7 +62,7 @@ export function Summary({
     const payment = job && payments.find((p) => p.job_id === job.id);
     const pick =
       job && (status === "waiting" || status === "hiring" || status === "done")
-        ? topAudition(job, auditions)
+        ? topAudition(job, auditions, cards)
         : undefined;
     const card = cards.find(
       (c) => c.id === (payment?.agent_id ?? pick?.agent_id),
@@ -79,7 +84,7 @@ export function Summary({
         ? "Hiring…"
         : status === "done"
           ? "Hired"
-          : "Approve Hires";
+          : "Hold to Approve";
 
   return (
     <aside
@@ -149,14 +154,17 @@ export function Summary({
           >
             Reject
           </Button>
-          <Button
-            size="lg"
+          <HoldToConfirm
+            key={run?.id ?? "idle"}
+            onConfirm={onApprove}
             disabled={!canApprove}
-            onClick={onApprove}
-            className="h-11 flex-1 bg-success text-sm text-white hover:bg-success/90"
+            duration={900}
+            resetAfter={0}
+            confirmLabel="Approved"
+            className="h-11 flex-1"
           >
             {button}
-          </Button>
+          </HoldToConfirm>
         </div>
         <p
           className={cn(
@@ -171,19 +179,20 @@ export function Summary({
       <dl className="flex flex-col gap-2 border-t border-foreground/10 pt-4 text-sm tabular-nums">
         <div className="flex justify-between gap-4">
           <dt className="text-muted-foreground">You pay</dt>
-          <dd>{money(price)}</dd>
+          <dd className="-mr-1.5">
+            <ValueFlash value={price} format={money} label="You pay" />
+          </dd>
         </div>
         <div className="flex justify-between gap-4">
           <dt className="text-muted-foreground">Paid to agents</dt>
-          <dd>
-            <MoneyTicker cents={spent} />
+          <dd className="-mr-1.5">
+            <ValueFlash value={spent} format={money} label="Paid to agents" />
           </dd>
         </div>
         <div className="flex justify-between gap-4 font-semibold">
           <dt>Margin</dt>
-          <dd className="flex items-center gap-1 text-success">
-            <TrendingUp aria-hidden="true" className="size-3.5" />
-            <MoneyTicker cents={price - spent} />
+          <dd className="-mr-1.5 text-success">
+            <ValueFlash value={price - spent} format={money} label="Margin" />
           </dd>
         </div>
       </dl>
