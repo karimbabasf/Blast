@@ -1,7 +1,7 @@
-// One retry on rate limits, server errors, timeouts and empty replies. Anything else fails fast.
+// One retry on rate limits, server errors (any provider, "<label> <status>: "), timeouts and empty replies.
 
 const RETRYABLE =
-  /Gemini \S+ (429|5\d\d)|timeout|aborted|fetch failed|no audio|empty/i;
+  / (429|5\d\d): |timeout|aborted|fetch failed|no audio|empty/i;
 
 export async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
   try {

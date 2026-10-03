@@ -26,7 +26,7 @@ const AUDIO_SCHEMA = {
   propertyOrdering: ["heard", "name_right", "score", "reason"],
 };
 
-const AUDIO_PROMPT = `You judge a voice audition for a morning radio ad for a coffee shop named Xochitl.
+export const AUDIO_PROMPT = `You judge a voice audition for a morning radio ad for a coffee shop named Xochitl.
 "Xochitl" is a Nahuatl name, said "SO-cheel". Right: it starts with an S or SH sound, then "o", then a "chee" or "chi" sound.
 Small differences at the end are fine: "SO-cheel", "SO-chil", "SO-cheet", "SHO-cheel", "SO-chee" are all right.
 Wrong: it starts with a Z, X or "Ex" sound, it has a hard K, or it ends in "cho". For example "ZO-chit-ul", "ZOH-chittle", "EX-o-chitl", "zo-KIT-ul", "SAH-cho".
@@ -37,12 +37,12 @@ Then score the clip. Saying the name right matters most:
 - name_right false: score 0 to 3, however good the voice is.
 reason: one short line in plain words, under 90 characters. If the name was wrong, say the name was said wrong.`;
 
-function clampScore(n: number): number {
+export function clampScore(n: number): number {
   if (!Number.isFinite(n)) return 0;
   return Math.round(Math.min(10, Math.max(0, n)) * 10) / 10;
 }
 
-function shortLine(s: string): string {
+export function shortLine(s: string): string {
   const line = s.replace(/\s+/g, " ").trim();
   return line.length < 100 ? line : `${line.slice(0, 96).trimEnd()}...`;
 }
@@ -71,7 +71,8 @@ async function ask<T>(
   });
 }
 
-async function judgeText(req: JobRequest, text: string): Promise<Verdict> {
+// The text rubric, shared with the cross-lab panel so every judge reads the same task.
+export function textPrompt(req: JobRequest, text: string): string {
   const words = text.split(/\s+/).filter(Boolean).length;
   const task = req.sample
     ? `This is an audition sample: the opening hook of a radio ad for Xochitl Coffee.
@@ -79,25 +80,37 @@ Score 0 to 10 on how well it grabs a morning listener in the first seconds.`
     : `This is the full script for a 15 second radio ad for Xochitl Coffee.
 It must name the shop "Xochitl Coffee" and fit about 15 seconds, which is 30 to 38 spoken words.
 It has ${words} words. Missing the shop name caps the score at 3. Far outside 30 to 38 words loses points.`;
-  const v = await ask<Verdict>(
-    [
-      {
-        text: `You judge copy for a radio ad. ${task}
+  return `You judge copy for a radio ad. ${task}
 reason: one short line in plain words, under 90 characters.
 
 Script:
-"""${text}"""`,
-      },
-    ],
+"""${text}"""`;
+}
+
+export async function judgeText(
+  req: JobRequest,
+  text: string,
+  timeoutMs?: number,
+): Promise<Verdict> {
+  const v = await ask<Verdict>(
+    [{ text: textPrompt(req, text) }],
     VERDICT_SCHEMA,
+    timeoutMs,
   );
   return { score: clampScore(v.score), reason: shortLine(v.reason) };
 }
 
-async function judgeAudio(url: string): Promise<Verdict> {
+export async function fetchAudio(url: string): Promise<string> {
   const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error(`judge could not fetch audio: ${res.status}`);
-  const data = Buffer.from(await res.arrayBuffer()).toString("base64");
+  return Buffer.from(await res.arrayBuffer()).toString("base64");
+}
+
+async function judgeAudio(url: string): Promise<Verdict> {
+  return listenAudio(await fetchAudio(url));
+}
+
+export async function listenAudio(data: string): Promise<Verdict> {
   // One listen can mishear a borderline name, so listen three times at once and take the median.
   const listens = await Promise.allSettled(
     [0, 1, 2].map(() =>
@@ -124,7 +137,7 @@ async function judgeAudio(url: string): Promise<Verdict> {
   return verdicts[Math.floor((verdicts.length - 1) / 2)];
 }
 
-function audioVerdict(
+export function audioVerdict(
   v: Verdict & { heard: string; name_right: boolean },
 ): Verdict {
   if (v.name_right)

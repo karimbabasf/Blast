@@ -1,4 +1,4 @@
-import { judge } from "@/lib/judge";
+import { judgePanel } from "@/lib/judge/panel";
 import type { AgentCard, JobRequest, JobResult, Verdict } from "@/lib/types";
 import { fakeJudge, fakeRun } from "./fake";
 import { runScript } from "./script";
@@ -16,5 +16,5 @@ export function runAgent(card: AgentCard, req: JobRequest): Promise<JobResult> {
 
 export function judgeResult(req: JobRequest, result: JobResult): Promise<Verdict> {
   if (fake()) return fakeJudge(result);
-  return judge(req, result);
+  return judgePanel(req, result);
 }
