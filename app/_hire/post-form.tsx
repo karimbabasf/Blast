@@ -10,7 +10,7 @@ import { MODELS, modelName, ROLE_LABEL, ROLE_TOOLS } from "./format";
 
 type Posted = { agent?: MarketAgent; onboarding_url?: string; url?: string; id?: string };
 
-const field = "h-9 w-full rounded-lg border bg-transparent px-3 text-sm outline-none focus:border-(--hire) focus:ring-3 focus:ring-(--hire)/15";
+const field = "h-10 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm outline-none placeholder:text-stone-400 focus:border-(--hire) focus:ring-3 focus:ring-(--hire)/15";
 
 export function PostForm() {
   const [role, setRole] = useState<Role>("calendar");

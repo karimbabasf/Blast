@@ -3,7 +3,7 @@ import { PostForm } from "../_hire/post-form";
 
 export default function PostPage() {
   return (
-    <div style={ACCENT} className="flex min-h-full flex-1 flex-col">
+    <div style={ACCENT} className="flex min-h-full flex-1 flex-col bg-[oklch(0.975_0.008_75)]">
       <Header active="/post" />
       <PostForm />
     </div>
