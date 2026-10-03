@@ -1,114 +1,125 @@
 ---
 version: alpha
-name: Cursor-design-analysis
-description: An AI-first code editor whose marketing site reads like a quietly-confident developer-tools brand with a warm-cream editorial canvas (`#f7f7f4`) instead of the typical dark IDE atmosphere. Near-black warm ink (`#26251e`) carries body and display alike — display sits at weight 400 with negative letter-spacing for a magazine feel rather than a bold tech voice. The single brand voltage is **Cursor Orange** (`#f54e00`) reserved for primary CTAs and the wordmark. A signature pastel timeline palette (peach, mint, blue, lavender, gold) marks AI-action stages (Thinking / Reading / Editing / Grepping / Done) — only inside in-product timeline visualizations. Cards use minimal hairlines, no shadows, generous 80px section rhythm. CursorGothic for display/body, JetBrains Mono on every code surface (which is roughly half the page).
+name: Coinbase-design-analysis
+description: An institutional-grade crypto exchange whose marketing surfaces read like a quietly-confident financial-services brand. The base canvas is pure white; Coinbase Blue (`#0052ff`) is the single brand voltage, used scarcely on primary CTAs, signature glyphs, and inline accent moments. Type runs Coinbase's licensed CoinbaseDisplay (display) and CoinbaseSans (body) at modest weights — display sits at weight 400 not 700, signaling editorial calm rather than fintech-bombastic. Page rhythm rotates between bright white sections, soft gray elevation bands, and full-bleed dark editorial heroes (`#0a0b0d`) carrying product-ui mockup cards. Iconography is geometric and minimal; depth comes from card-on-card layering, never decorative shadows.
 
 colors:
-  primary: "#f54e00"
-  primary-active: "#d04200"
-  ink: "#26251e"
-  body: "#5a5852"
-  body-strong: "#26251e"
-  muted: "#807d72"
-  muted-soft: "#a09c92"
-  hairline: "#e6e5e0"
-  hairline-soft: "#efeee8"
-  hairline-strong: "#cfcdc4"
-  canvas: "#f7f7f4"
-  canvas-soft: "#fafaf7"
+  primary: "#0052ff"
+  primary-active: "#003ecc"
+  primary-disabled: "#a8b8cc"
+  ink: "#0a0b0d"
+  body: "#5b616e"
+  body-strong: "#0a0b0d"
+  muted: "#7c828a"
+  muted-soft: "#a8acb3"
+  hairline: "#dee1e6"
+  hairline-soft: "#eef0f3"
+  canvas: "#ffffff"
+  surface-soft: "#f7f7f7"
   surface-card: "#ffffff"
-  surface-strong: "#e6e5e0"
+  surface-strong: "#eef0f3"
+  surface-dark: "#0a0b0d"
+  surface-dark-elevated: "#16181c"
   on-primary: "#ffffff"
-  timeline-thinking: "#dfa88f"
-  timeline-grep: "#9fc9a2"
-  timeline-read: "#9fbbe0"
-  timeline-edit: "#c0a8dd"
-  timeline-done: "#c08532"
-  semantic-error: "#cf2d56"
-  semantic-success: "#1f8a65"
+  on-dark: "#ffffff"
+  on-dark-soft: "#a8acb3"
+  semantic-up: "#05b169"
+  semantic-down: "#cf202f"
+  accent-yellow: "#f4b000"
 
 typography:
   display-mega:
-    fontFamily: "'CursorGothic', system-ui, 'Helvetica Neue', Helvetica, Arial, sans-serif"
-    fontSize: 72px
+    fontFamily: "'Coinbase Display', -apple-system, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+    fontSize: 80px
     fontWeight: 400
-    lineHeight: 1.1
-    letterSpacing: -2.16px
+    lineHeight: 1.0
+    letterSpacing: -2px
+  display-xl:
+    fontFamily: "'Coinbase Display', sans-serif"
+    fontSize: 64px
+    fontWeight: 400
+    lineHeight: 1.0
+    letterSpacing: -1.6px
   display-lg:
-    fontFamily: "'CursorGothic', sans-serif"
+    fontFamily: "'Coinbase Display', sans-serif"
+    fontSize: 52px
+    fontWeight: 400
+    lineHeight: 1.0
+    letterSpacing: -1.3px
+  display-md:
+    fontFamily: "'Coinbase Display', sans-serif"
+    fontSize: 44px
+    fontWeight: 400
+    lineHeight: 1.09
+    letterSpacing: -1px
+  display-sm:
+    fontFamily: "'Coinbase Sans', sans-serif"
     fontSize: 36px
     fontWeight: 400
-    lineHeight: 1.2
-    letterSpacing: -0.72px
-  display-md:
-    fontFamily: "'CursorGothic', sans-serif"
-    fontSize: 26px
+    lineHeight: 1.11
+    letterSpacing: -0.5px
+  title-lg:
+    fontFamily: "'Coinbase Sans', sans-serif"
+    fontSize: 32px
     fontWeight: 400
-    lineHeight: 1.25
-    letterSpacing: -0.325px
-  display-sm:
-    fontFamily: "'CursorGothic', sans-serif"
-    fontSize: 22px
-    fontWeight: 400
-    lineHeight: 1.3
-    letterSpacing: -0.11px
+    lineHeight: 1.13
+    letterSpacing: -0.4px
   title-md:
-    fontFamily: "'CursorGothic', sans-serif"
+    fontFamily: "'Coinbase Sans', sans-serif"
     fontSize: 18px
     fontWeight: 600
-    lineHeight: 1.4
+    lineHeight: 1.33
     letterSpacing: 0
   title-sm:
-    fontFamily: "'CursorGothic', sans-serif"
+    fontFamily: "'Coinbase Sans', sans-serif"
     fontSize: 16px
     fontWeight: 600
-    lineHeight: 1.4
+    lineHeight: 1.25
     letterSpacing: 0
   body-md:
-    fontFamily: "'CursorGothic', sans-serif"
+    fontFamily: "'Coinbase Sans', sans-serif"
     fontSize: 16px
     fontWeight: 400
     lineHeight: 1.5
     letterSpacing: 0
-  body-tracked:
-    fontFamily: "'CursorGothic', sans-serif"
+  body-strong:
+    fontFamily: "'Coinbase Sans', sans-serif"
     fontSize: 16px
-    fontWeight: 400
+    fontWeight: 700
     lineHeight: 1.5
-    letterSpacing: 0.08px
+    letterSpacing: 0
   body-sm:
-    fontFamily: "'CursorGothic', sans-serif"
+    fontFamily: "'Coinbase Sans', sans-serif"
     fontSize: 14px
     fontWeight: 400
     lineHeight: 1.5
     letterSpacing: 0
   caption:
-    fontFamily: "'CursorGothic', sans-serif"
-    fontSize: 13px
-    fontWeight: 400
-    lineHeight: 1.4
-    letterSpacing: 0
-  caption-uppercase:
-    fontFamily: "'CursorGothic', sans-serif"
-    fontSize: 11px
-    fontWeight: 600
-    lineHeight: 1.4
-    letterSpacing: 0.88px
-    textTransform: uppercase
-  code:
-    fontFamily: "'JetBrains Mono', 'Fira Code', monospace"
+    fontFamily: "'Coinbase Sans', sans-serif"
     fontSize: 13px
     fontWeight: 400
     lineHeight: 1.5
     letterSpacing: 0
-  button:
-    fontFamily: "'CursorGothic', sans-serif"
-    fontSize: 14px
+  caption-strong:
+    fontFamily: "'Coinbase Sans', sans-serif"
+    fontSize: 12px
+    fontWeight: 600
+    lineHeight: 1.5
+    letterSpacing: 0
+  number-display:
+    fontFamily: "'Coinbase Mono', 'Coinbase Sans', monospace"
+    fontSize: 18px
     fontWeight: 500
-    lineHeight: 1.0
+    lineHeight: 1.4
+    letterSpacing: 0
+  button:
+    fontFamily: "'Coinbase Sans', sans-serif"
+    fontSize: 16px
+    fontWeight: 600
+    lineHeight: 1.15
     letterSpacing: 0
   nav-link:
-    fontFamily: "'CursorGothic', sans-serif"
+    fontFamily: "'Coinbase Sans', sans-serif"
     fontSize: 14px
     fontWeight: 500
     lineHeight: 1.4
@@ -117,11 +128,11 @@ typography:
 rounded:
   none: 0px
   xs: 4px
-  sm: 6px
-  md: 8px
-  lg: 12px
-  xl: 16px
-  pill: 9999px
+  sm: 8px
+  md: 12px
+  lg: 16px
+  xl: 24px
+  pill: 100px
   full: 9999px
 
 spacing:
@@ -133,144 +144,147 @@ spacing:
   lg: 24px
   xl: 32px
   xxl: 48px
-  section: 80px
+  section: 96px
 
 components:
-  top-nav:
+  top-nav-light:
     backgroundColor: "{colors.canvas}"
     textColor: "{colors.ink}"
+    typography: "{typography.nav-link}"
+    height: 64px
+  top-nav-on-dark:
+    backgroundColor: "{colors.surface-dark}"
+    textColor: "{colors.on-dark}"
     typography: "{typography.nav-link}"
     height: 64px
   button-primary:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
     typography: "{typography.button}"
-    rounded: "{rounded.md}"
-    padding: 10px 18px
-    height: 40px
+    rounded: "{rounded.pill}"
+    padding: 12px 20px
+    height: 44px
   button-primary-active:
     backgroundColor: "{colors.primary-active}"
     textColor: "{colors.on-primary}"
-    rounded: "{rounded.md}"
-  button-secondary:
-    backgroundColor: "{colors.surface-card}"
+    rounded: "{rounded.pill}"
+  button-primary-disabled:
+    backgroundColor: "{colors.primary-disabled}"
+    textColor: "{colors.on-primary}"
+    rounded: "{rounded.pill}"
+  button-secondary-light:
+    backgroundColor: "{colors.surface-strong}"
     textColor: "{colors.ink}"
     typography: "{typography.button}"
-    rounded: "{rounded.md}"
-    padding: 9px 17px
-    height: 40px
-  button-tertiary-text:
-    backgroundColor: transparent
-    textColor: "{colors.ink}"
-    typography: "{typography.button}"
-  button-download:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.canvas}"
-    typography: "{typography.button}"
-    rounded: "{rounded.md}"
+    rounded: "{rounded.pill}"
     padding: 12px 20px
     height: 44px
-  hero-band:
+  button-secondary-dark:
+    backgroundColor: "{colors.surface-dark-elevated}"
+    textColor: "{colors.on-dark}"
+    typography: "{typography.button}"
+    rounded: "{rounded.pill}"
+    padding: 12px 20px
+    height: 44px
+  button-outline-on-dark:
+    backgroundColor: transparent
+    textColor: "{colors.on-dark}"
+    typography: "{typography.button}"
+    rounded: "{rounded.pill}"
+    padding: 11px 19px
+    height: 44px
+  button-tertiary-text:
+    backgroundColor: transparent
+    textColor: "{colors.primary}"
+    typography: "{typography.button}"
+  button-pill-cta:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+    typography: "{typography.button}"
+    rounded: "{rounded.pill}"
+    padding: 16px 32px
+    height: 56px
+  hero-band-dark:
+    backgroundColor: "{colors.surface-dark}"
+    textColor: "{colors.on-dark}"
+    typography: "{typography.display-mega}"
+    padding: 96px
+  hero-band-light:
     backgroundColor: "{colors.canvas}"
     textColor: "{colors.ink}"
     typography: "{typography.display-mega}"
-    padding: 80px
-  ide-mockup-card:
-    backgroundColor: "{colors.surface-card}"
+    padding: 96px
+  product-ui-card-dark:
+    backgroundColor: "{colors.surface-dark-elevated}"
+    textColor: "{colors.on-dark}"
+    rounded: "{rounded.xl}"
+    padding: 32px
+  product-ui-card-light:
+    backgroundColor: "{colors.canvas}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.lg}"
-    padding: 0
-  ide-pane:
-    backgroundColor: "{colors.canvas-soft}"
-    textColor: "{colors.body}"
-    typography: "{typography.code}"
-    rounded: "{rounded.md}"
-    padding: 16px
+    rounded: "{rounded.xl}"
+    padding: 32px
   feature-card:
-    backgroundColor: "{colors.surface-card}"
+    backgroundColor: "{colors.canvas}"
     textColor: "{colors.ink}"
     typography: "{typography.title-md}"
-    rounded: "{rounded.lg}"
-    padding: 24px
-  comparison-card:
-    backgroundColor: "{colors.surface-card}"
+    rounded: "{rounded.xl}"
+    padding: 32px
+  asset-row:
+    backgroundColor: transparent
     textColor: "{colors.ink}"
     typography: "{typography.body-md}"
-    rounded: "{rounded.lg}"
-    padding: 24px
-  timeline-pill-thinking:
-    backgroundColor: "{colors.timeline-thinking}"
-    textColor: "{colors.ink}"
-    typography: "{typography.caption-uppercase}"
-    rounded: "{rounded.pill}"
-    padding: 4px 10px
-  timeline-pill-grep:
-    backgroundColor: "{colors.timeline-grep}"
-    textColor: "{colors.ink}"
-    typography: "{typography.caption-uppercase}"
-    rounded: "{rounded.pill}"
-    padding: 4px 10px
-  timeline-pill-read:
-    backgroundColor: "{colors.timeline-read}"
-    textColor: "{colors.ink}"
-    typography: "{typography.caption-uppercase}"
-    rounded: "{rounded.pill}"
-    padding: 4px 10px
-  timeline-pill-edit:
-    backgroundColor: "{colors.timeline-edit}"
-    textColor: "{colors.ink}"
-    typography: "{typography.caption-uppercase}"
-    rounded: "{rounded.pill}"
-    padding: 4px 10px
-  timeline-pill-done:
-    backgroundColor: "{colors.timeline-done}"
-    textColor: "{colors.on-primary}"
-    typography: "{typography.caption-uppercase}"
-    rounded: "{rounded.pill}"
-    padding: 4px 10px
-  code-block:
-    backgroundColor: "{colors.surface-card}"
-    textColor: "{colors.ink}"
-    typography: "{typography.code}"
-    rounded: "{rounded.lg}"
-    padding: 20px
+    padding: 16px 0
+  price-up-cell:
+    backgroundColor: transparent
+    textColor: "{colors.semantic-up}"
+    typography: "{typography.number-display}"
+  price-down-cell:
+    backgroundColor: transparent
+    textColor: "{colors.semantic-down}"
+    typography: "{typography.number-display}"
   pricing-tier-card:
-    backgroundColor: "{colors.surface-card}"
+    backgroundColor: "{colors.canvas}"
     textColor: "{colors.ink}"
     typography: "{typography.body-md}"
-    rounded: "{rounded.lg}"
+    rounded: "{rounded.xl}"
     padding: 32px
   pricing-tier-featured:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.canvas}"
+    backgroundColor: "{colors.surface-dark}"
+    textColor: "{colors.on-dark}"
     typography: "{typography.body-md}"
-    rounded: "{rounded.lg}"
+    rounded: "{rounded.xl}"
     padding: 32px
+  cta-band-dark:
+    backgroundColor: "{colors.surface-dark}"
+    textColor: "{colors.on-dark}"
+    typography: "{typography.display-lg}"
+    padding: 96px
   text-input:
-    backgroundColor: "{colors.surface-card}"
+    backgroundColor: "{colors.canvas}"
     textColor: "{colors.ink}"
     typography: "{typography.body-md}"
     rounded: "{rounded.md}"
-    padding: 12px 16px
+    padding: 14px 16px
+    height: 48px
+  search-input-pill:
+    backgroundColor: "{colors.surface-strong}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body-md}"
+    rounded: "{rounded.pill}"
+    padding: 12px 20px
     height: 44px
   badge-pill:
     backgroundColor: "{colors.surface-strong}"
     textColor: "{colors.ink}"
-    typography: "{typography.caption-uppercase}"
+    typography: "{typography.caption-strong}"
     rounded: "{rounded.pill}"
-    padding: 4px 10px
-  cta-band:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.display-lg}"
-    padding: 96px
-  testimonial-card:
-    backgroundColor: "{colors.surface-card}"
-    textColor: "{colors.body}"
-    typography: "{typography.body-md}"
-    rounded: "{rounded.lg}"
-    padding: 24px
-  footer:
+    padding: 4px 12px
+  asset-icon-circular:
+    backgroundColor: "{colors.surface-strong}"
+    rounded: "{rounded.full}"
+    size: 32px
+  footer-light:
     backgroundColor: "{colors.canvas}"
     textColor: "{colors.body}"
     typography: "{typography.body-sm}"
@@ -279,123 +293,129 @@ components:
     backgroundColor: transparent
     textColor: "{colors.body}"
     typography: "{typography.body-sm}"
+  legal-band:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.muted}"
+    typography: "{typography.caption}"
 ---
 
 ## Overview
 
-Cursor's marketing site reads as a quietly-confident developer brand that believes in editorial calm over IDE-darkness. The base canvas is **warm cream** (`{colors.canvas}` — #f7f7f4) holding warm near-black ink (`{colors.ink}` — #26251e) for body and display alike. The single brand voltage is **Cursor Orange** (`{colors.primary}` — #f54e00) reserved for primary CTAs and the wordmark — used scarcely.
+Coinbase reads like an institutional financial brand that happens to trade crypto — the marketing surfaces are quiet, white-canvas, editorially-spaced, and almost monochromatic. The single brand voltage is **Coinbase Blue** (`{colors.primary}` — #0052ff), used scarcely: every primary CTA pill, the brand wordmark, and inline emphasis links. Beyond that one blue, the system is white canvas + ink + soft gray elevation bands + a deep near-black editorial canvas (`{colors.surface-dark}` — #0a0b0d) for full-bleed product-mockup heroes.
 
-Type runs **CursorGothic** as the single sans family. Display sits at weight 400 with negative letter-spacing — a magazine-editorial voice rather than tech-bombastic. JetBrains Mono carries every code surface (and code surfaces are roughly half the page).
+Type pairs **CoinbaseDisplay** for hero headlines with **CoinbaseSans** for body, captions, and navigation. Display sits at **weight 400** — not the 700+ typical of trading platforms. The choice signals editorial calm and institutional trust rather than fintech urgency.
 
-The brand's strongest visual signature is the **AI-timeline pill palette**: five pastel pills (peach `{colors.timeline-thinking}`, mint `{colors.timeline-grep}`, blue `{colors.timeline-read}`, lavender `{colors.timeline-edit}`, gold `{colors.timeline-done}`) marking AI-action stages inside in-product timeline visualizations. Used only in product UI — never as system action colors.
+The page rhythm rotates three modes: bright white editorial sections, soft-gray elevation bands, and **full-bleed dark editorial heroes** carrying layered product-UI mockup cards. The dark hero with floating dashboard mockups is the single most distinctive component.
 
 **Key Characteristics:**
-- Warm cream canvas, not white. Ink is warm (#26251e), not pure black.
-- Single CTA color: `{colors.primary}` (Cursor Orange #f54e00). Used scarcely.
-- Display weight stays at 400 — never bold. Magazine voice.
-- AI timeline pastels: 5 dedicated tokens for in-product agent action stages.
-- Compact 8px CTA radius — developer dialect.
-- Hairline-only depth; no drop shadows.
-- 80px section rhythm.
+- Single accent color: `{colors.primary}` (#0052ff Coinbase Blue) carries every primary CTA, wordmark, and inline brand link. Used scarcely.
+- Modest display weights — CoinbaseDisplay at weight 400, never 700+.
+- Editorial pill geometry: every CTA is `{rounded.pill}` (100px), every asset glyph is `{rounded.full}`, every card is `{rounded.xl}` (24px). Sharp corners absent.
+- Full-bleed dark heroes with floating product-UI cards: `{component.hero-band-dark}` plus inline `{component.product-ui-card-dark}` mockups is the brand's strongest signature pattern.
+- Trading semantics: `{colors.semantic-up}` (#05b169) and `{colors.semantic-down}` (#cf202f) — text color only, never background fills.
+- 96px section rhythm — generous editorial pacing.
 
 ## Colors
 
 ### Brand & Accent
-- **Cursor Orange** (`{colors.primary}` — #f54e00): Primary CTA pills, wordmark, hero accent. Used scarcely.
-- **Cursor Orange Active** (`{colors.primary-active}` — #d04200): Press state.
+- **Coinbase Blue** (`{colors.primary}` — #0052ff): The single brand color. Every primary CTA pill, the Coinbase wordmark, and inline brand links.
+- **Coinbase Blue Active** (`{colors.primary-active}` — #003ecc): Press-state darken on the primary pill.
+- **Coinbase Blue Disabled** (`{colors.primary-disabled}` — #a8b8cc): Faded-blue tint for disabled CTAs.
+- **Accent Yellow** (`{colors.accent-yellow}` — #f4b000): A small sub-brand accent used very sparingly on Bitcoin/asset glyph fills inside feature cards. Illustrative-only, not an action color.
 
 ### Surface
-- **Canvas** (`{colors.canvas}` — #f7f7f4): Warm cream page floor.
-- **Canvas Soft** (`{colors.canvas-soft}` — #fafaf7): IDE-pane background inside mockups.
-- **Surface Card** (`{colors.surface-card}` — #ffffff): Pure white card surface — slight contrast against the cream canvas.
-- **Surface Strong** (`{colors.surface-strong}` — #e6e5e0): Badges, tag pills.
+- **Canvas** (`{colors.canvas}` — #ffffff): The default page floor.
+- **Surface Soft** (`{colors.surface-soft}` — #f7f7f7): Subtle alternating band surface.
+- **Surface Strong** (`{colors.surface-strong}` — #eef0f3): The light-gray fill behind secondary buttons, search pills, asset-icon plates.
+- **Surface Dark** (`{colors.surface-dark}` — #0a0b0d): Deep near-black canvas for full-bleed dark heroes, CTA bands. Same hex as `{colors.ink}` — page-floor and text-color share the value.
+- **Surface Dark Elevated** (`{colors.surface-dark-elevated}` — #16181c): One step lighter, used for floating product-UI mockup cards inside dark heroes.
 
 ### Hairlines
-- **Hairline** (`{colors.hairline}` — #e6e5e0): 1px divider.
-- **Hairline Soft** (`{colors.hairline-soft}` — #efeee8): Lighter divider.
-- **Hairline Strong** (`{colors.hairline-strong}` — #cfcdc4): Stronger panel outline.
+- **Hairline** (`{colors.hairline}` — #dee1e6): Default 1px divider on white surfaces.
+- **Hairline Soft** (`{colors.hairline-soft}` — #eef0f3): Lighter divider — same hex as `{colors.surface-strong}`.
 
 ### Text
-- **Ink** (`{colors.ink}` — #26251e): Display, body emphasis. Warm near-black.
-- **Body** (`{colors.body}` — #5a5852): Default running-text.
-- **Body Strong** (`{colors.body-strong}` — #26251e): Same as ink.
-- **Muted** (`{colors.muted}` — #807d72): Sub-titles.
-- **Muted Soft** (`{colors.muted-soft}` — #a09c92): Disabled text.
-- **On Primary** (`{colors.on-primary}` — #ffffff): White text on Cursor Orange.
+- **Ink** (`{colors.ink}` — #0a0b0d): Display headings, primary nav, body emphasis.
+- **Body** (`{colors.body}` — #5b616e): Default running-text — slightly cool gray.
+- **Body Strong** (`{colors.body-strong}` — #0a0b0d): Same as ink, used for stronger emphasis.
+- **Muted** (`{colors.muted}` — #7c828a): Sub-titles, breadcrumbs, footer secondary.
+- **Muted Soft** (`{colors.muted-soft}` — #a8acb3): Disabled link text.
+- **On Primary** (`{colors.on-primary}` — #ffffff): White text on Coinbase Blue CTAs.
+- **On Dark** (`{colors.on-dark}` — #ffffff): White text on dark heroes.
+- **On Dark Soft** (`{colors.on-dark-soft}` — #a8acb3): Muted off-white for secondary text on dark.
 
-### Timeline (AI-action signature)
-- **Thinking** (`{colors.timeline-thinking}` — #dfa88f): Peach. Used inside in-product agent timeline only.
-- **Grep** (`{colors.timeline-grep}` — #9fc9a2): Mint.
-- **Read** (`{colors.timeline-read}` — #9fbbe0): Pastel blue.
-- **Edit** (`{colors.timeline-edit}` — #c0a8dd): Lavender.
-- **Done** (`{colors.timeline-done}` — #c08532): Warm gold.
-
-### Semantic
-- **Success** (`{colors.semantic-success}` — #1f8a65): Confirmation indicators.
-- **Error** (`{colors.semantic-error}` — #cf2d56): Validation errors.
+### Trading Semantics
+- **Semantic Up** (`{colors.semantic-up}` — #05b169): "Price up" green, text color only.
+- **Semantic Down** (`{colors.semantic-down}` — #cf202f): "Price down" red, text color only.
 
 ## Typography
 
 ### Font Family
-**CursorGothic** is the licensed display + body family. Fallback: `system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif`. Code surfaces switch to **JetBrains Mono**.
+The system runs **CoinbaseDisplay** (display headlines), **CoinbaseSans** (body, navigation, captions, buttons), **CoinbaseIcons** (icon font), and **CoinbaseMono** for tabular numerical data. Fallback stack: `-apple-system, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`.
+
+The display/body split is functional: CoinbaseDisplay carries hero headlines only; CoinbaseSans carries everything else.
 
 ### Hierarchy
 
 | Token | Size | Weight | Line Height | Letter Spacing | Use |
 |---|---|---|---|---|---|
-| `{typography.display-mega}` | 72px | 400 | 1.1 | -2.16px | Homepage hero h1 |
-| `{typography.display-lg}` | 36px | 400 | 1.2 | -0.72px | Section heads |
-| `{typography.display-md}` | 26px | 400 | 1.25 | -0.325px | Sub-section heads |
-| `{typography.display-sm}` | 22px | 400 | 1.3 | -0.11px | Card group titles |
-| `{typography.title-md}` | 18px | 600 | 1.4 | 0 | Component titles |
-| `{typography.title-sm}` | 16px | 600 | 1.4 | 0 | List labels |
+| `{typography.display-mega}` | 80px | 400 | 1.0 | -2px | Homepage hero h1 |
+| `{typography.display-xl}` | 64px | 400 | 1.0 | -1.6px | Subsidiary heroes |
+| `{typography.display-lg}` | 52px | 400 | 1.0 | -1.3px | Section heads |
+| `{typography.display-md}` | 44px | 400 | 1.09 | -1px | CTA-band headlines |
+| `{typography.display-sm}` | 36px | 400 | 1.11 | -0.5px | Sub-section heads — CoinbaseSans |
+| `{typography.title-lg}` | 32px | 400 | 1.13 | -0.4px | Card group titles |
+| `{typography.title-md}` | 18px | 600 | 1.33 | 0 | Component titles, asset row primary |
+| `{typography.title-sm}` | 16px | 600 | 1.25 | 0 | List labels |
 | `{typography.body-md}` | 16px | 400 | 1.5 | 0 | Default body |
-| `{typography.body-tracked}` | 16px | 400 | 1.5 | 0.08px | Tracked editorial body |
+| `{typography.body-strong}` | 16px | 700 | 1.5 | 0 | Emphasized body |
 | `{typography.body-sm}` | 14px | 400 | 1.5 | 0 | Footer body |
-| `{typography.caption}` | 13px | 400 | 1.4 | 0 | Photo captions |
-| `{typography.caption-uppercase}` | 11px | 600 | 1.4 | 0.88px | Section labels, timeline pill labels |
-| `{typography.code}` | 13px | 400 | 1.5 | 0 | Code blocks — JetBrains Mono |
-| `{typography.button}` | 14px | 500 | 1.0 | 0 | CTA pill labels |
-| `{typography.nav-link}` | 14px | 500 | 1.4 | 0 | Top-nav menu |
+| `{typography.caption}` | 13px | 400 | 1.5 | 0 | Photo captions |
+| `{typography.caption-strong}` | 12px | 600 | 1.5 | 0 | Badge pill labels |
+| `{typography.number-display}` | 18px | 500 | 1.4 | 0 | Asset prices, percent changes — CoinbaseMono |
+| `{typography.button}` | 16px | 600 | 1.15 | 0 | Standard CTA pill |
+| `{typography.nav-link}` | 14px | 500 | 1.4 | 0 | Top-nav menu items |
 
 ### Principles
-- **Display weight stays at 400.** Magazine voice, never bold.
-- **Negative letter-spacing on display only.** -0.11px to -2.16px tracking.
-- **JetBrains Mono on every code surface.**
+- **Display weight stays at 400.** The single most distinctive typographic choice — signals "calm institutional brand" rather than "trading-platform urgency."
+- **Negative letter-spacing on display only.** Display uses -1px to -2px tracking; body stays at 0.
+- **CoinbaseMono on every number.** Asset prices, percent changes — anything tabular renders in CoinbaseMono.
 
 ### Note on Font Substitutes
-CursorGothic is licensed. Open-source substitute: **Inter** at weight 400 with letter-spacing -1.5%. Or **GT Sectra** for a more editorial feel.
+CoinbaseDisplay, CoinbaseSans, and CoinbaseMono are licensed Coinbase typefaces.
+- **CoinbaseDisplay → Inter** at weight 400, letter-spacing -1.5%.
+- **CoinbaseSans → Inter** at weight 400/600.
+- **CoinbaseMono → JetBrains Mono** or **Geist Mono** at weight 500.
 
 ## Layout
 
 ### Spacing System
 - **Base unit:** 4px.
-- **Tokens:** `{spacing.xxs}` 4px · `{spacing.xs}` 8px · `{spacing.sm}` 12px · `{spacing.base}` 16px · `{spacing.md}` 20px · `{spacing.lg}` 24px · `{spacing.xl}` 32px · `{spacing.xxl}` 48px · `{spacing.section}` 80px.
-- **Section padding:** 80px.
+- **Tokens:** `{spacing.xxs}` 4px · `{spacing.xs}` 8px · `{spacing.sm}` 12px · `{spacing.base}` 16px · `{spacing.md}` 20px · `{spacing.lg}` 24px · `{spacing.xl}` 32px · `{spacing.xxl}` 48px · `{spacing.section}` 96px.
+- **Section padding:** `{spacing.section}` (96px) for every major editorial band.
+- **Card internal padding:** `{spacing.xl}` (32px) for feature cards and product-UI mockups.
 
 ### Grid & Container
-- Max content width: ~1200px.
-- Editorial body: 12-column grid.
-- Feature card grids: 2-up at desktop for splits, 3-up for benefits.
-- Footer: 5-column at desktop.
+- **Max content width:** ~1200px centered. Hero photography full-bleed.
+- **Editorial body:** Single 12-column grid.
+- **Feature card grids:** 2-up at desktop for hero splits, 3-up for benefit grids.
+- **Footer:** 6-column link list at desktop.
 
 ### Whitespace Philosophy
-Generous editorial pacing — closer to a print magazine than a tech site. The cream canvas has plenty of breathing room; cards within bands sit close (16-24px gap).
+Generous editorial pacing — closer to Bloomberg or the Financial Times than to a trading dashboard. 96px between bands; cards inside bands sit 24px apart. Density lives behind login walls, not on marketing.
 
 ## Elevation & Depth
 
-The system uses **hairline-only depth**. No drop shadows, no elevation tiers. Cards float above the canvas via 1px hairlines and the slight white-on-cream contrast.
-
 | Level | Treatment | Use |
 |---|---|---|
-| Flat (canvas) | `{colors.canvas}` (#f7f7f4) | Body bands, footer |
-| Card | `{colors.surface-card}` (#ffffff) | Content cards |
-| Hairline border | 1px `{colors.hairline}` | Card outlines, dividers |
-| IDE pane | `{colors.canvas-soft}` (#fafaf7) | Inside IDE mockup cards |
+| Flat | No shadow, no border | 80% of surfaces |
+| Hairline border | 1px `{colors.hairline}` | Feature card outlines on white |
+| Soft drop | `0 4px 12px rgba(0, 0, 0, 0.04)` | Single shadow tier — hovered cards |
+| Photographic | Full-bleed product-UI mockups | Hero depth |
 
 ### Decorative Depth
-- **IDE-mockup cards** are the only "elevated" element. White card on cream canvas with internal pane structure mimicking the actual Cursor editor.
-- **Timeline pastel pills** add chromatic depth without surface elevation.
+- **Layered product-UI cards inside dark heroes** is the most distinctive decorative pattern — a `{component.product-ui-card-dark}` floats above a darker base canvas, often with a second smaller card overlapping at an angle.
+- **Geometric brand illustrations** carry illustrative depth where shadows would otherwise.
 
 ## Shapes
 
@@ -403,100 +423,109 @@ The system uses **hairline-only depth**. No drop shadows, no elevation tiers. Ca
 
 | Token | Value | Use |
 |---|---|---|
-| `{rounded.none}` | 0px | Reserved |
+| `{rounded.none}` | 0px | Reserved (essentially unused) |
 | `{rounded.xs}` | 4px | Inline tags |
-| `{rounded.sm}` | 6px | Compact rows |
-| `{rounded.md}` | 8px | CTA buttons, form inputs |
-| `{rounded.lg}` | 12px | Cards, IDE panes |
-| `{rounded.xl}` | 16px | Larger feature cards (rare) |
-| `{rounded.pill}` | 9999px | Timeline pills, badges |
-| `{rounded.full}` | 9999px | Avatars (rare) |
+| `{rounded.sm}` | 8px | Compact rows |
+| `{rounded.md}` | 12px | Form inputs |
+| `{rounded.lg}` | 16px | Mid-size cards |
+| `{rounded.xl}` | 24px | Feature cards, product-UI mockups, pricing tiers |
+| `{rounded.pill}` | 100px | All CTA buttons, search pills, badges |
+| `{rounded.full}` | 9999px | Asset icon circles, avatars |
+
+Pill for interactive, card-radius (24px) for containers, full circle for icons. Sharp corners absent.
 
 ## Components
 
 ### Top Navigation
 
-**`top-nav`** — Background `{colors.canvas}`, text `{colors.ink}`, height 64px. Layout: Cursor wordmark left, primary horizontal menu (Pricing / Features / Enterprise / Blog / Forum / Careers), Sign In + Download primary CTA right.
+**`top-nav-light`** — Default top nav on white pages. Background `{colors.canvas}`, text `{colors.ink}`, height 64px. Layout: Coinbase wordmark left, primary horizontal menu (Cryptocurrencies / Individuals / Businesses / Institutions / Developers / Company), search-icon + globe + Sign In + Sign Up CTAs right.
+
+**`top-nav-on-dark`** — Top nav over a dark hero band. Background `{colors.surface-dark}`, text `{colors.on-dark}`. Same layout.
 
 ### Buttons
 
-**`button-primary`** — The signature Cursor Orange CTA. Background `{colors.primary}`, text `{colors.on-primary}`, type `{typography.button}` (14px / 500), padding 10px × 18px, height 40px, rounded `{rounded.md}` (8px).
+**`button-primary`** — The signature Coinbase Blue pill. Background `{colors.primary}`, text `{colors.on-primary}`, type `{typography.button}` (16px / 600), padding 12px × 20px, height 44px, rounded `{rounded.pill}` (100px).
 
-**`button-primary-active`** — Press state. Background `{colors.primary-active}`.
+**`button-primary-active`** — Press state. Background `{colors.primary-active}`, deeper blue.
 
-**`button-secondary`** — White card pill on cream canvas. Background `{colors.surface-card}`, text `{colors.ink}`, 1px `{colors.hairline-strong}` border.
+**`button-primary-disabled`** — Faded blue tint. Background `{colors.primary-disabled}`. Cursor not-allowed.
 
-**`button-tertiary-text`** — Inline ink text link.
+**`button-secondary-light`** — Soft-gray secondary on white surfaces. Background `{colors.surface-strong}`, text `{colors.ink}`, same pill geometry.
 
-**`button-download`** — Larger ink-canvas CTA. Background `{colors.ink}`, text `{colors.canvas}`, padding 12px × 20px, height 44px. Used for "Download for macOS" type CTAs.
+**`button-secondary-dark`** — Used on dark heroes. Background `{colors.surface-dark-elevated}`, text `{colors.on-dark}`, same pill geometry.
 
-### Hero & IDE Mockups
+**`button-outline-on-dark`** — Transparent pill with white outline. Background transparent, text `{colors.on-dark}`, 1px white border.
 
-**`hero-band`** — Background `{colors.canvas}`, full-width display headline in `{typography.display-mega}` (72px / 400 / -2.16px), subhead in `{typography.body-md}`, two CTAs (`button-download` + `button-tertiary-text`), and a centered IDE-mockup card below the hero copy.
+**`button-tertiary-text`** — Inline text link. Background transparent, text `{colors.primary}`, type `{typography.button}`.
 
-**`ide-mockup-card`** — A white card containing a multi-pane IDE mockup (sidebar + main editor + chat panel + terminal). Background `{colors.surface-card}`, rounded `{rounded.lg}` (12px), 1px `{colors.hairline}` border, no padding (panes fill the card edge-to-edge).
+**`button-pill-cta`** — Larger pill CTA used on the homepage hero ("Get started"). Same Coinbase Blue palette but with 56px height and 16px × 32px padding for a prouder stance.
 
-**`ide-pane`** — Individual IDE pane inside the mockup. Background `{colors.canvas-soft}`, text `{colors.body}` in `{typography.code}` (JetBrains Mono 13px), rounded `{rounded.md}` (8px), padding 16px.
+### Hero Bands
+
+**`hero-band-dark`** — The signature full-bleed dark hero. Background `{colors.surface-dark}`, text `{colors.on-dark}`, full-bleed layered product-UI mockup cards. Display headline left in `{typography.display-mega}` (80px / 400), subhead in `{typography.body-md}`, two CTAs.
+
+**`hero-band-light`** — White-canvas variant used on Wealth and Explore. Background `{colors.canvas}`, text `{colors.ink}`. Same skeleton, light palette.
 
 ### Cards
 
-**`feature-card`** — Background `{colors.surface-card}`, text `{colors.ink}`, type `{typography.title-md}`, rounded `{rounded.lg}`, padding 24px. 1px `{colors.hairline}` border.
+**`product-ui-card-dark`** — The floating product-UI mockup. Background `{colors.surface-dark-elevated}`, text `{colors.on-dark}`, rounded `{rounded.xl}` (24px), padding 32px. Often shown as 2-3 stacked cards at slight rotation, mimicking a layered dashboard.
 
-**`comparison-card`** — Side-by-side "Cursor vs other tools" card. Same surface and rounding; internally split into 2 columns.
+**`product-ui-card-light`** — Light-canvas variant used on Explore for asset cards. Background `{colors.canvas}`, text `{colors.ink}`, same geometry, 1px hairline border.
 
-**`testimonial-card`** — Quote card. Background `{colors.surface-card}`, text `{colors.body}`, rounded `{rounded.lg}`, padding 24px.
+**`feature-card`** — Used in 3-up and 2-up grids. Background `{colors.canvas}`, text `{colors.ink}`, type `{typography.title-md}`, rounded `{rounded.xl}`, padding 32px.
 
-### AI Timeline (signature)
+### Trading Surfaces
 
-**`timeline-pill-thinking`** — Peach pill. Background `{colors.timeline-thinking}`, text `{colors.ink}`, type `{typography.caption-uppercase}` (11px / 600 / 0.88px tracking, uppercase), rounded `{rounded.pill}`, padding 4px × 10px. Marks "Thinking" stage in product timeline.
+**`asset-row`** — Horizontal row in asset lists (Explore, Wealth). Background transparent, 1px hairline divider. Layout: 32px circular asset icon left, asset name + ticker, price column in `{typography.number-display}`, 24h change column with `{component.price-up-cell}` or `{component.price-down-cell}`.
 
-**`timeline-pill-grep`** — Mint pill. Same shape, background `{colors.timeline-grep}`. Marks "Grepping" stage.
+**`price-up-cell`** + **`price-down-cell`** — Inline price-change cells. Color only — green or red text in `{typography.number-display}`, no background fill.
 
-**`timeline-pill-read`** — Pastel-blue pill. Background `{colors.timeline-read}`. Marks "Reading" stage.
-
-**`timeline-pill-edit`** — Lavender pill. Background `{colors.timeline-edit}`. Marks "Editing" stage.
-
-**`timeline-pill-done`** — Gold pill. Background `{colors.timeline-done}`, text `{colors.on-primary}` white. Marks "Done" stage.
-
-### Code
-
-**`code-block`** — Inline code block. Background `{colors.surface-card}`, text `{colors.ink}` in `{typography.code}`, rounded `{rounded.lg}`, padding 20px, 1px `{colors.hairline}` border.
+**`asset-icon-circular`** — Circular plate behind asset glyphs. Background `{colors.surface-strong}`, rounded `{rounded.full}`, 32px diameter.
 
 ### Pricing
 
-**`pricing-tier-card`** — Background `{colors.surface-card}`, rounded `{rounded.lg}`, padding 32px, 1px `{colors.hairline}` border.
+**`pricing-tier-card`** — Standard pricing tier on Developer Platform. Background `{colors.canvas}`, rounded `{rounded.xl}`, padding 32px, 1px hairline border. Layout: tier name + price + feature checklist + CTA pill.
 
-**`pricing-tier-featured`** — Featured tier inverts to ink. Background `{colors.ink}`, text `{colors.canvas}`. Same shape, dark inversion signals "highlighted" without colored ribbon.
+**`pricing-tier-featured`** — The featured tier. Background `{colors.surface-dark}`, text `{colors.on-dark}`. Same skeleton, dark palette — visual inversion signals "highlighted choice" without colored ribbons.
 
-### Forms & Tags
+### Forms
 
-**`text-input`** — Background `{colors.surface-card}`, text `{colors.ink}`, rounded `{rounded.md}` (8px), padding 12px × 16px, height 44px.
+**`text-input`** — Standard text input. Background `{colors.canvas}`, text `{colors.ink}`, rounded `{rounded.md}` (12px), padding 14px × 16px, height 48px, 1px hairline border. On focus, border thickens to 2px Coinbase Blue.
 
-**`badge-pill`** — Small uppercase pill. Background `{colors.surface-strong}`, text `{colors.ink}`, type `{typography.caption-uppercase}`, rounded `{rounded.pill}`, padding 4px × 10px.
+**`search-input-pill`** — Pill-shaped search bar. Background `{colors.surface-strong}`, rounded `{rounded.pill}`, padding 12px × 20px, height 44px.
+
+### Tags & Badges
+
+**`badge-pill`** — Small uppercase pill used as section labels ("INSTITUTIONAL", "REGULATED"). Background `{colors.surface-strong}`, text `{colors.ink}`, type `{typography.caption-strong}`, rounded `{rounded.pill}`.
 
 ### CTA / Footer
 
-**`cta-band`** — Pre-footer "Try Cursor now" band. Background `{colors.canvas}`, centered display headline in `{typography.display-lg}`, single Cursor Orange CTA. 96px vertical padding.
+**`cta-band-dark`** — Pre-footer "Take control of your money" band. Background `{colors.surface-dark}`, text `{colors.on-dark}`, vertical padding 96px. Centered headline + two CTAs.
 
-**`footer`** — Closing footer. Background `{colors.canvas}`, text `{colors.body}`. 5-column link list. 64×48px padding.
+**`footer-light`** — Closing white-canvas footer. Background `{colors.canvas}`, text `{colors.body}`. 6-column link list.
 
-**`footer-link`** — Background transparent, text `{colors.body}`, type `{typography.body-sm}`.
+**`footer-link`** — Individual footer link. Background transparent, text `{colors.body}`.
+
+**`legal-band`** — Bottom strip beneath footer columns. All text `{colors.muted}` at `{typography.caption}`.
 
 ## Do's and Don'ts
 
 ### Do
-- Reserve `{colors.primary}` (Cursor Orange) for primary CTAs and brand wordmark.
-- Keep display weight at 400. The editorial voice depends on this.
-- Use the cream `{colors.canvas}` page floor — never pure white.
-- Render every code surface (inline, blocks, IDE panes) in JetBrains Mono.
-- Use timeline pastels only inside in-product agent visualizations — never as system action colors.
+- Reserve `{colors.primary}` (Coinbase Blue) for primary CTAs, wordmark, brand-glyph illustrations, inline accent links.
+- Set every CTA as `{rounded.pill}` (100px); every asset glyph as `{rounded.full}`.
+- Keep CoinbaseDisplay headlines at weight 400.
+- Use the dark/light band rotation as page rhythm.
+- Render every numerical value in CoinbaseMono via `{typography.number-display}`.
+- Pair every dark hero with a layered product-UI mockup card stack.
 
 ### Don't
-- Don't introduce a secondary brand action color. Cursor Orange is the only one.
-- Don't drop display to bold weights (700+). Magazine voice depends on 400.
-- Don't add drop shadows. Hairlines + ink-on-cream contrast carry the depth.
-- Don't use timeline pastels on non-timeline UI. They're scoped to the agent timeline only.
-- Don't extract a CTA color from a third-party widget (cookie consent, OneTrust). The brand's CTA is what appears on actual product CTAs.
+- Don't introduce a secondary brand color. Coinbase Blue is the only action color; trading green/red are semantic-only.
+- Don't bold display copy — display sits at weight 400; bolding shifts the brand voice.
+- Don't add drop shadow tiers — system has one shadow tier.
+- Don't use sharp `{rounded.none}` (0px) on CTAs.
+- Don't mix CoinbaseDisplay and CoinbaseSans inside the same headline.
+- Don't use trading green/red as a button background.
+- Don't extract a CTA color from a third-party widget (cookie consent, OneTrust). The brand's CTA color is what appears on actual product CTAs, not on injected modals.
 
 ## Responsive Behavior
 
@@ -504,34 +533,38 @@ The system uses **hairline-only depth**. No drop shadows, no elevation tiers. Ca
 
 | Name | Width | Key Changes |
 |---|---|---|
-| Mobile | < 640px | Hero h1 72→32px; IDE mockup collapses to single pane preview; feature grid 1-up; nav hamburger. |
-| Tablet | 640–1024px | Hero h1 56px; IDE mockup compresses; feature grid 2-up. |
-| Desktop | 1024–1280px | Full hero h1 72px; full multi-pane IDE mockup; feature grid 3-up. |
-| Wide | > 1280px | Content caps at 1200px. |
+| Mobile | < 640px | Hero h1 80→40px; feature card grid 1-up; asset row stacks; nav collapses to hamburger; layered product-UI cards collapse to single card. |
+| Tablet | 640–1024px | Hero h1 64px; feature card grid 2-up; asset rows stay horizontal but compress columns. |
+| Desktop | 1024–1280px | Full hero h1 80px; feature card grid 3-up; full asset row layout. |
+| Wide | > 1280px | Content caps at 1200px; hero photography full-bleed. |
 
 ### Touch Targets
-- Primary CTA at 40px height — at WCAG AA, padded for AAA.
-- Download CTA at 44px — at AAA.
+- Primary CTA pill at 44px height — at WCAG AAA.
+- Larger hero pill (`{component.button-pill-cta}`) at 56px — well above AAA.
+- Asset icon circles at 32px — borderline; padded 8px row creates effective 48px tap zone.
+- Search pill at 44px height — at AAA.
 
 ### Collapsing Strategy
-- Top nav switches to hamburger below 768px.
-- IDE mockup multi-pane collapses to a single primary pane preview on mobile.
-- Feature grid: 3-up → 2-up → 1-up.
+- Top nav switches to hamburger sheet below 768px. Sign Up CTA stays visible.
+- Hero h1 steps down: 80 → 64 → 52 → 44 → 36px on smallest screens.
+- Layered product-UI mockup cards collapse from 2-3 stacked into a single card on mobile.
+- Pricing tier rows: 3-up → 2-up → 1-up.
+- Asset rows on mobile stack vertically: ticker line on top, price + change line beneath.
 
 ## Iteration Guide
 
-1. Focus on a single component at a time.
-2. CTAs default to `{rounded.md}` (8px). Cards use `{rounded.lg}` (12px).
-3. Variants live as separate entries inside `components:`.
+1. Focus on a single component at a time. Reference YAML keys directly.
+2. New CTAs default to `{rounded.pill}` (100px); new icon plates default to `{rounded.full}`. Cards use `{rounded.xl}`.
+3. Variants live as separate entries inside the `components:` block.
 4. Use `{token.refs}` everywhere — never inline hex.
-5. Hover state never documented.
-6. CursorGothic 400 for display, 400/500/600 for body. JetBrains Mono on every code surface.
-7. Cursor Orange stays scarce.
-8. Timeline pastels stay scoped to in-product agent visualizations.
+5. Hover state never documented. Only Default and Active/Pressed.
+6. CoinbaseDisplay 400 for display, CoinbaseSans 400/600/700 for body. CoinbaseMono on every number.
+7. Coinbase Blue stays scarce — one or two blue moments per band.
 
 ## Known Gaps
 
-- CursorGothic is a licensed typeface; Inter is the substitute.
-- Animation timings (timeline pill entrance, IDE pane reveal) out of scope.
-- In-app surfaces (code editor, chat panel, agent timeline) only partially captured via marketing IDE mockups.
+- CoinbaseDisplay, CoinbaseSans, CoinbaseMono are licensed; Inter and JetBrains Mono are documented substitutes.
+- In-product trading surfaces (order book, charts, order forms) are behind login walls — this document covers marketing only.
+- Animation timings out of scope.
 - Form validation states beyond focus not visible on captured surfaces.
+- Accent yellow appears only inside Bitcoin asset glyph illustrations; documented as illustrative-only.

@@ -83,10 +83,10 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-10">
-      <div className="flex flex-wrap items-end justify-between gap-4 rounded-3xl bg-block-mint p-6">
+      <div className="flex flex-wrap items-end justify-between gap-4 rounded-3xl bg-block-dark p-6 text-white">
         <div>
           <h1 className="text-3xl font-normal tracking-tight sm:text-4xl">Blast Hub</h1>
-          <p className="mt-1 text-sm text-foreground/70">Specialists built by other people, ranked by how they did in real tryouts.</p>
+          <p className="mt-1 text-sm text-white/70">Specialists built by other people, ranked by how they did in real tryouts.</p>
         </div>
         <Link
           href="/post"

@@ -16,5 +16,5 @@ export function Header() {
 }
 
 // One accent for the market pages, set once and used as bg-(--hire), text-(--hire).
-// Cursor orange for actions; green and red stay for wins and fails.
+// Coinbase blue for actions; green and red stay for wins and fails.
 export const ACCENT = { "--hire": "var(--primary)", "--hire-soft": "color-mix(in oklab, var(--primary) 10%, white)" } as CSSProperties;

@@ -1,6 +1,7 @@
 import { Bot, Check, ExternalLink, Lock, RotateCcw } from "lucide-react";
 import type { Need, Tryout } from "@/lib/market/types";
 import { modelName, money } from "./format";
+import { SpeakButton } from "./voice";
 
 // Columns the lead adds to needs. All three are absent on old rows.
 export type Hold = {
@@ -110,8 +111,13 @@ export function ResultCard({ result }: { result: Result | null | undefined }) {
   const out = result.output;
   return (
     <section className="mt-6 rounded-xl border border-(--hire) bg-card p-5 shadow-[0_0_0_1px_var(--hire)]">
-      <p className="text-sm text-muted-foreground">The work, from the winner</p>
-      <h3 className="mt-1 text-2xl font-semibold tracking-tight">{result.agent_name}</h3>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm text-muted-foreground">The work, from the winner</p>
+          <h3 className="mt-1 text-2xl font-semibold tracking-tight">{result.agent_name}</h3>
+        </div>
+        {result.reply ? <SpeakButton text={result.reply} /> : null}
+      </div>
       {result.reply ? <p className="mt-3 max-w-3xl text-lg leading-relaxed whitespace-pre-line">{result.reply}</p> : null}
       {out ? (isEstimate(out) ? <EstimateTable e={out} /> : <ClaimCodes c={out} />) : null}
     </section>

@@ -176,9 +176,9 @@ export function PostForm() {
         </div>
       </form>
 
-      <aside className="rounded-3xl bg-block-blue p-5 lg:sticky lg:top-6">
+      <aside className="rounded-3xl bg-block-blue p-5 text-white lg:sticky lg:top-6">
         <h2 className="text-sm font-medium">How Businesses See It</h2>
-        <article className="mt-3 flex flex-col gap-3 rounded-2xl bg-card p-4">
+        <article className="mt-3 flex flex-col gap-3 rounded-2xl bg-card p-4 text-card-foreground">
           <div className="flex items-center gap-3">
             <AgentAvatar card={{ ...PREVIEW, name: name || "Your specialist" }} size="lg" />
             <div className="min-w-0 flex-1">
@@ -222,7 +222,7 @@ export function PostForm() {
         <ol className="mt-2 flex flex-col gap-2 text-sm">
           {NEXT.map((line, index) => (
             <li key={line} className="flex items-center gap-2.5">
-              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-semibold text-background tabular-nums">
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white text-xs font-semibold text-primary tabular-nums">
                 {index + 1}
               </span>
               {line}

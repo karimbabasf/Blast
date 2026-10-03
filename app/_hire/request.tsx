@@ -14,6 +14,7 @@ import { modelName, money, ROLE_LABEL, ROLE_TOOLS, summarize, toolLabel } from "
 import { HoldStrip, type LiveNeed, type LiveTryout, ResultCard, RunsOn, SourceBadge } from "./proof";
 import { Scorecard } from "./scorecard";
 import { useNeed } from "./use-need";
+import { MicButton } from "./voice";
 import { useWatch, Waiting } from "./watch";
 
 const DEFAULT_NEED = "Diagnose my 2014 Civic: check engine light, P0301, rough idle";
@@ -145,6 +146,14 @@ export function Request({ initialNeed, watch = false }: { initialNeed: string | 
             className="block w-full resize-none rounded-t-xl bg-transparent px-4 pt-3 pb-1 text-base outline-none"
           />
           <div className="flex items-center px-3 pb-3">
+            <MicButton
+              onError={setError}
+              onText={(heard) => {
+                setError(null);
+                setText(heard);
+                setQuestions(null);
+              }}
+            />
             <Button type="submit" disabled={busy || !text.trim()} className="ml-auto h-9 w-36 rounded-full">
               {busy ? (
                 <>
@@ -195,8 +204,6 @@ export function Request({ initialNeed, watch = false }: { initialNeed: string | 
 }
 
 const STEPS = ["Read", "Match", "Tryouts", "Pick"];
-// Each finished step keeps its own colour, like the stages of an agent timeline.
-const STEP_DONE = ["bg-block-blue", "bg-block-mint", "bg-block-peach", "bg-block-gold"];
 
 // Four equal segments, always on screen. Progress only changes their colour.
 function Steps({ phase }: { phase: number }) {
@@ -208,7 +215,7 @@ function Steps({ phase }: { phase: number }) {
             <span
               aria-hidden="true"
               className={`h-1.5 rounded-full transition-colors duration-200 ease-out ${
-                phase > index || phase === 3 ? STEP_DONE[index] : phase === index ? "bg-primary" : "bg-secondary"
+                phase > index || phase === 3 ? "bg-success" : phase === index ? "bg-primary" : "bg-secondary"
               } ${index === phase && phase < 3 ? "animate-pulse" : ""}`}
             />
             <span
@@ -300,24 +307,24 @@ function Candidates({
 
   return (
     <>
-    <section aria-label="Tryouts" className="flex flex-col gap-3 rounded-3xl bg-block-peach p-5">
+    <section aria-label="Tryouts" className="flex flex-col gap-3 rounded-3xl bg-block-blue p-5 text-white">
       <div className="flex h-12 items-start justify-between gap-6">
         <div className="min-w-0">
           <h2 className="flex items-center gap-2 text-base leading-6 font-semibold">
             {need ? `${ROLE_LABEL[need.role] ?? need.role} Specialists` : "Candidates"}
-            <span className="font-normal text-muted-foreground tabular-nums">{field.length || ""}</span>
+            <span className="font-normal text-white/70 tabular-nums">{field.length || ""}</span>
             {tags.map((t) => (
-              <span key={t.id} title={t.question} className="rounded-full bg-background/70 px-2 py-0.5 text-xs font-normal text-foreground/70">
+              <span key={t.id} title={t.question} className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-normal text-white">
                 {t.answer}
               </span>
             ))}
           </h2>
-          <p className="truncate text-sm text-foreground/70" title={task}>
+          <p className="truncate text-sm text-white/80" title={task}>
             {error ? (
-              <span className="text-destructive">{error}</span>
+              <span className="font-medium text-white">{error}</span>
             ) : task ? (
               <>
-                <span className="text-foreground">The job:</span> {task}
+                <span className="font-medium text-white">The job:</span> {task}
               </>
             ) : (
               "Specialists try the same job on a private test copy."
@@ -328,7 +335,7 @@ function Candidates({
           <SourceBadge need={need} />
           <span
             className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-              winnerId && !working ? "bg-success text-white" : "bg-background/70 text-foreground/70"
+              winnerId && !working ? "bg-success text-white" : "bg-white/20 text-white"
             } ${working ? "animate-pulse" : ""}`}
           >
             {status}
@@ -364,18 +371,18 @@ function Candidates({
         {Array.from({ length: empty }, (_, index) => (
           <li
             key={`slot-${index}`}
-            className={`${CARD_HEIGHT} flex items-center justify-center rounded-2xl bg-background/50 text-sm text-foreground/50`}
+            className={`${CARD_HEIGHT} flex items-center justify-center rounded-2xl bg-white/15 text-sm text-white/70`}
           >
             Waiting for a candidate
           </li>
         ))}
       </ul>
 
-      <p className="h-5 text-sm text-foreground/70">
+      <p className="h-5 text-sm text-white/80">
         {need ? (
           <>
             Candidates come from{" "}
-            <Link href={`/hub?role=${need.role}`} className="font-medium text-foreground underline-offset-4 hover:underline">
+            <Link href={`/hub?role=${need.role}`} className="font-medium text-white underline underline-offset-4">
               Blast Hub
             </Link>
             : <span className="tabular-nums">{listed}</span> specialists for this role.
@@ -427,7 +434,7 @@ function Candidate({
   return (
     <article
       title={tryout?.reason ?? undefined}
-      className={`${CARD_HEIGHT} relative flex flex-col gap-3 overflow-hidden rounded-2xl p-3.5 ring-1 transition-[box-shadow,background-color] duration-200 ease-out ${
+      className={`${CARD_HEIGHT} relative flex flex-col gap-3 overflow-hidden rounded-2xl p-3.5 text-card-foreground ring-1 transition-[box-shadow,background-color] duration-200 ease-out ${
         winner ? "bg-card ring-3 ring-success" : "bg-card ring-foreground/5"
       }`}
     >
