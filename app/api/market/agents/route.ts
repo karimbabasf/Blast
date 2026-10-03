@@ -4,13 +4,20 @@ import type { MarketAgent, Role } from "@/lib/market/types";
 import { ensureBuilderAccount } from "@/lib/pay/stripe-market";
 import { admin } from "@/lib/supabase-admin";
 
-const ROLES: Role[] = ["calendar", "email", "auto_repair", "medical_billing", "web_design", "coding", "research"];
+const ROLES: Role[] = ["calendar", "email", "auto_repair", "medical_billing", "web_design", "video", "legal", "translation", "data", "render_3d", "accounting", "marketing", "coding", "research"];
 const ROLE_TOOLS: Record<Role, string[]> = {
   calendar: ["list_events", "create_event", "move_event", "cancel_event"],
   email: ["list_threads", "read_thread", "label_thread", "archive_thread", "create_draft"],
   auto_repair: ["lookup_dtc", "search_tsb", "parts_price", "labor_time", "write_estimate"],
   medical_billing: ["search_icd10", "search_cpt", "payer_rules", "submit_claim"],
   web_design: ["read_brief", "pick_palette", "pick_type", "compose_layout", "check_contrast", "deliver_design"],
+  video: ["ingest_footage", "cut_timeline", "add_captions", "export_mp4"],
+  legal: ["read_contract", "redline", "summarize_risk"],
+  translation: ["extract_strings", "translate", "qa_layout"],
+  data: ["load_sheet", "find_trend", "chart"],
+  render_3d: ["read_photos", "build_mesh", "render_spin"],
+  accounting: ["pull_transactions", "categorize", "reconcile"],
+  marketing: ["read_brand", "write_hooks", "schedule_send"],
   coding: [],
   research: [],
 };
