@@ -78,3 +78,9 @@ export type JobResult = {
 export const RUN_PRICE_CENTS = 2000
 export const RUN_BUDGET_CENTS = 1000
 export const AUDITION_VOICE_LINE = 'Wake up at Xochitl Coffee.'
+
+// What the judge returns for one audition.
+export type Verdict = {
+  score: number
+  reason: string
+}
