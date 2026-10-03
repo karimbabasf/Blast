@@ -73,49 +73,53 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
   }
 
   const loading = !data || (data && q !== draft.trim());
+  // Chips only for roles that have listings; remembered from the first unfiltered load.
+  const [present, setPresent] = useState<Set<string> | null>(null);
+  if (data && !role && !q && !present) setPresent(new Set(data.agents.map((a) => a.role)));
+  const chips = ROLES.filter((r) => !present || present.has(r) || r === role);
 
   return (
     <main className="mx-auto w-full max-w-[1360px] flex-1 px-4 py-8 sm:py-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Blast Hub</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Specialists built by other people, with their own tools and data. Each new job runs a tryout across them.</p>
+          <h1 className="text-[28px] leading-tight font-semibold tracking-[-0.025em] text-stone-900 sm:text-[32px]">Blast Hub</h1>
+          <p className="mt-1.5 max-w-[60ch] text-[15px] text-stone-600">Specialists built by other people, with their own tools and data. Every new job tries the closest ones out live.</p>
         </div>
         <Link
           href="/post"
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-(--hire) px-4 text-sm font-medium text-white transition-colors hover:bg-(--hire)/90"
+          className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-stone-900 px-4 text-[14px] font-medium text-white transition-transform duration-150 ease-out hover:bg-stone-800 active:scale-[0.97]"
         >
           <Plus className="size-4" /> Post your specialist
         </Link>
       </div>
 
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <label className="relative flex-1 sm:max-w-sm">
+      <div className="mt-7 flex flex-col gap-3 lg:flex-row lg:items-center">
+        <label className="relative w-full shrink-0 lg:w-80">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Search specialists, like 'service bulletins'"
             aria-label="Search agents"
-            className="h-9 w-full rounded-lg border bg-transparent pr-3 pl-9 text-sm outline-none focus:border-(--hire) focus:ring-3 focus:ring-(--hire)/15"
+            className="h-10 w-full rounded-xl border border-stone-200 bg-white pr-3 pl-9 text-[14px] outline-none placeholder:text-stone-400 focus:border-(--hire) focus:ring-3 focus:ring-(--hire)/15"
           />
         </label>
-        <div className="flex flex-wrap gap-1.5">
-          {[null, ...ROLES].map((r) => (
+        <div className="-mx-4 flex min-w-0 flex-1 gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] lg:mx-0 lg:px-0 lg:[mask-image:linear-gradient(to_right,#000_92%,transparent)]">
+          {[null, ...chips].map((r) => (
             <button
               key={r ?? "all"}
               type="button"
               aria-pressed={role === r}
               onClick={() => pick(r)}
-              className={`h-8 rounded-full border px-3 text-sm transition-colors ${
-                role === r ? "border-(--hire)/40 bg-(--hire-soft) text-(--hire)" : "text-muted-foreground hover:bg-muted"
+              className={`h-8 shrink-0 rounded-lg px-3 text-[13px] whitespace-nowrap transition-colors ${
+                role === r ? "bg-stone-900 font-medium text-white" : "bg-white text-stone-600 ring-1 ring-stone-200 hover:text-stone-900"
               }`}
             >
               {r ? ROLE_LABEL[r] : "All"}
             </button>
           ))}
         </div>
-        <span className="text-sm text-muted-foreground tabular-nums sm:ml-auto">
+        <span className="hidden shrink-0 text-[13px] text-stone-500 tabular-nums lg:ml-auto lg:block">
           {loading ? <Loader2 className="size-4 animate-spin" /> : `${data.agents.length} specialists`}
         </span>
       </div>
@@ -126,13 +130,13 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
         ? (q ? [{ role: null as Role | null, agents: data.agents }] : ROLES.map((r) => ({ role: r as Role | null, agents: data.agents.filter((a) => a.role === r) })))
             .filter((g) => g.agents.length)
             .map((g) => (
-              <section key={g.role ?? "results"} className="mt-8">
+              <section key={g.role ?? "results"} className="mt-10">
                 {g.role ? (
-                  <h2 className="text-lg font-semibold tracking-tight text-stone-900">
-                    {ROLE_LABEL[g.role] ?? g.role} <span className="font-normal text-stone-500 tabular-nums">{g.agents.length}</span>
+                  <h2 className="flex items-baseline gap-2 text-[17px] font-semibold tracking-[-0.01em] text-stone-900">
+                    {ROLE_LABEL[g.role] ?? g.role} <span className="text-[13px] font-normal text-stone-400 tabular-nums">{g.agents.length}</span>
                   </h2>
                 ) : null}
-                <div className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(min(100%,270px),1fr))] gap-3">
+                <div className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-3">
                   {g.agents.map((a) => (
                     <Card key={a.id} agent={a} now={data.now} isNew={a.id === highlight} setupUrl={a.id === highlight ? setupUrl : null} />
                   ))}
@@ -150,45 +154,42 @@ function Card({ agent: a, now, isNew, setupUrl }: { agent: Listing; now: number;
   return (
     <article
       id={`agent-${a.id}`}
-      className={`flex flex-col rounded-2xl bg-white p-4 text-sm shadow-[0_1px_2px_rgb(70_50_30/0.06),0_12px_32px_-16px_rgb(70_50_30/0.18)] ${isNew ? "ring-2 ring-(--hire)" : ""}`}
+      title={ago(a.created_at, now)}
+      className={`flex flex-col rounded-[18px] bg-white p-4 shadow-[0_1px_2px_rgb(70_50_30/0.06),0_12px_32px_-18px_rgb(70_50_30/0.2)] ${isNew ? "ring-2 ring-(--hire)" : ""}`}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h2 className="truncate font-semibold">{a.name}</h2>
-            {isNew ? <span className="rounded-full bg-(--hire) px-2 py-px text-xs font-medium text-white">Just posted</span> : null}
+            <h3 className="truncate text-[15px] font-semibold text-stone-900">{a.name}</h3>
+            {isNew ? <span className="rounded-md bg-(--hire) px-1.5 py-px text-[11px] font-semibold text-white">Just posted</span> : null}
           </div>
-          <p className="truncate text-muted-foreground">{handle(a.builder)}</p>
+          <p className="truncate text-[13px] text-stone-500">{handle(a.builder)}</p>
         </div>
-        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs">{ROLE_LABEL[a.role] ?? a.role}</span>
+        <span className="shrink-0 text-right text-[15px] font-semibold text-stone-900 tabular-nums">
+          {money(a.price_action_cents)}
+          <span className="block text-[11px] font-normal text-stone-400">per job</span>
+        </span>
       </div>
-      {a.description ? <p className="mt-2 line-clamp-2 text-muted-foreground">{a.description}</p> : null}
-      <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-xs">
-        <dt className="text-muted-foreground">Model</dt>
-        <dd className="flex min-w-0 items-center gap-1.5">
+      {a.description ? <p className="mt-2.5 line-clamp-2 text-[13.5px] leading-relaxed text-stone-600">{a.description}</p> : null}
+      <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-4 text-[12.5px] text-stone-500 before:mb-1 before:block before:h-px before:w-full before:bg-stone-100">
+        <span className="flex min-w-0 items-center gap-1.5 text-stone-700">
           {labOf(a.model) ? <Logo brand={labOf(a.model)!} className="size-3.5 shrink-0" /> : null}
           <span className="truncate">{modelName(a.model)}</span>
-        </dd>
-        <dt className="text-muted-foreground">Runs</dt>
-        <dd className="truncate">{runsIn(a.runs_in).replace(/^Runs /, "")}</dd>
-        <dt className="text-muted-foreground">Price</dt>
-        <dd className="tabular-nums">
-          <span className="font-medium">{money(a.price_action_cents)}</span> per job
-        </dd>
-        <dt className="text-muted-foreground">Record</dt>
-        <dd className="tabular-nums">
-          {!tr || (!tr.tryouts && !tr.hires) ? (
+        </span>
+        <span className="tabular-nums">
+          {!a.auditionable ? (
+            "Listed only"
+          ) : !tr || (!tr.tryouts && !tr.hires) ? (
             <span className="text-(--hire)">New</span>
           ) : (
             <>
-              {tr.tryouts} {tr.tryouts === 1 ? "tryout" : "tryouts"} · {tr.avg_score != null ? `avg ${tr.avg_score.toFixed(1)}` : "no score"} · {tr.hires} hired
+              {tr.tryouts} {tr.tryouts === 1 ? "tryout" : "tryouts"}
+              {tr.avg_score != null ? `, avg ${tr.avg_score.toFixed(1)}` : ""}
+              {tr.hires ? `, ${tr.hires} hired` : ""}
             </>
           )}
-        </dd>
-      </dl>
-      <div className="mt-auto flex items-center justify-between gap-2 pt-3 text-xs text-muted-foreground">
-        <span>{ago(a.created_at, now)}</span>
-        {!a.auditionable ? <span>Listed only</span> : null}
+        </span>
+        <span className="ml-auto truncate text-stone-400">{runsIn(a.runs_in).replace(/^Runs /, "")}</span>
       </div>
       {isNew ? (
         <div className="mt-3 flex items-center gap-2 border-t pt-3 text-xs">

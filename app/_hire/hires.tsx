@@ -192,7 +192,11 @@ export function Policy({ compact = false }: { compact?: boolean }) {
 
   if (compact)
     return (
-      <div className="flex items-center gap-2.5 rounded-full bg-white py-1.5 pr-4 pl-1.5 text-sm shadow-[0_1px_2px_rgb(70_50_30/0.06),0_8px_24px_-14px_rgb(70_50_30/0.2)]">
+      <div className="flex items-center gap-2.5 text-[13px]">
+        <span className="hidden text-right leading-tight sm:block">
+          <span className="block font-medium text-stone-900 tabular-nums">{on ? `Auto-hire up to ${cap}` : "Ask before hiring"}</span>
+          <span className="block text-[12px] text-stone-500">{on ? "Agents hire without asking" : "Agents ask you first"}</span>
+        </span>
         <button
           type="button"
           role="switch"
@@ -200,11 +204,10 @@ export function Policy({ compact = false }: { compact?: boolean }) {
           aria-label={`Auto-hire up to ${cap} per job`}
           disabled={busy || cents == null}
           onClick={flip}
-          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ease-out disabled:opacity-60 ${on ? "bg-(--hire)" : "bg-stone-300"}`}
+          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ease-out disabled:cursor-wait ${on ? "bg-(--hire)" : "bg-stone-300"}`}
         >
           <span className={`inline-block size-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out motion-reduce:transition-none ${on ? "translate-x-5.5" : "translate-x-0.5"}`} />
         </button>
-        <span className="font-medium text-stone-800 tabular-nums">{on ? `Auto-hire up to ${cap}` : "Asks before every hire"}</span>
         {error ? <span className="text-destructive">{error}</span> : null}
       </div>
     );

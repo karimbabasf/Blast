@@ -145,6 +145,45 @@
   }
 }
 
+::selection {
+  background: oklch(0.55 0.2 262 / 0.2);
+}
+
+:focus-visible {
+  outline: 2px solid oklch(0.55 0.2 262);
+  outline-offset: 2px;
+}
+
+/* The live stage: warm charcoal, lit from above. */
+.stage {
+  --st-bg: oklch(0.205 0.012 60);
+  --st-1: oklch(0.94 0.006 75);
+  --st-2: oklch(0.72 0.012 75);
+  --st-3: oklch(0.56 0.012 75);
+  --st-blue: oklch(0.62 0.19 262);
+  --st-blue-soft: oklch(0.32 0.09 262 / 0.55);
+  --st-blue-text: oklch(0.78 0.12 262);
+  --st-green: #3ecf8e;
+  --st-red: oklch(0.7 0.17 25);
+  background:
+    radial-gradient(120% 70% at 50% -10%, oklch(0.29 0.02 60) 0%, transparent 60%),
+    var(--st-bg);
+}
+
+.stage-scan {
+  background: linear-gradient(90deg, transparent, rgb(62 207 142 / 0.1) 40%, rgb(62 207 142 / 0.22) 50%, rgb(62 207 142 / 0.1) 60%, transparent);
+  animation: stage-scan 1.4s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+
+@keyframes stage-scan {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

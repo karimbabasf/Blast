@@ -1,21 +1,29 @@
 "use client";
 
-import { ArrowRight, Check, ChevronRight, ExternalLink, X } from "lucide-react";
+import { Check, ExternalLink, Loader2, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import type { MarketAgent, TryoutStep } from "@/lib/market/types";
 import { db } from "./db";
-import { clock, modelName, money, outcome, ROLE_LABEL, summarize } from "./format";
-import { Policy } from "./hires";
-import { BlastMark, type Brand, labOf, Logo } from "./logos";
-import { capturedCents, ClaimCodes, type Claim, type Estimate, EstimateTable, type Hold, isEstimate, type LiveNeed, type LiveTryout, stripeLinks } from "./proof";
+import { clock, money, ROLE_LABEL } from "./format";
+import { type Brand, labOf, Logo } from "./logos";
+import { capturedCents, type LiveNeed, type LiveTryout, stripeLinks, workLine } from "./proof";
+import { bestTryout, DeliveredStage, isDelivery, isSite, LiveStage, phaseOf, type Phase, StageFrame, useCountUp, useHubAgents, useNow } from "./stage";
 import { useNeed } from "./use-need";
-
-type Site = { title: string; palette: string[]; fonts: { display: string; body: string }; html: string; live_url: string };
 
 const MCP = "claude mcp add --transport http blast https://blast-kbkotes-projects.vercel.app/api/mcp";
 
-const CARD = "rounded-2xl bg-white shadow-[0_1px_2px_rgb(70_50_30/0.06),0_12px_32px_-16px_rgb(70_50_30/0.18)]";
-const FEED_IN = "animate-in fade-in slide-in-from-bottom-1 duration-200 ease-out motion-reduce:animate-none";
+const CARD = "rounded-[22px] bg-white shadow-[0_1px_2px_rgb(70_50_30/0.06),0_16px_40px_-20px_rgb(70_50_30/0.2)]";
+const OUT = [0.23, 1, 0.32, 1] as const;
+
+// What each role hires and hands back, in plain words.
+const NOUN: Record<string, [string, string, string]> = {
+  web_design: ["web designer", "web designers", "site"],
+  auto_repair: ["mechanic", "mechanics", "repair quote"],
+  medical_billing: ["medical biller", "medical billers", "billing claim"],
+};
+
+const at = (iso: string) => new Date(iso).getTime();
 
 // Claude Code's hires, newest first. Realtime on needs; a 2 s poll covers a dropped socket.
 function useHires() {
@@ -49,6 +57,7 @@ function useHires() {
 
 export function Dashboard({ initialNeed }: { initialNeed: string | null }) {
   const needs = useHires();
+  const hub = useHubAgents();
   const [picked, setPicked] = useState<string | null>(initialNeed);
   const newest = needs?.[0]?.id ?? null;
   const [seen, setSeen] = useState<string | null>(null);
@@ -61,21 +70,12 @@ export function Dashboard({ initialNeed }: { initialNeed: string | null }) {
   const focus = picked ?? newest;
 
   return (
-    <main className="mx-auto w-full max-w-[1360px] flex-1 px-4 pt-4 pb-10">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <BlastMark className="size-8 shrink-0" live={!!needs?.[0] && (needs[0].status === "auditioning" || needs[0].status === "checkout")} />
-          <h1 className="text-[22px] font-semibold tracking-[-0.03em] text-stone-900">Agents that hire agents.</h1>
-          <p className="hidden text-sm text-stone-500 md:block">When your agent hits work it can&apos;t do, it hires a specialist on Blast. Tried out live, paid on proof.</p>
-        </div>
-        <Policy compact />
-      </div>
-
+    <main className="mx-auto w-full max-w-[1360px] flex-1 px-4 pt-5 pb-14 sm:px-6 sm:pt-7">
       {!needs ? null : !focus ? (
         <Empty />
       ) : (
         <>
-          <Focus key={focus} id={focus} fallback={needs.find((n) => n.id === focus) ?? null} />
+          <Focus key={focus} id={focus} fallback={needs.find((n) => n.id === focus) ?? null} hub={hub} />
           {needs.length > 1 ? <History needs={needs} focus={focus} onPick={setPicked} /> : null}
         </>
       )}
@@ -85,497 +85,456 @@ export function Dashboard({ initialNeed }: { initialNeed: string | null }) {
 
 function Empty() {
   return (
-    <div className={`${CARD} mt-8 px-6 py-16 text-center`}>
-      <div className="mx-auto flex w-fit items-center gap-2.5 text-xl text-stone-700">
-        <span className="size-2.5 rounded-full bg-(--hire) animate-pulse motion-reduce:animate-none" />
-        Waiting for an agent to hire...
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+      <div className={`${CARD} px-6 py-7`}>
+        <h1 className="text-[28px] leading-tight font-semibold tracking-[-0.025em] text-balance text-stone-900">Waiting for an agent to hire</h1>
+        <p className="mt-3 max-w-[52ch] text-[15px] leading-relaxed text-stone-600">
+          When Claude Code hits work it cannot do well alone, it hires a specialist here. Specialists try out live on the real job, and Blast pays only the one that passes every check.
+        </p>
+        <p className="mt-6 text-[13px] font-medium text-stone-500">Connect Claude Code to Blast</p>
+        <code className="mt-2 block overflow-x-auto rounded-xl bg-stone-100 px-4 py-3 font-mono text-[12.5px] text-stone-800 select-all">{MCP}</code>
       </div>
-      <p className="mt-6 text-sm text-stone-500">Connect Claude Code to Blast:</p>
-      <code className="mt-2 inline-block max-w-full overflow-x-auto rounded-lg bg-stone-100 px-4 py-2.5 font-mono text-[13px] text-stone-800 select-all">
-        {MCP}
-      </code>
+      <StageFrame>
+        <div className="flex min-h-[360px] items-center justify-center p-6 text-[14px] text-(--st-2)">
+          <Loader2 className="mr-2 size-4 animate-spin" /> Listening for the next hire
+        </div>
+      </StageFrame>
     </div>
   );
 }
 
-function Focus({ id, fallback }: { id: string; fallback: LiveNeed | null }) {
+type View = { need: LiveNeed; tryouts: LiveTryout[]; steps: TryoutStep[] };
+
+// A finished hire played back on its own recorded clock: steps land when they landed, scores when they were scored.
+function rewind(v: View, ms: number): View & { over: boolean; clock: number } {
+  const t0 = at(v.need.created_at);
+  const rel = (iso: string) => at(iso) - t0;
+  const firstTry = v.tryouts.length ? Math.min(...v.tryouts.map((t) => rel(t.created_at))) : 0;
+  const lastStep = v.steps.length ? Math.max(...v.steps.map((s) => rel(s.created_at))) : firstTry;
+  const searchAt = Math.max(0, firstTry - 1500);
+  const doneAt = lastStep + 1500;
+  const speed = Math.max(1, (doneAt - searchAt) / 18000);
+  const t = searchAt + (ms - 1300) * speed;
+  const over = t >= doneAt;
+  const steps = v.steps.filter((s) => rel(s.created_at) <= t);
+  const tryouts = v.tryouts
+    .filter((tr) => rel(tr.created_at) <= t)
+    .map((tr) => {
+      const own = v.steps.filter((s) => s.tryout_id === tr.id && !isDelivery(s));
+      const end = (own.length ? Math.max(...own.map((s) => rel(s.created_at))) : rel(tr.created_at)) + 600;
+      return t >= end ? tr : { ...tr, status: "running" as const, score: null, checks: [] };
+    });
+  const scored = tryouts.length === v.tryouts.length && tryouts.every((tr) => tr.status !== "running");
+  const h = v.need.hold;
+  const need: LiveNeed = {
+    ...v.need,
+    search: t >= searchAt ? v.need.search : null,
+    status: over ? v.need.status : scored && tryouts.length ? "checkout" : "auditioning",
+    result: over ? v.need.result : null,
+    hold: over || !h ? h : { ...h, status: "held", captured_cents: undefined, transfer: undefined, builder_cents: undefined, blast_cents: undefined, agent_id: undefined },
+  };
+  return { need, tryouts, steps, over, clock: t0 + t };
+}
+
+function Focus({ id, fallback, hub }: { id: string; fallback: LiveNeed | null; hub: ReturnType<typeof useHubAgents> }) {
   const view = useNeed(id);
-  const need = (view.need as LiveNeed | null) ?? fallback;
-  const [jobOpen, setJobOpen] = useState(false);
-  if (!need) return null;
-  const tryouts = view.tryouts as LiveTryout[];
-  const winnerId = need.result?.agent_id ?? need.hold?.agent_id ?? null;
-  const running = tryouts.some((t) => t.status === "running");
+  const base = (view.need as LiveNeed | null) ?? fallback;
+  const [replayFrom, setReplayFrom] = useState<number | null>(null);
+  const liveNow = base ? phaseOf(base, view.tryouts as LiveTryout[]) : "done";
+  const ticking = replayFrom != null || liveNow === "search" || liveNow === "tryout" || liveNow === "build";
+  const wall = useNow(ticking, 100);
+  if (!base) return null;
+
+  const real: View = { need: base, tryouts: view.tryouts as LiveTryout[], steps: view.steps };
+  const replay = replayFrom != null ? rewind(real, wall - replayFrom) : null;
+  const shown = replay && !replay.over ? replay : real;
+  const { need, tryouts, steps } = shown;
   const agents = new Map(view.agents.map((a) => [a.id, a]));
-  const h = need.hold;
-  const released = need.status === "waiting" || h?.status === "released";
-
-  const searched = !!need.search || tryouts.length > 0;
-  const auditioned = tryouts.length > 0 && !running;
-  const paid = h?.status === "captured" || h?.status === "released";
-  const delivered = !!need.result;
-  const live = !searched ? 0 : !auditioned ? 1 : !paid ? 2 : !delivered ? 3 : -1;
-  const ranked = [...tryouts].sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
-  const top = ranked[0];
+  const phase = phaseOf(need, tryouts);
+  const best = phase === "build" || phase === "done" ? bestTryout(tryouts) : null;
+  const winnerId = need.result?.agent_id ?? need.hold?.agent_id ?? best?.agent_id ?? null;
   const winner = winnerId ? agents.get(winnerId) : undefined;
-  const steps = (t: LiveTryout) => view.steps.filter((s) => s.tryout_id === t.id);
-
-  const stepper: { title: string; logos: Brand[]; done: boolean; value: string }[] = [
-    { title: "Search", logos: ["supabase"], done: searched, value: need.search ? `${need.search.listings} agents searched` : "Searching" },
-    {
-      title: "Audition",
-      logos: ["vercel"],
-      done: auditioned,
-      value: !tryouts.length ? "Waiting" : running ? `${tryouts.length} running` : `${tryouts.length} auditioned${top?.score != null ? `, ${agents.get(top.agent_id)?.name ?? ""} ${top.score.toFixed(1)}` : ""}`,
-    },
-    {
-      title: "Paid on proof",
-      logos: ["stripe"],
-      done: paid,
-      value: !h ? "Not held yet" : released ? "Released, nothing charged" : h.status === "captured" ? `${money(capturedCents(h))} of ${money(h.amount_cents)}${h.builder_cents != null ? `, builder ${money(h.builder_cents)}` : ""}` : `${money(h.amount_cents)} held`,
-    },
-    { title: "Delivered", logos: [], done: delivered, value: delivered ? "Delivered" : released ? "Nothing to deliver" : "Waiting" },
-  ];
-
-  const lanes = (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] gap-3">
-      {tryouts.map((t) => (
-        <Lane key={t.id} tryout={t} agent={agents.get(t.agent_id)} steps={steps(t)} winner={!running && t.agent_id === winnerId} />
-      ))}
-    </div>
-  );
 
   return (
-    <article className="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-      <div className={`${CARD} min-w-0 px-5 py-4`}>
-        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-stone-500">
-          <span className="rounded-full bg-(--hire-soft) px-2 py-0.5 font-medium text-(--hire)">Hired by Claude Code over MCP</span>
-          <span>{ROLE_LABEL[need.role] ?? need.role}</span>
-          <span className="tabular-nums">{clock(need.created_at)}</span>
-        </div>
-        <button type="button" onClick={() => setJobOpen((o) => !o)} className="mt-2 block text-left" aria-expanded={jobOpen} title={jobOpen ? "Show less" : "Show the whole job"}>
-          <p className={`text-[15px] leading-snug text-pretty text-stone-700 ${jobOpen ? "" : "line-clamp-2"}`}>{need.text}</p>
-        </button>
-
-        {need.result?.summary ? (
-          <div className={`mt-3 ${FEED_IN}`}>
-            <h2 className="text-xs font-semibold tracking-wide text-emerald-800 uppercase">What happened</h2>
-            <p className="mt-1 text-[19px] leading-[1.45] font-medium text-pretty whitespace-pre-line text-stone-900">{bold(need.result.summary)}</p>
-          </div>
-        ) : null}
-
-        <ol className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {stepper.map((s, i) => (
-            <li
-              key={s.title}
-              className={`rounded-xl px-3 py-2.5 transition-colors duration-500 ease-out ${s.done ? "bg-emerald-50" : live === i ? "bg-(--hire-soft)" : "bg-stone-50"}`}
-            >
-              <div className="flex items-center gap-1.5 text-xs font-medium text-stone-600">
-                {s.done ? <Check className="size-3.5 text-emerald-600" strokeWidth={3} /> : live === i ? <span className="size-2 rounded-full bg-(--hire) animate-pulse motion-reduce:animate-none" /> : <span className="size-2 rounded-full bg-stone-300" />}
-                {s.title}
-                <span className="ml-auto flex gap-1 text-stone-900">
-                  {s.logos.map((b) => (
-                    <Logo key={b} brand={b} className="size-3.5" />
-                  ))}
-                </span>
-              </div>
-              <div className="mt-1 text-[13px] leading-snug font-semibold text-stone-900 tabular-nums">{s.value}</div>
-            </li>
-          ))}
-        </ol>
-
-        {ranked.length ? (
-          <table className="mt-4 w-full text-sm tabular-nums">
-            <tbody>
-              {ranked.map((t) => {
-                const a = agents.get(t.agent_id);
-                const lab = a ? labOf(a.model) : null;
-                const passed = t.checks?.filter((c) => c.passed).length ?? 0;
-                const win = !running && t.agent_id === winnerId;
-                return (
-                  <tr key={t.id} className={win ? "bg-(--hire-soft)" : ""}>
-                    <td className="rounded-l-lg py-1.5 pl-2.5">
-                      <span className="flex items-center gap-1.5 font-medium text-stone-900">
-                        {lab ? <Logo brand={lab} className="size-3.5 shrink-0" /> : null}
-                        {a?.name ?? "Specialist"}
-                        {win ? <span className="rounded-full bg-(--hire) px-1.5 py-px text-[10px] font-medium text-white">Hired</span> : null}
-                      </span>
-                    </td>
-                    <td className="py-1.5 text-right font-semibold text-stone-900">
-                      {t.status === "running" ? <span className="ml-auto block size-2 rounded-full bg-(--hire) animate-pulse motion-reduce:animate-none" /> : t.score != null ? <Score value={t.score} /> : "Failed"}
-                    </td>
-                    <td className="py-1.5 text-right text-stone-600">{t.checks?.length ? `${passed}/${t.checks.length} checks` : ""}</td>
-                    <td className="rounded-r-lg py-1.5 pr-2.5 text-right text-stone-500">{t.usage?.cost_usd != null ? `$${t.usage.cost_usd.toFixed(4)}` : ""}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        ) : null}
-
-        <div className="mt-3 divide-y divide-stone-100 border-t border-stone-100">
-          {delivered && tryouts.length ? <Fold label="Tool calls and checks">{lanes}</Fold> : null}
-          {need.search?.matches?.length ? (
-            <Fold label={`Search matches (${need.search.matches.length})`}>
-              <SearchMatches need={need} tried={new Set(tryouts.map((t) => t.agent_id))} />
-            </Fold>
-          ) : null}
-          {h ? (
-            <Fold label="Payment and Stripe ids">
-              <Money hold={h} builder={winner?.builder} />
-            </Fold>
-          ) : null}
-        </div>
-      </div>
-
-      <div className={`${CARD} min-w-0 px-5 py-4`}>
-        {need.result ? (
-          <Delivered result={need.result} />
-        ) : tryouts.length ? (
-          <div className={FEED_IN}>
-            <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold tracking-tight text-stone-900">
-              <span className="size-2.5 rounded-full bg-(--hire) animate-pulse motion-reduce:animate-none" />
-              {released ? "Nobody passed" : "Auditioning on your job"}
-              <Logo brand="vercel" className="size-4 text-stone-900" />
-              <Logo brand="supabase" className="size-4" />
-            </h2>
-            {lanes}
-          </div>
-        ) : (
-          <div className="flex min-h-48 items-center justify-center gap-2.5 text-stone-500">
-            <span className="size-2.5 rounded-full bg-(--hire) animate-pulse motion-reduce:animate-none" />
-            Searching Blast Hub
-          </div>
-        )}
-      </div>
+    <article className="grid items-start gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+      <Story need={need} tryouts={tryouts} steps={steps} agents={agents} phase={phase} winner={winner} winnerId={winnerId} />
+      <StageFrame>
+        <AnimatePresence mode="wait" initial={false}>
+          {phase === "done" && need.result ? (
+            <motion.div key="done" exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+              <DeliveredStage result={need.result} onReplay={() => setReplayFrom(Date.now())} />
+            </motion.div>
+          ) : (
+            <motion.div key={`live-${replayFrom ?? "now"}`} exit={{ opacity: 0, filter: "blur(6px)" }} transition={{ duration: 0.3, ease: OUT }}>
+              <LiveStage
+                need={need}
+                tryouts={tryouts}
+                steps={steps}
+                agents={agents}
+                hub={hub}
+                now={replay && !replay.over ? replay.clock : wall}
+                winnerId={phase === "tryout" ? null : winnerId}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </StageFrame>
     </article>
   );
 }
 
-function Score({ value }: { value: number }) {
-  const v = useCountUp(value);
-  return <>{v.toFixed(1)}</>;
+function headline(phase: Phase, need: LiveNeed, tryouts: LiveTryout[], winner?: string) {
+  const [one, many, thing] = NOUN[need.role] ?? ["specialist", "specialists", "work"];
+  if (phase === "search") return `Finding a ${one} for this job`;
+  if (phase === "tryout") return tryouts.length === 1 ? `1 ${one} is trying out on the job` : `${tryouts.length} ${many} are trying out on the job`;
+  if (phase === "build") return winner ? `Hired ${winner}. Now building your ${thing}.` : "Scoring the tryouts";
+  if (phase === "done") return `${winner ?? "The winner"} delivered your ${thing}`;
+  return "Nobody passed, so nobody got paid";
 }
 
-// A quiet disclosure; height eases open via grid rows so nothing jumps.
-function Fold({ label, children }: { label: string; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
+type StepState = "done" | "now" | "todo" | "off";
+
+function Story({
+  need,
+  tryouts,
+  steps,
+  agents,
+  phase,
+  winner,
+  winnerId,
+}: {
+  need: LiveNeed;
+  tryouts: LiveTryout[];
+  steps: TryoutStep[];
+  agents: Map<string, MarketAgent>;
+  phase: Phase;
+  winner?: MarketAgent;
+  winnerId: string | null;
+}) {
+  const [jobOpen, setJobOpen] = useState(false);
+  const h = need.hold;
+  const released = phase === "released";
+  const running = tryouts.filter((t) => t.status === "running").length;
+  const calls = steps.filter((s) => s.kind === "tool" && !isDelivery(s)).length;
+  const out = need.result?.output;
+  const site = isSite(out) ? out : null;
+  const title = headline(phase, need, tryouts, winner?.name ?? need.result?.agent_name);
+
+  const search: StepState = need.search || tryouts.length ? "done" : "now";
+  const tryout: StepState = !tryouts.length ? "todo" : running ? "now" : "done";
+  const pay: StepState = released ? "off" : h?.status === "captured" ? "done" : phase === "build" ? "now" : "todo";
+  const deliver: StepState = released ? "off" : need.result ? "done" : phase === "build" ? "now" : "todo";
+
   return (
-    <div>
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex w-full items-center gap-1.5 py-2 text-left text-sm text-stone-500 hover:text-stone-800">
-        <ChevronRight className={`size-4 transition-transform duration-200 ease-out motion-reduce:transition-none ${open ? "rotate-90" : ""}`} />
-        {label}
+    <div className={`${CARD} min-w-0 px-5 pt-6 pb-5 sm:px-7`}>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.h1
+          key={title}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.3, ease: OUT }}
+          className="text-[26px] leading-[1.15] font-semibold tracking-[-0.025em] text-balance text-stone-900 sm:text-[30px]"
+        >
+          {title}
+        </motion.h1>
+      </AnimatePresence>
+      <p className="mt-2 text-[13px] text-stone-500">
+        {need.source === "claude-code" ? "Claude Code asked over MCP" : "Asked on the web"} at <span className="tabular-nums">{clock(need.created_at)}</span>
+        <span className="mx-1.5 text-stone-300">/</span>
+        {ROLE_LABEL[need.role] ?? need.role}
+      </p>
+
+      <button
+        type="button"
+        onClick={() => setJobOpen((o) => !o)}
+        aria-expanded={jobOpen}
+        className="mt-4 block w-full rounded-2xl bg-stone-50 px-4 py-3 text-left ring-1 ring-stone-200/70 transition-colors hover:bg-stone-100/70"
+      >
+        <span className="block text-[12px] font-medium text-stone-500">The job</span>
+        <span className={`mt-1 text-[14.5px] leading-relaxed text-pretty text-stone-800 ${jobOpen ? "block" : "line-clamp-3"}`}>{need.text}</span>
       </button>
-      <div className={`grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
-        <div className="overflow-hidden">{open ? <div className="pt-1 pb-3">{children}</div> : null}</div>
-      </div>
+
+      <ol className="mt-6">
+        <Step state={search} title="Search the Hub" brand="supabase" by="pgvector">
+          {need.search ? (
+            <>
+              Matched the job against <Num>{need.search.listings}</Num> specialists. Picked the closest <Num>{tryouts.length || need.search.matches?.length || 0}</Num> for a tryout.
+            </>
+          ) : (
+            "Matching the job against every specialist on the Hub."
+          )}
+        </Step>
+        <Step state={tryout} title="Try out on the real job" brand="vercel" by="Sandbox">
+          {!tryouts.length ? (
+            "Each pick does this exact job in its own sandbox, then gets checked and scored."
+          ) : (
+            <>
+              {running ? (
+                <span className="tabular-nums">
+                  {running} of {tryouts.length} still working, {calls} tool calls so far.
+                </span>
+              ) : null}
+              <Board tryouts={tryouts} agents={agents} winnerId={phase === "tryout" ? null : winnerId} />
+            </>
+          )}
+        </Step>
+        <Step state={pay} title="Pay on proof" brand="stripe" by="MPP">
+          <Payment hold={h} builder={winner?.builder} released={released} />
+        </Step>
+        <Step state={deliver} title="Deliver" last>
+          {released ? (
+            "Nothing to deliver."
+          ) : need.result ? (
+            site ? (
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="font-medium text-stone-900">{site.title}</span>
+                {site.live_url ? (
+                  <a href={site.live_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-(--hire) hover:underline">
+                    Open live site <ExternalLink className="size-3.5" />
+                  </a>
+                ) : null}
+              </span>
+            ) : (
+              <span className="font-medium text-stone-900">{workLine(need.result.output as Parameters<typeof workLine>[0]) || "Delivered."}</span>
+            )
+          ) : phase === "build" && winner ? (
+            `${winner.name} is doing the real job now.`
+          ) : (
+            "The winner does the real job and hands it back here."
+          )}
+        </Step>
+      </ol>
     </div>
   );
 }
 
-function SearchMatches({ need, tried }: { need: LiveNeed; tried: Set<string> }) {
-  const matches = need.search?.matches ?? [];
-  if (!matches.length) return null;
+function Num({ children }: { children: React.ReactNode }) {
+  return <span className="font-semibold text-stone-900 tabular-nums">{children}</span>;
+}
+
+function Step({ state, title, brand, by, last, children }: { state: StepState; title: string; brand?: Brand; by?: string; last?: boolean; children: React.ReactNode }) {
   return (
-    <ul className="grid gap-2 sm:grid-cols-2">
-      {matches.slice(0, 6).map((m) => {
-        const on = tried.has(m.id);
-        return (
-          <li key={m.id} className={`rounded-xl px-3 py-2 text-sm ${on ? "bg-(--hire-soft)" : "bg-stone-50"}`}>
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="min-w-0 truncate">
-                <span className="font-medium text-stone-900">{m.name}</span> <span className="text-stone-500">{m.builder}</span>
-              </span>
-              <span className="shrink-0 font-mono tabular-nums text-stone-700">{m.similarity.toFixed(2)}</span>
-            </div>
-            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-stone-200/70">
-              <div className={`h-full rounded-full ${on ? "bg-(--hire)" : "bg-stone-400"}`} style={{ width: `${Math.max(4, Math.min(100, m.similarity * 100))}%` }} />
-            </div>
-            {on ? <div className="mt-1 text-xs font-medium text-(--hire)">Auditioned</div> : null}
-          </li>
-        );
-      })}
+    <li className="relative grid grid-cols-[28px_minmax(0,1fr)] gap-x-3.5">
+      <div className="flex flex-col items-center">
+        <StepIcon state={state} />
+        {!last ? <span className={`my-1.5 w-0.5 flex-1 rounded-full transition-colors duration-500 ${state === "done" ? "bg-emerald-300" : "bg-stone-200"}`} /> : null}
+      </div>
+      <div className={`min-w-0 ${last ? "" : "pb-5"}`}>
+        <div className="flex min-h-7 items-center justify-between gap-3">
+          <span className={`text-[15px] font-semibold tracking-[-0.01em] ${state === "todo" ? "text-stone-400" : "text-stone-900"}`}>{title}</span>
+          {brand ? (
+            <span className="flex shrink-0 items-center gap-1.5 text-[12px] text-stone-400">
+              <Logo brand={brand} className={`size-3.5 ${brand === "vercel" ? "text-stone-900" : ""}`} />
+              {by}
+            </span>
+          ) : null}
+        </div>
+        <div className={`mt-0.5 text-[14px] leading-relaxed text-pretty ${state === "todo" ? "text-stone-400" : "text-stone-600"}`}>{children}</div>
+      </div>
+    </li>
+  );
+}
+
+function StepIcon({ state }: { state: StepState }) {
+  return (
+    <span className="relative grid size-7 shrink-0 place-items-center">
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.span
+          key={state}
+          initial={{ scale: 0.4, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.4, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 520, damping: 26 }}
+          className={`absolute inset-0 grid place-items-center rounded-full ${
+            state === "done" ? "bg-emerald-600 text-white" : state === "now" ? "bg-(--hire-soft) text-(--hire) ring-1 ring-(--hire)/30" : state === "off" ? "bg-stone-200 text-stone-500" : "ring-[1.5px] ring-stone-300 ring-inset"
+          }`}
+        >
+          {state === "done" ? <Check className="size-4" strokeWidth={3} /> : state === "now" ? <Loader2 className="size-4 animate-spin" /> : state === "off" ? <X className="size-4" strokeWidth={2.5} /> : null}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  );
+}
+
+function Board({ tryouts, agents, winnerId }: { tryouts: LiveTryout[]; agents: Map<string, MarketAgent>; winnerId: string | null }) {
+  const rows = [...tryouts].sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+  return (
+    <ul className="mt-2.5 -mx-2">
+      {rows.map((t) => (
+        <motion.li key={t.id} layout transition={{ type: "spring", stiffness: 380, damping: 32 }}>
+          <BoardRow tryout={t} agent={agents.get(t.agent_id)} win={t.agent_id === winnerId} />
+        </motion.li>
+      ))}
     </ul>
   );
 }
 
-function useCountUp(target: number | null) {
-  const [v, setV] = useState(target ?? 0);
-  useEffect(() => {
-    if (target == null) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      const id = requestAnimationFrame(() => setV(target));
-      return () => cancelAnimationFrame(id);
-    }
-    const start = performance.now();
-    let id = 0;
-    const tick = (t: number) => {
-      const p = Math.min(1, (t - start) / 700);
-      setV(target * (1 - Math.pow(1 - p, 3)));
-      if (p < 1) id = requestAnimationFrame(tick);
-    };
-    id = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(id);
-  }, [target]);
-  return v;
-}
-
-function Lane({ tryout: t, agent, steps, winner }: { tryout: LiveTryout; agent?: MarketAgent; steps: TryoutStep[]; winner: boolean }) {
+function BoardRow({ tryout: t, agent, win }: { tryout: LiveTryout; agent?: MarketAgent; win: boolean }) {
+  const [open, setOpen] = useState(false);
   const score = useCountUp(t.status === "scored" ? t.score : null);
   const lab = agent ? labOf(agent.model) : null;
-  const tools = steps.filter((s) => s.kind === "tool").slice(-6);
+  const checks = t.checks ?? [];
+  const passed = checks.filter((c) => c.passed).length;
   return (
-    <div
-      className={`flex flex-col rounded-xl border p-4 transition-shadow duration-500 ease-out ${
-        winner ? "border-(--hire)/40 bg-white shadow-[0_2px_4px_rgb(40_60_160/0.08),0_18px_40px_-18px_rgb(40_60_160/0.35)]" : "border-stone-200 bg-stone-50/60"
-      }`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="truncate text-lg font-semibold text-stone-900">{agent?.name ?? "Specialist"}</span>
-            {winner ? <span className="rounded-full bg-(--hire) px-2 py-0.5 text-xs font-medium text-white">Hired</span> : null}
-          </div>
-          <div className="mt-0.5 flex items-center gap-1.5 text-sm text-stone-600">
-            {lab ? <Logo brand={lab} className="size-3.5" /> : null}
-            <span className="truncate">
-              {agent ? modelName(agent.model) : ""} {agent ? <span className="text-stone-400">by {agent.builder}</span> : null}
-            </span>
-          </div>
-        </div>
-        <div className="shrink-0 text-right">
+    <div className={`rounded-xl transition-colors duration-300 ${win ? "bg-(--hire-soft)" : open ? "bg-stone-50" : ""}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        disabled={!checks.length}
+        className="grid w-full grid-cols-[minmax(0,1fr)_4.5rem] items-center gap-3 rounded-xl px-2 py-2 text-left enabled:hover:bg-stone-50/80 disabled:cursor-default sm:grid-cols-[minmax(0,1fr)_minmax(48px,96px)_4.5rem]"
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          {lab ? <Logo brand={lab} className="size-3.5 shrink-0" /> : null}
+          <span className="truncate text-[14px] font-medium text-stone-900">{agent?.name ?? "Specialist"}</span>
+          <span className="hidden truncate text-[13px] text-stone-400 sm:inline">{agent?.builder}</span>
+          {win ? <span className="shrink-0 rounded-md bg-(--hire) px-1.5 py-px text-[11px] font-semibold text-white">Hired</span> : null}
+        </span>
+        <span className="hidden h-1.5 overflow-hidden rounded-full bg-stone-200/70 sm:block">
+          <span
+            className={`block h-full rounded-full transition-[width] duration-700 ease-out ${win ? "bg-(--hire)" : passed === checks.length && checks.length ? "bg-emerald-500" : "bg-stone-400"}`}
+            style={{ width: `${t.status === "scored" ? Math.max(4, score * 10) : 0}%` }}
+          />
+        </span>
+        <span className="flex items-baseline justify-end gap-1.5 tabular-nums">
           {t.status === "running" ? (
-            <span className="mt-2 block size-2.5 rounded-full bg-(--hire) animate-pulse motion-reduce:animate-none" aria-label="working" />
+            <Loader2 className="size-3.5 animate-spin text-(--hire)" />
           ) : t.status === "scored" ? (
-            <div className="text-2xl leading-none font-semibold tabular-nums text-stone-900">
-              {score.toFixed(1)}
-              <span className="ml-0.5 text-xs font-normal text-stone-500">/10</span>
-            </div>
+            <>
+              <span className="text-[15px] font-semibold text-stone-900">{score.toFixed(1)}</span>
+              <span className="text-[12px] text-stone-400">
+                {passed}/{checks.length}
+              </span>
+            </>
           ) : (
-            <span className="text-sm text-red-700">Failed</span>
+            <span className="text-[13px] text-red-700">Failed</span>
           )}
-        </div>
-      </div>
-
-      <ol className="mt-3 min-h-24 space-y-1 font-mono text-[13px] leading-snug text-stone-700">
-        {tools.map((s) => (
-          <li key={s.id} className={FEED_IN}>
-            <span className="text-(--hire)">{s.name}</span> {summarize(s.name, s.input)}
-            {outcome(s.name, s.output) ? <span className="text-stone-500"> -&gt; {outcome(s.name, s.output)}</span> : null}
-          </li>
-        ))}
-        {!tools.length ? <li className="text-stone-400">Starting</li> : null}
-      </ol>
-
-      {t.checks?.length ? (
-        <ul className="mt-3 space-y-0.5 border-t border-stone-200 pt-3 text-sm">
-          {t.checks.map((c) => (
-            <li key={c.name} className={`flex items-start gap-1.5 ${FEED_IN}`}>
-              {c.passed ? <Check className="mt-0.5 size-4 shrink-0 text-emerald-600" /> : <X className="mt-0.5 size-4 shrink-0 text-red-600" />}
-              <span className={c.passed ? "text-stone-800" : "text-stone-500"}>{c.name}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {t.usage?.cost_usd != null ? (
-        <p className="mt-2 text-xs text-stone-500 tabular-nums">
-          ${t.usage.cost_usd.toFixed(4)} in tokens{agent ? ` · ${money(agent.price_action_cents)} per job` : ""}
-        </p>
-      ) : null}
+        </span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && checks.length ? (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.28, ease: OUT }}
+            className="overflow-hidden"
+          >
+            <div className="px-2 pt-0.5 pb-3">
+              <ul className="grid gap-x-4 gap-y-1 text-[13px] sm:grid-cols-2">
+                {checks.map((c) => (
+                  <li key={c.name} className="flex items-start gap-1.5">
+                    {c.passed ? <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" strokeWidth={3} /> : <X className="mt-0.5 size-3.5 shrink-0 text-red-600" strokeWidth={3} />}
+                    <span className={c.passed ? "text-stone-700" : "text-stone-500"}>{c.name}</span>
+                  </li>
+                ))}
+              </ul>
+              {t.reason ? <p className="mt-2 text-[13px] leading-relaxed text-stone-500">{t.reason}</p> : null}
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }
 
-function Money({ hold: h, builder }: { hold: Hold; builder?: string }) {
-  const captured = h.status === "captured";
-  const released = h.status === "released";
-  const steps: { key: string; on: boolean; title: React.ReactNode; detail: React.ReactNode }[] = [
-    { key: "pay", on: true, title: h.via === "mpp" ? "MPP 402" : "Card", detail: h.via === "mpp" ? "Claude Code paid the HTTP 402" : "Card on file" },
-    {
-      key: "hold",
-      on: true,
-      title: <><Cents value={h.amount_cents} /> held</>,
-      detail: h.spt ? <span className="font-mono text-xs">Shared Payment Token {h.spt}</span> : <Ref href={stripeLinks.payment(h.payment_intent)} id={h.payment_intent} />,
-    },
-    released
-      ? { key: "release", on: true, title: "Released", detail: "No specialist passed, nothing charged" }
-      : {
-          key: "capture",
-          on: captured,
-          title: captured ? <><Cents value={capturedCents(h)} /> captured</> : "Capture",
-          detail: captured ? <Ref href={stripeLinks.payment(h.payment_intent)} id={h.payment_intent} label="proof passed" /> : "Waits for the proof",
-        },
-    ...(released
-      ? []
-      : [
-          {
-            key: "payout",
-            on: !!h.transfer,
-            title: <>{h.builder_cents != null && h.transfer ? <Cents value={h.builder_cents} /> : "Payout"} to {builder ?? "the builder"}</>,
-            detail: h.transfer ? <Ref href={stripeLinks.transfer(h.transfer)} id={h.transfer} label="via Connect" /> : "via Connect",
-          },
-        ]),
-  ];
+function Payment({ hold: h, builder, released }: { hold: LiveNeed["hold"]; builder?: string; released: boolean }) {
+  if (!h) return <>No payment is held for this job.</>;
+  if (released || h.status === "released")
+    return (
+      <>
+        The <Num>{money(h.amount_cents)}</Num> hold was released. Nothing was charged.
+      </>
+    );
+  if (h.status !== "captured")
+    return (
+      <>
+        <Num>{money(h.amount_cents)}</Num> held on Stripe{h.via === "mpp" ? ", paid by Claude Code over MPP" : ""}. Captured only if the winner passes every check.
+      </>
+    );
   return (
-    <div>
-      <ol className="flex flex-col gap-2 md:flex-row md:items-stretch">
-        {steps.map((s, i) => (
-          <li key={s.key} className="flex items-center gap-2 md:flex-1">
-            <div
-              key={String(s.on)}
-              style={{ animationDelay: `${i * 160}ms` }}
-              className={`flex-1 rounded-xl px-3.5 py-3 transition-colors duration-500 ease-out ${s.on ? `bg-emerald-50 text-emerald-950 ${FEED_IN} fill-mode-both` : "bg-stone-50 text-stone-500"}`}
-            >
-              <div className="text-[17px] font-semibold tabular-nums">{s.title}</div>
-              <div className="mt-0.5 text-sm text-pretty [overflow-wrap:anywhere]">{s.detail}</div>
-            </div>
-            {i < steps.length - 1 ? <ArrowRight className={`hidden size-4 shrink-0 md:block ${steps[i + 1].on ? "text-emerald-600" : "text-stone-300"}`} /> : null}
-          </li>
-        ))}
-      </ol>
-      {captured && h.blast_cents != null ? (
-        <p className="mt-2 text-sm text-stone-600">
-          Blast kept <Cents value={h.blast_cents} />.
-        </p>
+    <>
+      <Cents value={capturedCents(h)} /> paid from the <Num>{money(h.amount_cents)}</Num> hold.{" "}
+      {h.builder_cents != null ? (
+        <>
+          {builder ?? "The builder"} got <Cents value={h.builder_cents} />
+          {h.blast_cents != null ? (
+            <>
+              , Blast kept <Num>{money(h.blast_cents)}</Num>
+            </>
+          ) : null}
+          .
+        </>
       ) : null}
-    </div>
+      <span className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
+        <a href={stripeLinks.payment(h.payment_intent)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-(--hire) hover:underline">
+          Stripe payment <ExternalLink className="size-3" />
+        </a>
+        {h.transfer ? (
+          <a href={stripeLinks.transfer(h.transfer)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-(--hire) hover:underline">
+            Connect payout <ExternalLink className="size-3" />
+          </a>
+        ) : null}
+      </span>
+    </>
   );
 }
 
 function Cents({ value }: { value: number }) {
   const v = useCountUp(value);
-  return <span className="tabular-nums">{money(Math.round(v))}</span>;
-}
-
-function Ref({ href, id, label }: { href: string; id: string; label?: string }) {
-  return (
-    <span>
-      {label ? `${label} ` : null}
-      <a href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-xs text-(--hire) hover:underline">
-        {id}
-        <ExternalLink className="size-3 shrink-0" />
-      </a>
-    </span>
-  );
-}
-
-// Replies arrive as light markdown: keep **bold**, drop the markers.
-function bold(text: string) {
-  return text.split(/\*\*(.+?)\*\*/g).map((part, i) => (i % 2 ? <strong key={i} className="font-semibold text-stone-900">{part}</strong> : part));
-}
-
-function isSite(o: unknown): o is Site {
-  return !!o && typeof o === "object" && typeof (o as Site).html === "string";
-}
-
-function Delivered({ result }: { result: NonNullable<LiveNeed["result"]> }) {
-  const out = result.output as Estimate | Claim | Site | null;
-  return (
-    <div className={FEED_IN}>
-      <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-stone-900">
-        <Check className="size-4 text-emerald-600" strokeWidth={3} />
-        Delivered by {result.agent_name}
-      </h2>
-      {isSite(out) ? (
-        <SitePreview site={out} />
-      ) : out ? (
-        isEstimate(out as Estimate | Claim) ? (
-          <EstimateTable e={out as Estimate} />
-        ) : (
-          <ClaimCodes c={out as Claim} />
-        )
-      ) : null}
-      {result.reply ? (
-        <Fold label="The specialist's full reply">
-          <p className="text-[15px] leading-relaxed text-pretty whitespace-pre-line text-stone-800">{bold(result.reply)}</p>
-        </Fold>
-      ) : null}
-    </div>
-  );
-}
-
-function SitePreview({ site }: { site: Site }) {
-  return (
-    <div className="mt-3">
-      <div className="overflow-hidden rounded-xl border border-stone-200 shadow-[0_12px_32px_-16px_rgb(70_50_30/0.3)]">
-        <div className="flex items-center gap-2 border-b border-stone-200 bg-stone-100 px-3 py-2">
-          <span className="flex gap-1.5">
-            <span className="size-2.5 rounded-full bg-stone-300" />
-            <span className="size-2.5 rounded-full bg-stone-300" />
-            <span className="size-2.5 rounded-full bg-stone-300" />
-          </span>
-          <span className="min-w-0 flex-1 truncate rounded-md bg-white px-2 py-0.5 text-center font-mono text-xs text-stone-500">{site.live_url || site.title}</span>
-        </div>
-        <div className="relative h-[440px] overflow-hidden bg-white">
-          <iframe
-            title={site.title}
-            srcDoc={site.html}
-            sandbox=""
-            className="absolute top-0 left-0 h-[733px] w-[166.67%] origin-top-left scale-[0.6] border-0"
-          />
-        </div>
-      </div>
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <div className="min-w-0 truncate font-medium text-stone-900">{site.title}</div>
-        {site.live_url ? (
-          <a href={site.live_url} target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-(--hire) px-3.5 text-sm font-medium text-white hover:bg-(--hire)/90">
-            Open live site <ExternalLink className="size-3.5" />
-          </a>
-        ) : null}
-      </div>
-      <Fold label="Palette and fonts">
-      <div className="space-y-3 text-sm">
-        <div>
-          <div className="text-stone-500">Palette</div>
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {site.palette.map((c) => (
-              <span key={c} className="flex items-center gap-1.5 rounded-full bg-stone-50 py-0.5 pr-2 pl-0.5 font-mono text-xs text-stone-700">
-                <span className="size-5 rounded-full border border-black/10" style={{ background: c }} />
-                {c}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div>
-          <div className="text-stone-500">Type</div>
-          <div className="mt-0.5 text-stone-900">
-            {site.fonts.display} <span className="text-stone-400">/</span> {site.fonts.body}
-          </div>
-        </div>
-      </div>
-      </Fold>
-    </div>
-  );
+  return <span className="font-semibold text-stone-900 tabular-nums">{money(Math.round(v))}</span>;
 }
 
 function History({ needs, focus, onPick }: { needs: LiveNeed[]; focus: string; onPick: (id: string) => void }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? needs : needs.slice(0, 6);
   return (
-    <section className="mt-5">
-      <h2 className="text-xs font-medium text-stone-500">Earlier hires</h2>
-      <ul className={`${CARD} mt-1.5 divide-y divide-stone-100 overflow-hidden`}>
-        {needs.map((n) => {
+    <section className="mt-12">
+      <div className="flex items-baseline gap-2">
+        <h2 className="text-[15px] font-semibold text-stone-900">Earlier hires</h2>
+        <span className="text-[13px] text-stone-400 tabular-nums">{needs.length}</span>
+      </div>
+      <ul className={`${CARD} mt-3 divide-y divide-stone-100 overflow-hidden`}>
+        {shown.map((n) => {
           const released = n.status === "waiting" || n.hold?.status === "released";
+          const busy = n.status === "auditioning" || n.status === "checkout";
+          const result = released
+            ? "Nobody passed"
+            : busy
+              ? "In progress"
+              : [n.result?.agent_name, n.hold?.status === "captured" ? money(capturedCents(n.hold)) : null].filter(Boolean).join(", ") || "Done";
           return (
             <li key={n.id}>
               <button
                 type="button"
-                onClick={() => onPick(n.id)}
-                aria-pressed={n.id === focus}
-                className={`grid w-full grid-cols-[3rem_7rem_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2 text-left text-sm transition-colors duration-200 ease-out hover:bg-stone-50 ${n.id === focus ? "bg-(--hire-soft)" : ""}`}
+                onClick={() => {
+                  onPick(n.id);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                aria-current={n.id === focus}
+                className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-0.5 px-4 py-3 text-left transition-colors duration-200 ease-out hover:bg-stone-50 sm:grid-cols-[3.25rem_8.5rem_minmax(0,1fr)_auto] sm:px-5 ${
+                  n.id === focus ? "bg-(--hire-soft)/70" : ""
+                }`}
               >
-                <span className="text-xs text-stone-500 tabular-nums">{clock(n.created_at)}</span>
-                <span className="truncate text-xs text-stone-500">{ROLE_LABEL[n.role] ?? n.role}</span>
-                <span className="truncate text-stone-900">{n.text}</span>
-                <span className={`text-xs tabular-nums ${released ? "text-stone-400" : "text-stone-600"}`}>
-                  {released
-                    ? "Released, nobody passed"
-                    : `${n.result?.agent_name ?? (n.status === "auditioning" || n.status === "checkout" ? "In progress" : n.status === "hired" ? "Done" : n.status)}${n.hold?.status === "captured" ? ` · ${money(capturedCents(n.hold))}` : ""}`}
+                <span className="order-2 text-[12px] text-stone-400 tabular-nums sm:order-none sm:text-[13px]">{clock(n.created_at)}</span>
+                <span className="order-3 hidden truncate text-[13px] text-stone-500 sm:order-none sm:block">{ROLE_LABEL[n.role] ?? n.role}</span>
+                <span className="order-1 col-span-2 truncate text-[14px] text-stone-800 sm:order-none sm:col-span-1">{n.text}</span>
+                <span
+                  className={`order-2 justify-self-end text-[13px] tabular-nums sm:order-none ${released ? "text-stone-400" : busy ? "font-medium text-(--hire)" : "font-medium text-stone-700"}`}
+                >
+                  {result}
                 </span>
               </button>
             </li>
           );
         })}
       </ul>
+      {needs.length > 6 ? (
+        <button type="button" onClick={() => setAll((a) => !a)} className="mt-3 text-[13px] font-medium text-stone-500 hover:text-stone-900">
+          {all ? "Show fewer" : `Show all ${needs.length}`}
+        </button>
+      ) : null}
     </section>
   );
 }
