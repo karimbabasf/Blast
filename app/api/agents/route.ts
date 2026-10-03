@@ -49,6 +49,19 @@ async function trackRecords(skill: string | null) {
   return records;
 }
 
+type RunsIn = "sandbox" | "builder_url" | "blast";
+
+// Where each listed agent runs. Only the kind leaves this route, never the code or the URL.
+async function runsIn(): Promise<Map<string, RunsIn>> {
+  const { data } = await admin()
+    .from("agents")
+    .select("id, endpoint, code")
+    .or("endpoint.not.is.null,code.not.is.null");
+  const kinds = new Map<string, RunsIn>();
+  for (const row of data ?? []) kinds.set(row.id, row.code ? "sandbox" : "builder_url");
+  return kinds;
+}
+
 // GET /api/agents?q=<need>&skill=<optional>: closest meaning first; near ties go to the better track record.
 export async function GET(req: Request) {
   const params = new URL(req.url).searchParams;
@@ -81,7 +94,7 @@ export async function GET(req: Request) {
 
   // One builder agent can be listed twice (a localhost and a deployed endpoint): show it once,
   // with the track record of both copies.
-  const records = await trackRecords(skill);
+  const [records, kinds] = await Promise.all([trackRecords(skill), runsIn()]);
   const groups = new Map<string, { agent: Agent; auditions: number; hires: number; total: number }>();
   for (const agent of agents) {
     const key = `${agent.builder}\n${agent.name}`;
@@ -96,6 +109,7 @@ export async function GET(req: Request) {
   const ranked = [...groups.values()]
     .map(({ agent, auditions, hires, total }) => ({
       ...agent,
+      runs_in: kinds.get(agent.id) ?? "blast",
       similarity: agent.similarity === undefined ? null : Math.round(agent.similarity * 1000) / 1000,
       avg_score: auditions ? Math.round((total / auditions) * 10) / 10 : null,
       auditions,
