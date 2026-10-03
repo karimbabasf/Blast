@@ -5,23 +5,26 @@ import { MotionConfig } from "motion/react";
 import type { RunMode } from "@/lib/types";
 import { DEFAULT_GOAL } from "../_data/fake";
 import { useRun } from "../_data/use-run";
+import { useWorkLog } from "../_data/use-work-log";
 import { Board } from "./board";
 import { GoalForm } from "./goal-form";
 import { ModeDial } from "./mode-dial";
 import { StatusLine } from "./status-line";
 import { Summary } from "./summary";
+import { WorkLog } from "./work-log";
 
 // Every region is laid out before the first click. A run fills the regions
 // in place, so nothing appears, disappears or pushes the page around.
 export function Blast() {
   const { run, jobs, auditions, payments, cards, error, start, approve, reject } =
     useRun();
+  const log = useWorkLog({ run, jobs, auditions, payments }, cards);
   const [mode, setMode] = useState<RunMode>("approve");
   const busy = run !== null && run.status !== "done";
 
   return (
     <MotionConfig reducedMotion="user">
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-8">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-6 py-6">
         <header className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-1">
             <h1 className="text-2xl font-semibold tracking-tight" translate="no">
@@ -42,7 +45,10 @@ export function Blast() {
           onStart={(goal) => start(goal, mode)}
         />
 
-        <StatusLine status={run?.status ?? null} />
+        <div className="flex flex-col gap-3">
+          <StatusLine status={run?.status ?? null} />
+          <WorkLog entries={log} />
+        </div>
 
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <Board jobs={jobs} auditions={auditions} cards={cards} />

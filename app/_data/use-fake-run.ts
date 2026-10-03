@@ -14,6 +14,7 @@ import { CARDS, FAKE_BRIEFS, FAKE_SAMPLES } from "./fake";
 import { EMPTY, type RunApi, type RunState } from "./run-state";
 
 const SKILLS: Skill[] = ["script", "voice"];
+const JUDGE_MS = 1100;
 
 function candidates(skill: Skill) {
   return CARDS.filter((card) => card.real && card.skills.includes(skill));
@@ -155,23 +156,24 @@ export function useFakeRun(): RunApi {
       SKILLS.forEach((skill, index) => {
         candidates(skill).forEach((card) => {
           const sample = FAKE_SAMPLES[card.id];
-          const at = splitMs + sample.delay + index * 500;
+          const at = splitMs + sample.delay + JUDGE_MS + index * 500;
           lastScore = Math.max(lastScore, at);
-          later(at, () =>
+          const patch = (change: Partial<Audition>) =>
             setState((s) => ({
               ...s,
               auditions: s.auditions.map((audition) =>
                 audition.id === `aud-${skill}-${card.id}`
-                  ? {
-                      ...audition,
-                      status: "scored",
-                      output_text: sample.text,
-                      score: sample.score,
-                      reason: sample.reason,
-                    }
+                  ? { ...audition, ...change }
                   : audition,
               ),
-            })),
+            }));
+          later(at - JUDGE_MS, () => patch({ output_text: sample.text }));
+          later(at, () =>
+            patch({
+              status: "scored",
+              score: sample.score,
+              reason: sample.reason,
+            }),
           );
         });
       });

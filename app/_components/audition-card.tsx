@@ -1,14 +1,14 @@
 import { useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Pause, Play } from "lucide-react";
-import type { AgentCard, Audition } from "@/lib/types";
+import { AUDITION_VOICE_LINE, type AgentCard, type Audition } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { AgentAvatar } from "./agent-avatar";
 import { money } from "./format";
 
 // Every card and every empty slot is this tall, so nothing below ever moves.
-const CARD_HEIGHT = "h-38";
+const CARD_HEIGHT = "h-35";
 
 export const POP = {
   initial: { opacity: 0, filter: "blur(4px)", transform: "scale(0.96)" },
@@ -80,12 +80,25 @@ export function AuditionCard({
   top: boolean;
 }) {
   const scored = audition.status === "scored" && audition.score !== null;
+  const failed = audition.status === "failed";
+  const voice = card.skills.includes("voice");
+  // The sample lands before the score, so the card shows it right away.
+  const delivered = Boolean(audition.output_text || audition.audio_url);
+  const sample =
+    audition.output_text ?? (audition.audio_url ? AUDITION_VOICE_LINE : null);
+  const stage = scored || failed
+    ? audition.reason
+    : delivered
+      ? "Judge is scoring…"
+      : voice
+        ? "Recording a sample…"
+        : "Writing a sample…";
 
   return (
     <article
       className={cn(
         CARD_HEIGHT,
-        "flex flex-col gap-3 overflow-hidden rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-shadow duration-200 ease-out",
+        "flex flex-col gap-2 overflow-hidden rounded-xl bg-card p-3 ring-1 ring-foreground/10 transition-shadow duration-200 ease-out",
         hired && "ring-2 ring-success",
       )}
     >
@@ -100,7 +113,7 @@ export function AuditionCard({
             <h3 className="text-sm font-semibold" translate="no">
               {card.name}
             </h3>
-            {scored && audition.audio_url && (
+            {audition.audio_url && (
               <PlayButton src={audition.audio_url} label={`${card.name} sample`} />
             )}
             {hired && <Badge className="bg-success text-white">Hired</Badge>}
@@ -142,24 +155,34 @@ export function AuditionCard({
         </div>
       </div>
 
-      {scored ? (
-        <motion.div {...POP} className="flex flex-col gap-1.5">
-          <blockquote className="line-clamp-2 h-10 border-l-2 border-border pl-3 text-sm">
-            “{audition.output_text}”
-          </blockquote>
-          <p className="truncate text-xs text-muted-foreground">
-            {audition.reason}
-          </p>
-        </motion.div>
-      ) : (
-        <div aria-hidden="true" className="flex animate-pulse flex-col gap-1.5">
-          <div className="flex h-10 flex-col justify-center gap-2 border-l-2 border-border pl-3">
+      <div className="flex flex-col gap-1.5">
+        {sample ? (
+          <motion.blockquote
+            {...POP}
+            className="line-clamp-2 h-10 border-l-2 border-border pl-3 text-sm"
+          >
+            “{sample}”
+          </motion.blockquote>
+        ) : (
+          <div
+            aria-hidden="true"
+            className="flex h-10 animate-pulse flex-col justify-center gap-2 border-l-2 border-border pl-3"
+          >
             <div className="h-2.5 w-11/12 rounded-full bg-muted" />
             <div className="h-2.5 w-7/12 rounded-full bg-muted" />
           </div>
-          <div className="h-4 w-8/12 rounded-full bg-muted" />
-        </div>
-      )}
+        )}
+        <p
+          key={stage}
+          className={cn(
+            "truncate text-xs text-muted-foreground",
+            !scored && !failed && "animate-pulse",
+            failed && "text-destructive",
+          )}
+        >
+          {stage}
+        </p>
+      </div>
     </article>
   );
 }

@@ -16,6 +16,7 @@ import { AgentAvatar, EmptyAvatar } from "./agent-avatar";
 import { PlayButton, POP } from "./audition-card";
 import { SKILLS } from "./board";
 import { money, SKILL_LABEL } from "./format";
+import { MoneyTicker } from "./money-ticker";
 
 function topAudition(job: Job, auditions: Audition[]) {
   return auditions
@@ -96,8 +97,17 @@ export function Summary({
                 <EmptyAvatar />
               )}
               <dt className="min-w-0 flex-1 text-sm">
-                <span className="text-muted-foreground">
+                <span className="flex items-center gap-1.5 text-muted-foreground">
                   {SKILL_LABEL[skill]}
+                  {payment && (
+                    <motion.span
+                      {...POP}
+                      className="truncate font-mono text-[0.625rem] text-success"
+                      translate="no"
+                    >
+                      paid · {payment.stripe_id ?? payment.status}
+                    </motion.span>
+                  )}
                 </span>
                 {card ? (
                   <motion.span
@@ -165,13 +175,15 @@ export function Summary({
         </div>
         <div className="flex justify-between gap-4">
           <dt className="text-muted-foreground">Paid to agents</dt>
-          <dd>{money(spent)}</dd>
+          <dd>
+            <MoneyTicker cents={spent} />
+          </dd>
         </div>
         <div className="flex justify-between gap-4 font-semibold">
           <dt>Margin</dt>
           <dd className="flex items-center gap-1 text-success">
             <TrendingUp aria-hidden="true" className="size-3.5" />
-            {money(price - spent)}
+            <MoneyTicker cents={price - spent} />
           </dd>
         </div>
       </dl>

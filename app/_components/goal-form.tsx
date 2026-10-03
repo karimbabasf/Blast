@@ -16,14 +16,14 @@ export function GoalForm({
 }) {
   return (
     <form
-      className="flex flex-col gap-2"
+      className="relative flex flex-col"
       onSubmit={(event) => {
         event.preventDefault();
         const goal = String(new FormData(event.currentTarget).get("goal") ?? "");
         if (goal.trim()) onStart(goal.trim());
       }}
     >
-      <label htmlFor="goal" className="text-sm font-medium">
+      <label htmlFor="goal" className="sr-only">
         Your Goal
       </label>
       <div className="flex gap-3">
@@ -40,7 +40,10 @@ export function GoalForm({
           {busy ? "Working…" : done ? "Run Again" : "Start Auditions"}
         </Button>
       </div>
-      <p aria-live="polite" className="h-4 truncate text-xs text-destructive">
+      <p
+        aria-live="polite"
+        className="absolute top-full left-0 mt-0.5 max-w-full truncate text-xs text-destructive"
+      >
         {error}
       </p>
     </form>
