@@ -27,20 +27,20 @@ const NOUN: Record<string, [string, string, string]> = {
 const at = (iso: string) => new Date(iso).getTime();
 
 // Claude Code's hires, newest first. Realtime on needs; a 2 s poll covers a dropped socket.
-function useHires() {
+function useHires(since: string | null) {
   const [needs, setNeeds] = useState<LiveNeed[] | null>(null);
   useEffect(() => {
     let active = true;
-    const refresh = () =>
-      db()
-        .from("needs")
-        .select("*")
-        .eq("source", "claude-code")
+    const refresh = () => {
+      let q = db().from("needs").select("*").eq("source", "claude-code");
+      if (since) q = q.gte("created_at", since);
+      return q
         .order("created_at", { ascending: false })
         .limit(20)
         .then(({ data }) => {
           if (active && data) setNeeds(data as LiveNeed[]);
         });
+    };
     const channel = db()
       .channel("dashboard-needs")
       .on("postgres_changes", { event: "*", schema: "public", table: "needs" }, refresh)
@@ -52,12 +52,12 @@ function useHires() {
       window.clearInterval(timer);
       db().removeChannel(channel);
     };
-  }, []);
+  }, [since]);
   return needs;
 }
 
-export function Dashboard({ initialNeed }: { initialNeed: string | null }) {
-  const needs = useHires();
+export function Dashboard({ initialNeed, since }: { initialNeed: string | null; since: string | null }) {
+  const needs = useHires(since);
   const hub = useHubAgents();
   const [picked, setPicked] = useState<string | null>(initialNeed);
   const newest = needs?.[0]?.id ?? null;
