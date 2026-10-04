@@ -1,0 +1,54 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1600px;height:900px}
+body{font-family:'Geist',system-ui,sans-serif;background:#F4EFE7;color:#1A1512;-webkit-font-smoothing:antialiased;position:relative;overflow:hidden}
+.glow{position:absolute;inset:0;background:radial-gradient(900px 600px at 82% 30%,var(--g),transparent 70%);opacity:.18}
+.grain{position:absolute;inset:0;background:radial-gradient(1200px 700px at 10% 110%,rgba(217,119,87,.10),transparent 60%)}
+.wrap{position:relative;display:grid;grid-template-columns:500px 1fr;gap:56px;padding:64px 72px;height:100%;align-items:center}
+.brand{display:flex;align-items:center;gap:12px;font-weight:600;font-size:24px;letter-spacing:-.02em;position:absolute;top:56px;left:72px}
+.step{font-family:'Geist Mono',monospace;font-size:17px;color:#7A6A5C;letter-spacing:.02em;margin-bottom:22px;display:flex;gap:12px;align-items:center}
+.step b{color:#1A1512;font-weight:600}
+h1{font-size:54px;line-height:1.04;letter-spacing:-.035em;font-weight:650;margin-bottom:22px;text-wrap:balance}
+p.sub{font-size:21px;line-height:1.5;color:#4A3F37;margin-bottom:30px;text-wrap:pretty}
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chip{display:inline-flex;align-items:center;gap:9px;background:#fff;border-radius:999px;padding:9px 15px 9px 11px;font-size:16px;font-weight:550;box-shadow:0 1px 2px rgba(60,40,20,.06),0 10px 24px -14px rgba(60,40,20,.25)}
+.cards{display:flex;flex-direction:column;gap:18px}
+.card{background:#1C1612;border-radius:20px;box-shadow:0 2px 4px rgba(40,25,10,.12),0 40px 80px -30px rgba(40,25,10,.55);overflow:hidden}
+.bar{display:flex;align-items:center;gap:8px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.06)}
+.dot{width:12px;height:12px;border-radius:50%;background:#3A302A}
+.file{margin-left:10px;font-family:'Geist Mono',monospace;font-size:14px;color:#A8988A}
+pre{margin:0;padding:18px 24px 22px;font-family:'Geist Mono',monospace;font-size:16.5px;line-height:1.62;color:#E8DDD1;white-space:pre}
+.hljs-keyword,.hljs-built_in,.hljs-type{color:#F2A65A}
+.hljs-string,.hljs-template-string{color:#A8D5A2}
+.hljs-comment{color:#8C7C6E;font-style:italic}
+.hljs-number,.hljs-literal{color:#E6C07B}
+.hljs-title,.hljs-title.function_{color:#F4C4A8}
+.hljs-attr,.hljs-property{color:#D9CBBE}
+.hljs-subst{color:#E8DDD1}
+.hljs-operator,.hljs-punctuation{color:#BFAF9F}
+</style></head><body style="--g:#635BFF">
+<div class="glow"></div><div class="grain"></div>
+<div class="brand"><svg viewBox="0 0 100 100" width="34" height="34"><polygon points="50,10 84,30 84,70 50,90 16,70 16,30" fill="#1A1512" stroke="#1A1512" stroke-width="12" stroke-linejoin="round"/><path d="M55 54 L55 80 Q55 85.5 60 82.6 L79.5 71.2 Q84 68.5 84 63 L84 56 Q84 51.5 75.5 50.2 Q84 49 84 44 L84 38 Q84 32.5 79.5 35.2 L60 46.7 Q55 49.5 55 54 Z" fill="#fff"/></svg>Blast</div>
+<div class="wrap"><div><div class="step"><b>04</b><span>Pay on proof</span></div><h1>Money moves only for proof</h1><p class="sub">Claude pays over Stripe&#x27;s machine payments with a capped token. The payment is a hold, captured only when the winner passes, and the builder is paid through Connect.</p><div class="chips"><span class="chip"><svg viewBox="0 0 24 24" width="20" height="20" fill="#635BFF"><path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.594-7.305h.003z"/></svg>Stripe MPP + Connect</span></div></div>
+<div class="cards"><div class="card"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="file">lib/pay/proof.ts</span></div><pre><code class="language-typescript">// Claude pays over MPP (HTTP 402 + a capped Shared Payment Token),
+// but the PaymentIntent is only a hold
+client.paymentIntents.create = (params, options) =&gt;
+  create({ ...params, capture_method: &quot;manual&quot; }, options);
+
+// The winner passed every check: capture its price, pay its builder
+await stripe.paymentIntents.capture(hold.payment_intent, {
+  amount_to_capture: winner.price_cents,
+});
+await stripe.transfers.create({
+  amount: Math.round(winner.price_cents * 0.8),
+  currency: &quot;usd&quot;,
+  destination: winner.stripe_account, // the builder&#x27;s Connect account
+  source_transaction: chargeId,
+});
+
+// Nobody passed: release the hold, nobody pays
+await stripe.paymentIntents.cancel(hold.payment_intent);</code></pre></div></div></div>
+<script>hljs.highlightAll();</script></body></html>

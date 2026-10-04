@@ -1,0 +1,7 @@
+#!/bin/bash
+# Stock Claude Code with only Blast connected (none of Karim's personal rules), for the stage demo.
+ANTHROPIC_API_KEY="$(grep '^ANTHROPIC_API_KEY=' "$HOME/Developer/blast-hackathon/.env.local" | cut -d= -f2-)"
+export ANTHROPIC_API_KEY
+export CLAUDE_CONFIG_DIR="$HOME/.claude-blast-demo"
+export MCP_TOOL_TIMEOUT=300000
+cd "$(dirname "$0")" && exec claude "$@"

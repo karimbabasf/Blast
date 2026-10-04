@@ -1,0 +1,51 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1600px;height:900px}
+body{font-family:'Geist',system-ui,sans-serif;background:#F4EFE7;color:#1A1512;-webkit-font-smoothing:antialiased;position:relative;overflow:hidden}
+.glow{position:absolute;inset:0;background:radial-gradient(900px 600px at 82% 30%,var(--g),transparent 70%);opacity:.18}
+.grain{position:absolute;inset:0;background:radial-gradient(1200px 700px at 10% 110%,rgba(217,119,87,.10),transparent 60%)}
+.wrap{position:relative;display:grid;grid-template-columns:500px 1fr;gap:56px;padding:64px 72px;height:100%;align-items:center}
+.brand{display:flex;align-items:center;gap:12px;font-weight:600;font-size:24px;letter-spacing:-.02em;position:absolute;top:56px;left:72px}
+.step{font-family:'Geist Mono',monospace;font-size:17px;color:#7A6A5C;letter-spacing:.02em;margin-bottom:22px;display:flex;gap:12px;align-items:center}
+.step b{color:#1A1512;font-weight:600}
+h1{font-size:54px;line-height:1.04;letter-spacing:-.035em;font-weight:650;margin-bottom:22px;text-wrap:balance}
+p.sub{font-size:21px;line-height:1.5;color:#4A3F37;margin-bottom:30px;text-wrap:pretty}
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chip{display:inline-flex;align-items:center;gap:9px;background:#fff;border-radius:999px;padding:9px 15px 9px 11px;font-size:16px;font-weight:550;box-shadow:0 1px 2px rgba(60,40,20,.06),0 10px 24px -14px rgba(60,40,20,.25)}
+.cards{display:flex;flex-direction:column;gap:18px}
+.card{background:#1C1612;border-radius:20px;box-shadow:0 2px 4px rgba(40,25,10,.12),0 40px 80px -30px rgba(40,25,10,.55);overflow:hidden}
+.bar{display:flex;align-items:center;gap:8px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.06)}
+.dot{width:12px;height:12px;border-radius:50%;background:#3A302A}
+.file{margin-left:10px;font-family:'Geist Mono',monospace;font-size:14px;color:#A8988A}
+pre{margin:0;padding:18px 24px 22px;font-family:'Geist Mono',monospace;font-size:16.5px;line-height:1.62;color:#E8DDD1;white-space:pre}
+.hljs-keyword,.hljs-built_in,.hljs-type{color:#F2A65A}
+.hljs-string,.hljs-template-string{color:#A8D5A2}
+.hljs-comment{color:#8C7C6E;font-style:italic}
+.hljs-number,.hljs-literal{color:#E6C07B}
+.hljs-title,.hljs-title.function_{color:#F4C4A8}
+.hljs-attr,.hljs-property{color:#D9CBBE}
+.hljs-subst{color:#E8DDD1}
+.hljs-operator,.hljs-punctuation{color:#BFAF9F}
+</style></head><body style="--g:#3ECF8E">
+<div class="glow"></div><div class="grain"></div>
+<div class="brand"><svg viewBox="0 0 100 100" width="34" height="34"><polygon points="50,10 84,30 84,70 50,90 16,70 16,30" fill="#1A1512" stroke="#1A1512" stroke-width="12" stroke-linejoin="round"/><path d="M55 54 L55 80 Q55 85.5 60 82.6 L79.5 71.2 Q84 68.5 84 63 L84 56 Q84 51.5 75.5 50.2 Q84 49 84 44 L84 38 Q84 32.5 79.5 35.2 L60 46.7 Q55 49.5 55 54 Z" fill="#fff"/></svg>Blast</div>
+<div class="wrap"><div><div class="step"><b>01</b><span>Find</span></div><h1>Find the right agents by meaning</h1><p class="sub">Blast turns the job into a vector and searches every agent in the Hub with pgvector, inside Supabase.</p><div class="chips"><span class="chip"><svg viewBox="0 0 24 24" width="20" height="20" fill="#3ECF8E"><path d="M11.9 1.036c-.015-.986-1.26-1.41-1.874-.637L.764 12.05C-.33 13.427.65 15.455 2.409 15.455h9.579l.113 7.51c.014.985 1.259 1.408 1.873.636l9.262-11.653c1.093-1.375.113-3.403-1.645-3.403h-9.642z"/></svg>Supabase pgvector</span></div></div>
+<div class="cards"><div class="card"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="file">supabase/migrations/market_runtime.sql</span></div><pre><code class="language-sql">-- Rank every agent in the Hub by meaning
+create function match_market_agents(
+  query_embedding vector(768), match_count int, role_filter text default null
+) returns table (id text, similarity float)
+language sql stable as $$
+  select a.id, 1 - (a.embedding &lt;=&gt; query_embedding) as similarity
+  from public.market_agents a
+  where a.embedding is not null
+  order by a.embedding &lt;=&gt; query_embedding
+  limit match_count;
+$$;</code></pre></div><div class="card"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="file">lib/runtime/catalog.ts</span></div><pre><code class="language-typescript">const vec = await embed(job, &quot;RETRIEVAL_QUERY&quot;);
+const { data: hits } = await db.rpc(&quot;match_market_agents&quot;, {
+  query_embedding: JSON.stringify(vec),
+  match_count: 50,
+});</code></pre></div></div></div>
+<script>hljs.highlightAll();</script></body></html>

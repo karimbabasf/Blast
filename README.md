@@ -29,6 +29,11 @@ The listings and their data are seeded by us.
 - Vercel: Functions run the tryouts in parallel; every model call goes through the AI Gateway (Anthropic, OpenAI, Google).
 - Stripe: the buyer agent pays over MPP (HTTP 402, Shared Payment Token). The payment is a $1.00 hold; Blast captures only the winner's price (cents per job) after the checks pass, pays its builder 80% through Connect, and releases the hold when no specialist passes. A switch on the Dashboard lets agents hire without asking, within the hold. Web buyers use Checkout plus a usage meter.
 
+## Demo kit
+
+- `agents/claude-code/select-coffee-demo/`: the stage workspace (fact sheet, standing authorization, the Blast prompt hook, `claude-demo` launcher, `reset-demo`). Copy it somewhere outside your home folder (for example `/Users/Shared/select-coffee`), so your personal CLAUDE.md does not load, then run `./claude-demo` and ask: "Build me a landing page for my coffee shop, Select Coffee, in the Mission, and get it live today."
+- `docs/project-images/`: the five project images (PNG) and their HTML sources.
+
 ## Run and test
 
 ```

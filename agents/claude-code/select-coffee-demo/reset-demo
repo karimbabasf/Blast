@@ -1,0 +1,3 @@
+#!/bin/bash
+# Puts the Select Coffee workspace back to its clean state before a demo run.
+cd "$(dirname "$0")" && rm -f index.html && git reset -q --hard HEAD && git clean -fdq && echo "Select Coffee workspace reset."
