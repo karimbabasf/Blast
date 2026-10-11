@@ -6,13 +6,12 @@ import { useEffect, useState } from "react";
 import type { MarketAgent, TryoutStep } from "@/lib/market/types";
 import { AgentDot } from "../_components/agent-dot";
 import { db } from "./db";
+import { Intro, Steps } from "./intro";
 import { clock, money, ROLE_LABEL } from "./format";
 import { type Brand, Logo } from "./logos";
 import { capturedCents, type LiveNeed, type LiveTryout, stripeLinks, workLine } from "./proof";
 import { bestTryout, DeliveredStage, isDelivery, isSite, LiveStage, phaseOf, type Phase, StageFrame, useCountUp, useHubAgents, useNow } from "./stage";
 import { useNeed } from "./use-need";
-
-const MCP = "claude mcp add --transport http blast https://blast-kbkotes-projects.vercel.app/api/mcp";
 
 const CARD = "rounded-xl border bg-card";
 const OUT = [0.23, 1, 0.32, 1] as const;
@@ -62,13 +61,23 @@ export function Dashboard({ initialNeed, since }: { initialNeed: string | null; 
   const [picked, setPicked] = useState<string | null>(initialNeed);
   const newest = needs?.[0]?.id ?? null;
   const [seen, setSeen] = useState<string | null>(null);
+  const [replayFrom, setReplayFrom] = useState<number | null>(null);
 
   // A new hire always takes focus, even after a click on an older one.
   if (newest && newest !== seen) {
     setSeen(newest);
-    if (seen) setPicked(null);
+    if (seen) {
+      setPicked(null);
+      setReplayFrom(null);
+    }
   }
   const focus = picked ?? newest;
+  const finished = needs?.find((n) => n.id === focus)?.status === "hired";
+
+  function watch() {
+    setReplayFrom(Date.now());
+    document.getElementById("hire")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   return (
     <main className="mx-auto w-full max-w-[1360px] flex-1 px-4 pt-5 pb-14 sm:px-6 sm:pt-7">
@@ -76,8 +85,18 @@ export function Dashboard({ initialNeed, since }: { initialNeed: string | null; 
         <Empty />
       ) : (
         <>
-          <Focus key={focus} id={focus} fallback={needs.find((n) => n.id === focus) ?? null} hub={hub} />
-          {needs.length > 1 ? <History needs={needs} focus={focus} onPick={setPicked} /> : null}
+          <Intro onWatch={finished ? watch : null} />
+          <Focus key={focus} id={focus} fallback={needs.find((n) => n.id === focus) ?? null} hub={hub} replayFrom={replayFrom} onReplay={setReplayFrom} />
+          {needs.length > 1 ? (
+            <History
+              needs={needs}
+              focus={focus}
+              onPick={(id) => {
+                setPicked(id);
+                setReplayFrom(null);
+              }}
+            />
+          ) : null}
         </>
       )}
     </main>
@@ -92,8 +111,9 @@ function Empty() {
         <p className="mt-3 max-w-[52ch] text-base leading-relaxed text-muted-foreground">
           When Claude Code hits work it cannot do well alone, it hires a specialist here. Specialists try out live on the real job, and Blast pays only the one that passes every check.
         </p>
-        <p className="mt-6 text-sm font-medium text-muted-foreground">Connect Claude Code to Blast</p>
-        <code className="mt-2 block overflow-x-auto rounded-xl bg-muted px-4 py-3 font-mono text-xs text-foreground select-all">{MCP}</code>
+        <div className="mt-6 border-t pt-5">
+          <Steps stacked />
+        </div>
       </div>
       <StageFrame>
         <div className="flex min-h-[360px] items-center justify-center p-6 text-sm text-(--st-2)">
@@ -137,10 +157,21 @@ function rewind(v: View, ms: number): View & { over: boolean; clock: number } {
   return { need, tryouts, steps, over, clock: t0 + t };
 }
 
-function Focus({ id, fallback, hub }: { id: string; fallback: LiveNeed | null; hub: ReturnType<typeof useHubAgents> }) {
+function Focus({
+  id,
+  fallback,
+  hub,
+  replayFrom,
+  onReplay,
+}: {
+  id: string;
+  fallback: LiveNeed | null;
+  hub: ReturnType<typeof useHubAgents>;
+  replayFrom: number | null;
+  onReplay: (at: number) => void;
+}) {
   const view = useNeed(id);
   const base = (view.need as LiveNeed | null) ?? fallback;
-  const [replayFrom, setReplayFrom] = useState<number | null>(null);
   const liveNow = base ? phaseOf(base, view.tryouts as LiveTryout[]) : "done";
   const ticking = replayFrom != null || liveNow === "search" || liveNow === "tryout" || liveNow === "build";
   const wall = useNow(ticking, 100);
@@ -157,13 +188,13 @@ function Focus({ id, fallback, hub }: { id: string; fallback: LiveNeed | null; h
   const winner = winnerId ? agents.get(winnerId) : undefined;
 
   return (
-    <article className="grid items-start gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+    <article id="hire" className="grid scroll-mt-4 items-start gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
       <Story need={need} tryouts={tryouts} steps={steps} agents={agents} phase={phase} winner={winner} winnerId={winnerId} />
       <StageFrame>
         <AnimatePresence mode="wait" initial={false}>
           {phase === "done" && need.result ? (
             <motion.div key="done" exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-              <DeliveredStage result={need.result} onReplay={() => setReplayFrom(Date.now())} />
+              <DeliveredStage result={need.result} onReplay={() => onReplay(Date.now())} />
             </motion.div>
           ) : (
             <motion.div key={`live-${replayFrom ?? "now"}`} exit={{ opacity: 0, filter: "blur(4px)" }} transition={{ duration: 0.2, ease: OUT }}>
@@ -277,9 +308,9 @@ function Story({
             "Matching the job against every specialist on the Hub."
           )}
         </Step>
-        <Step state={tryout} title="Try out on the real job" brand="vercel" by="Sandbox">
+        <Step state={tryout} title="Try out on the real job" brand="vercel" by="Functions">
           {!tryouts.length ? (
-            "Each pick does this exact job in its own sandbox, then gets checked and scored."
+            "Each pick does this exact job on its own copy of the data, then gets checked and scored."
           ) : (
             <>
               {running ? (
@@ -292,7 +323,7 @@ function Story({
             </>
           )}
         </Step>
-        <Step state={pay} title="Pay on proof" brand="stripe" by="MPP" reserve="min-h-[4.75rem]">
+        <Step state={pay} title="Pay on proof" tag="Test mode" brand="stripe" by="MPP" reserve="min-h-[4.75rem]">
           <Payment hold={h} builder={winner?.builder} released={released} />
         </Step>
         <Step state={deliver} title="Deliver" last reserve="min-h-6">
@@ -329,6 +360,7 @@ function Num({ children }: { children: React.ReactNode }) {
 function Step({
   state,
   title,
+  tag,
   brand,
   by,
   last,
@@ -337,6 +369,7 @@ function Step({
 }: {
   state: StepState;
   title: string;
+  tag?: string;
   brand?: Brand;
   by?: string;
   last?: boolean;
@@ -352,7 +385,10 @@ function Step({
       </div>
       <div className={`min-w-0 ${last ? "" : "pb-5"}`}>
         <div className="flex min-h-7 items-center justify-between gap-3">
-          <span className={`text-base font-semibold tracking-[-0.01em] ${state === "todo" ? "text-muted-foreground/70" : "text-foreground"}`}>{title}</span>
+          <span className={`flex min-w-0 items-center gap-2 text-base font-semibold tracking-[-0.01em] ${state === "todo" ? "text-muted-foreground/70" : "text-foreground"}`}>
+            {title}
+            {tag ? <span className="rounded-md border px-1.5 py-px text-xs font-medium tracking-normal text-muted-foreground">{tag}</span> : null}
+          </span>
           {brand ? (
             <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground/70">
               <Logo brand={brand} className={`size-3.5 ${brand === "vercel" ? "text-foreground" : ""}`} />

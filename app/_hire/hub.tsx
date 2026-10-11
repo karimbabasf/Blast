@@ -1,7 +1,8 @@
 "use client";
 
-import { Loader2, Search } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Loader2, Plus, Search } from "lucide-react";
+import Link from "next/link";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import type { MarketAgent, Role } from "@/lib/market/types";
 import { modelName, money, ROLE_LABEL, runsIn } from "./format";
 import { AgentDot } from "../_components/agent-dot";
@@ -85,6 +86,12 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
           <h1 className="text-2xl leading-tight font-semibold tracking-[-0.025em] text-foreground sm:text-3xl">Blast Hub</h1>
           <p className="mt-1.5 max-w-[60ch] text-base text-muted-foreground">Specialists built by other people, with their own tools and data. Every new job tries the closest ones out live.</p>
         </div>
+        <Link
+          href="/hub/new"
+          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-foreground px-3.5 text-sm font-medium text-background transition-transform duration-150 ease-out active:scale-[0.97]"
+        >
+          <Plus className="size-4" /> List your agent
+        </Link>
       </div>
 
       <div className="mt-7 flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -131,8 +138,8 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
                   </h2>
                 ) : null}
                 <div className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-3">
-                  {g.agents.map((a) => (
-                    <Card key={a.id} agent={a} rank={g.role && a.track_record?.avg_score != null ? g.agents.indexOf(a) + 1 : null} now={data.now} isNew={a.id === highlight} setupUrl={a.id === highlight ? setupUrl : null} />
+                  {g.agents.map((a, i) => (
+                    <Card key={a.id} index={i} agent={a} rank={g.role && a.track_record?.avg_score != null ? g.agents.indexOf(a) + 1 : null} now={data.now} isNew={a.id === highlight} setupUrl={a.id === highlight ? setupUrl : null} />
                   ))}
                 </div>
               </section>
@@ -150,13 +157,29 @@ function ranked(agents: Listing[]) {
   return [...agents].sort((a, b) => key(b) - key(a));
 }
 
-function Card({ agent: a, rank, now, isNew, setupUrl }: { agent: Listing; rank: number | null; now: number; isNew: boolean; setupUrl: string | null }) {
+export function Card({
+  agent: a,
+  rank,
+  now,
+  isNew,
+  setupUrl,
+  index = 0,
+}: {
+  agent: Listing;
+  rank: number | null;
+  now: number;
+  isNew: boolean;
+  setupUrl: string | null;
+  // Position in its row of cards: each one rises in a beat after the one before.
+  index?: number;
+}) {
   const tr = a.track_record;
   return (
     <article
       id={`agent-${a.id}`}
       title={`${runsIn(a.runs_in)}, ${ago(a.created_at, now)}`}
-      className={`flex h-44 flex-col rounded-xl border p-4 ${a.auditionable ? "bg-card" : "bg-muted/50"} ${isNew ? "h-auto ring-2 ring-(--hire)" : ""}`}
+      style={{ "--i": Math.min(index, 8) } as CSSProperties}
+      className={`rise flex h-44 flex-col rounded-xl border p-4 ${a.auditionable ? "bg-card" : "bg-muted/50"} ${isNew ? "h-auto ring-2 ring-(--hire)" : ""}`}
     >
       <div className="flex items-center gap-3">
         <span className="relative shrink-0">
@@ -174,17 +197,17 @@ function Card({ agent: a, rank, now, isNew, setupUrl }: { agent: Listing; rank: 
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="truncate text-base leading-5 font-semibold text-foreground">{a.name}</h3>
+            <h3 className="truncate text-base leading-5 font-semibold text-foreground">{a.name || "Agent name"}</h3>
             {isNew ? <span className="rounded-md bg-(--hire) px-1.5 py-px text-xs font-semibold text-white">Just posted</span> : null}
           </div>
-          <p className="truncate text-sm text-muted-foreground">{handle(a.builder)}</p>
+          <p className="truncate text-sm text-muted-foreground">{handle(a.builder) === "@" ? "@you" : handle(a.builder)}</p>
         </div>
         <span className="shrink-0 text-right text-base leading-5 font-semibold text-foreground tabular-nums">
           {money(a.price_action_cents)}
           <span className="block text-xs font-normal text-muted-foreground">per job</span>
         </span>
       </div>
-      <p className="mt-3 line-clamp-2 text-sm leading-5 text-muted-foreground">{a.description}</p>
+      <p className="mt-3 line-clamp-2 text-sm leading-5 text-muted-foreground">{a.description || "What it does, in one or two lines."}</p>
       <div className="mt-auto flex items-center justify-between gap-3 border-t pt-3 text-xs">
         <span className="flex min-w-0 items-center gap-1.5 text-foreground">
           {labOf(a.model) ? <Logo brand={labOf(a.model)!} className="size-3.5 shrink-0" /> : null}

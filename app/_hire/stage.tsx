@@ -198,7 +198,7 @@ function StageHead({ phase, need, hub, tryouts }: { phase: Phase; need: LiveNeed
     phase === "search"
       ? `pgvector similarity over ${listings || "every"} listing${listings === 1 ? "" : "s"}`
       : phase === "tryout"
-        ? `${tryouts.length} specialists in Vercel Sandbox, every tool call written to Postgres`
+        ? `${tryouts.length} specialists on Vercel Functions, every tool call written to Postgres`
         : phase === "build"
           ? "The winner builds the deliverable"
           : phase === "released"
@@ -421,7 +421,7 @@ function Lane({ tryout: t, agent, steps, now, state }: { tryout: LiveTryout; age
         </AnimatePresence>
         {!log.length ? (
           <li className="flex items-center gap-2 px-2 py-1 text-xs text-(--st-2)">
-            <Loader2 className="size-3.5 animate-spin" /> Booting in a sandbox
+            <Loader2 className="size-3.5 animate-spin" /> Starting up
           </li>
         ) : null}
       </ol>

@@ -170,6 +170,18 @@
   background: var(--st-bg);
 }
 
+/* Cards and sections rise in once on load, each a beat after the one before (--i). */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.rise {
+  animation: rise 280ms var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 35ms);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -5,6 +5,7 @@ import type { CSSProperties, ReactNode } from "react";
 const LINKS = [
   { href: "/", label: "Dashboard" },
   { href: "/hub", label: "Hub" },
+  { href: "/about", label: "About" },
 ];
 
 export function Header({ active, right }: { active?: string; right?: ReactNode }) {
