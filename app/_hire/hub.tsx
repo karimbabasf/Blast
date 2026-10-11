@@ -88,13 +88,13 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
         </div>
         <Link
           href="/hub/new"
-          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-foreground px-3.5 text-sm font-medium text-background transition-transform duration-150 ease-out active:scale-[0.97]"
+          className="btn ink"
         >
           <Plus className="size-4" /> List your agent
         </Link>
       </div>
 
-      <div className="mt-7 flex flex-col gap-3 lg:flex-row lg:items-center">
+      <div className="mt-(--gap-group) flex flex-col gap-3 lg:flex-row lg:items-center">
         <label className="relative w-full shrink-0 lg:w-80">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -102,7 +102,7 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Search specialists, like 'service bulletins'"
             aria-label="Search agents"
-            className="h-9 w-full rounded-lg border border-border bg-card pr-3 pl-9 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-(--hire) focus:ring-3 focus:ring-(--hire)/15"
+            className="h-9 w-full rounded-full border border-border bg-card pr-4 pl-9 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-(--hire) focus:ring-3 focus:ring-(--hire)/15"
           />
         </label>
         <div className="-mx-4 flex min-w-0 flex-1 gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] lg:mx-0 lg:px-0 lg:[mask-image:linear-gradient(to_right,#000_92%,transparent)]">
@@ -112,8 +112,8 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
               type="button"
               aria-pressed={role === r}
               onClick={() => pick(r)}
-              className={`h-9 shrink-0 rounded-lg border px-3 text-sm whitespace-nowrap transition-colors ${
-                role === r ? "border-foreground bg-foreground font-medium text-white" : "border-border bg-card text-muted-foreground hover:text-foreground"
+              className={`h-9 shrink-0 rounded-full border px-3.5 text-sm whitespace-nowrap transition-[background-color,color,transform] duration-(--dur-quick) ease-out active:scale-[0.97] ${
+                role === r ? "ink border-transparent font-medium" : "border-border bg-card text-muted-foreground hover:text-foreground"
               }`}
             >
               {r ? ROLE_LABEL[r] : "All"}
@@ -131,13 +131,13 @@ export function Hub({ initialRole, highlight, setupUrl }: { initialRole: Role | 
         ? (q ? [{ role: null as Role | null, agents: data.agents }] : ROLES.map((r) => ({ role: r as Role | null, agents: ranked(data.agents.filter((a) => a.role === r)) })))
             .filter((g) => g.agents.length)
             .map((g) => (
-              <section key={g.role ?? "results"} className="mt-10">
+              <section key={g.role ?? "results"} className="mt-(--gap-section)">
                 {g.role ? (
                   <h2 className="flex items-baseline gap-2 text-lg font-semibold tracking-[-0.01em] text-foreground">
                     {ROLE_LABEL[g.role] ?? g.role} <span className="text-sm font-normal text-muted-foreground/70 tabular-nums">{g.agents.length}</span>
                   </h2>
                 ) : null}
-                <div className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-3">
+                <div className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-(--gap-block)">
                   {g.agents.map((a, i) => (
                     <Card key={a.id} index={i} agent={a} rank={g.role && a.track_record?.avg_score != null ? g.agents.indexOf(a) + 1 : null} now={data.now} isNew={a.id === highlight} setupUrl={a.id === highlight ? setupUrl : null} />
                   ))}
@@ -179,7 +179,7 @@ export function Card({
       id={`agent-${a.id}`}
       title={`${runsIn(a.runs_in)}, ${ago(a.created_at, now)}`}
       style={{ "--i": Math.min(index, 8) } as CSSProperties}
-      className={`rise flex h-44 flex-col rounded-xl border p-4 ${a.auditionable ? "bg-card" : "bg-muted/50"} ${isNew ? "h-auto ring-2 ring-(--hire)" : ""}`}
+      className={`card rise flex h-44 flex-col p-4 ${a.auditionable ? "" : "bg-muted/50 shadow-none"} ${isNew ? "h-auto ring-2 ring-(--hire)" : ""}`}
     >
       <div className="flex items-center gap-3">
         <span className="relative shrink-0">
@@ -188,7 +188,7 @@ export function Card({
             <span
               aria-label={`Rank ${rank}`}
               className={`absolute -top-1.5 -left-1.5 flex size-5 items-center justify-center rounded-full text-xs font-semibold tabular-nums ring-2 ring-card ${
-                rank === 1 ? "bg-foreground text-background" : "bg-secondary text-foreground"
+                rank === 1 ? "ink" : "bg-secondary text-foreground"
               }`}
             >
               {rank}
@@ -198,7 +198,7 @@ export function Card({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h3 className="truncate text-base leading-5 font-semibold text-foreground">{a.name || "Agent name"}</h3>
-            {isNew ? <span className="rounded-md bg-(--hire) px-1.5 py-px text-xs font-semibold text-white">Just posted</span> : null}
+            {isNew ? <span className="ink rounded-full px-2 py-px text-xs font-semibold">Just posted</span> : null}
           </div>
           <p className="truncate text-sm text-muted-foreground">{handle(a.builder) === "@" ? "@you" : handle(a.builder)}</p>
         </div>
@@ -216,11 +216,11 @@ export function Card({
         {!a.auditionable ? (
           <span className="shrink-0 text-muted-foreground">Listed only</span>
         ) : !tr || (!tr.tryouts && !tr.hires) ? (
-          <span className="shrink-0 rounded-md border px-1.5 py-px font-medium">New</span>
+          <span className="shrink-0 rounded-full border px-2 py-px font-medium">New</span>
         ) : (
           <span className="flex shrink-0 items-center gap-2 text-muted-foreground tabular-nums">
             {tr.tryouts} {tr.tryouts === 1 ? "tryout" : "tryouts"}
-            {tr.avg_score != null ? <span className="rounded-md bg-foreground px-1.5 py-px font-semibold text-background">{tr.avg_score.toFixed(1)}</span> : null}
+            {tr.avg_score != null ? <span className="ink rounded-full px-2 py-px font-semibold">{tr.avg_score.toFixed(1)}</span> : null}
           </span>
         )}
       </div>

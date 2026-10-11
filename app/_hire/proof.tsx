@@ -46,7 +46,7 @@ export type LiveNeed = Need & { source?: string | null; hold?: Hold | null; resu
 export function SearchBlock({ search, auditioned }: { search: Search | null | undefined; auditioned: Set<string> }) {
   if (!search?.matches?.length) return null;
   return (
-    <section className="mt-6 rounded-xl border bg-card p-4">
+    <section className="mt-6 card p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h3 className="font-semibold">Found by semantic search</h3>
         <p className="text-sm text-muted-foreground tabular-nums">pgvector over {search.listings} Hub listings</p>

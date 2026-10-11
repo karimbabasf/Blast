@@ -9,10 +9,10 @@ import type { Role } from "@/lib/market/types";
 import { MODELS, modelName, ROLE_LABEL } from "./format";
 import { Card, type Listing } from "./hub";
 import { Logo } from "./logos";
+import { DUR, OUT } from "./motion";
 
 const ROLES = Object.keys(ROLE_LABEL) as Role[];
-const FIELD = "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm text-foreground outline-none transition-colors duration-150 ease-out placeholder:text-muted-foreground/70 focus:border-foreground";
-const OUT = [0.23, 1, 0.32, 1] as const;
+const FIELD = "h-10 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none transition-colors duration-(--dur-quick) ease-out placeholder:text-muted-foreground/70 focus:border-foreground";
 
 type Draft = { name: string; role: Role; description: string; model: string; system_prompt: string; price: string; builder: string; email: string };
 
@@ -81,7 +81,7 @@ export function ListAgent() {
 
   return (
     <main className="mx-auto w-full max-w-[1100px] flex-1 px-4 py-8 sm:px-6 sm:py-10">
-      <Link href="/hub" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground">
+      <Link href="/hub" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors duration-(--dur-quick) hover:text-foreground">
         <ArrowLeft className="size-4" /> Blast Hub
       </Link>
       <h1 className="mt-4 text-2xl leading-tight font-semibold tracking-[-0.025em] text-foreground sm:text-3xl">List your agent</h1>
@@ -89,8 +89,8 @@ export function ListAgent() {
         Put a specialist on the Hub so other people&rsquo;s agents can find it and hire it. It takes about a minute.
       </p>
 
-      <div className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <form onSubmit={submit} className="grid gap-8">
+      <div className="mt-(--gap-group) grid items-start gap-(--gap-group) lg:grid-cols-[minmax(0,1fr)_340px]">
+        <form onSubmit={submit} className="grid gap-(--gap-group)">
           <Group n={1} title="The agent" note="What other agents see when they search the Hub.">
             <Field label="Name" htmlFor="name">
               <input id="name" name="name" required maxLength={40} autoComplete="off" value={d.name} onChange={(e) => set("name", e.target.value)} placeholder="Ines" className={FIELD} />
@@ -165,10 +165,10 @@ export function ListAgent() {
             <Field label="Email for payouts" htmlFor="email" wide>
               <input id="email" name="email" type="email" required autoComplete="email" spellCheck={false} value={d.email} onChange={(e) => set("email", e.target.value)} placeholder="you@studio.com" className={FIELD} />
             </Field>
-            <div className="flex items-start gap-3 rounded-lg bg-muted px-3.5 py-3 text-sm sm:col-span-2">
+            <div className="flex items-start gap-3 rounded-xl bg-muted px-3.5 py-3 text-sm sm:col-span-2">
               <Logo brand="stripe" className="mt-0.5 size-4 shrink-0" />
               <p className="min-w-0 leading-relaxed text-pretty text-muted-foreground">
-                <span className="mr-1.5 rounded-md border bg-card px-1.5 py-px text-xs font-medium text-foreground">Test mode</span>
+                <span className="mr-1.5 rounded-full border bg-card px-2 py-px text-xs font-medium text-foreground">Test mode</span>
                 Payouts run on Stripe Connect in test mode, so no real money moves. After you list, you can finish a test payout account in one step.
               </p>
             </div>
@@ -178,7 +178,7 @@ export function ListAgent() {
             <button
               type="submit"
               disabled={busy}
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition-[transform,opacity] duration-150 ease-out active:scale-[0.97] disabled:cursor-wait disabled:opacity-70"
+              className="btn btn-lg ink disabled:cursor-wait disabled:opacity-70"
             >
               {busy ? <Loader2 className="size-4 animate-spin" /> : null}
               {busy ? "Listing" : "List on the Hub"}
@@ -191,7 +191,7 @@ export function ListAgent() {
                   initial={{ opacity: 0, transform: "translateY(4px)" }}
                   animate={{ opacity: 1, transform: "translateY(0px)" }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.18, ease: OUT }}
+                  transition={{ duration: DUR.quick, ease: OUT }}
                   className="text-sm text-[#b42318]"
                 >
                   {error}

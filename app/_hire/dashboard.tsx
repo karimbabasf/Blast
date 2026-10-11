@@ -12,9 +12,9 @@ import { type Brand, Logo } from "./logos";
 import { capturedCents, type LiveNeed, type LiveTryout, stripeLinks, workLine } from "./proof";
 import { bestTryout, DeliveredStage, isDelivery, isSite, LiveStage, phaseOf, type Phase, StageFrame, useCountUp, useHubAgents, useNow } from "./stage";
 import { useNeed } from "./use-need";
+import { DUR, OUT } from "./motion";
 
-const CARD = "rounded-xl border bg-card";
-const OUT = [0.23, 1, 0.32, 1] as const;
+const CARD = "card";
 
 // What each role hires and hands back, in plain words.
 const NOUN: Record<string, [string, string, string]> = {
@@ -105,7 +105,7 @@ export function Dashboard({ initialNeed, since }: { initialNeed: string | null; 
 
 function Empty() {
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+    <div className="grid gap-(--gap-block) lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
       <div className={`${CARD} px-6 py-7`}>
         <h1 className="text-2xl leading-tight font-semibold tracking-[-0.025em] text-balance text-foreground">Waiting for an agent to hire</h1>
         <p className="mt-3 max-w-[52ch] text-base leading-relaxed text-muted-foreground">
@@ -188,16 +188,16 @@ function Focus({
   const winner = winnerId ? agents.get(winnerId) : undefined;
 
   return (
-    <article id="hire" className="grid scroll-mt-4 items-start gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+    <article id="hire" className="grid scroll-mt-4 items-start gap-(--gap-block) lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
       <Story need={need} tryouts={tryouts} steps={steps} agents={agents} phase={phase} winner={winner} winnerId={winnerId} />
       <StageFrame>
         <AnimatePresence mode="wait" initial={false}>
           {phase === "done" && need.result ? (
-            <motion.div key="done" exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+            <motion.div key="done" exit={{ opacity: 0 }} transition={{ duration: DUR.quick }}>
               <DeliveredStage result={need.result} onReplay={() => onReplay(Date.now())} />
             </motion.div>
           ) : (
-            <motion.div key={`live-${replayFrom ?? "now"}`} exit={{ opacity: 0, filter: "blur(4px)" }} transition={{ duration: 0.2, ease: OUT }}>
+            <motion.div key={`live-${replayFrom ?? "now"}`} exit={{ opacity: 0, filter: "blur(4px)" }} transition={{ duration: DUR.quick, ease: OUT }}>
               <LiveStage
                 need={need}
                 tryouts={tryouts}
@@ -266,7 +266,7 @@ function Story({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.2, ease: OUT }}
+          transition={{ duration: DUR.quick, ease: OUT }}
           className="line-clamp-2 text-2xl leading-[1.15] font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-3xl"
         >
           {title}
@@ -283,7 +283,7 @@ function Story({
         type="button"
         onClick={() => setJobOpen((o) => !o)}
         aria-expanded={jobOpen}
-        className="mt-4 flex w-full items-baseline gap-2 rounded-lg bg-muted px-3 py-2 text-left text-sm transition-[background-color,transform] duration-150 ease-out hover:bg-secondary active:scale-[0.99]"
+        className="mt-4 flex w-full items-baseline gap-2 rounded-xl bg-muted px-3 py-2 text-left text-sm transition-[background-color,transform] duration-(--dur-quick) ease-out hover:bg-secondary active:scale-[0.99]"
       >
         <span className="shrink-0 text-xs font-medium text-muted-foreground">The job</span>
         <span className={`min-w-0 leading-relaxed text-foreground ${jobOpen ? "text-pretty" : "truncate"}`}>{need.text}</span>
@@ -381,13 +381,13 @@ function Step({
     <li className="relative grid grid-cols-[28px_minmax(0,1fr)] gap-x-3.5">
       <div className="flex flex-col items-center">
         <StepIcon state={state} />
-        {!last ? <span className={`my-1.5 w-0.5 flex-1 rounded-full transition-colors duration-300 ease-out ${state === "done" ? "bg-muted-foreground" : "bg-secondary"}`} /> : null}
+        {!last ? <span className={`my-1.5 w-0.5 flex-1 rounded-full transition-colors duration-(--dur-enter) ease-out ${state === "done" ? "bg-muted-foreground" : "bg-secondary"}`} /> : null}
       </div>
       <div className={`min-w-0 ${last ? "" : "pb-5"}`}>
         <div className="flex min-h-7 items-center justify-between gap-3">
           <span className={`flex min-w-0 items-center gap-2 text-base font-semibold tracking-[-0.01em] ${state === "todo" ? "text-muted-foreground/70" : "text-foreground"}`}>
             {title}
-            {tag ? <span className="rounded-md border px-1.5 py-px text-xs font-medium tracking-normal text-muted-foreground">{tag}</span> : null}
+            {tag ? <span className="rounded-full border px-2 py-px text-xs font-medium tracking-normal text-muted-foreground">{tag}</span> : null}
           </span>
           {brand ? (
             <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground/70">
@@ -411,9 +411,9 @@ function StepIcon({ state }: { state: StepState }) {
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          transition={{ type: "spring", duration: 0.3, bounce: 0.15 }}
+          transition={{ type: "spring", duration: DUR.enter, bounce: 0.15 }}
           className={`absolute inset-0 grid place-items-center rounded-full ${
-            state === "done" ? "bg-pass text-white" : state === "now" ? "bg-(--hire-soft) text-(--hire) ring-1 ring-(--hire)/30" : state === "off" ? "bg-secondary text-muted-foreground" : "ring-[1.5px] ring-border ring-inset"
+            state === "done" ? "pass" : state === "now" ? "bg-(--hire-soft) text-(--hire) ring-1 ring-(--hire)/30" : state === "off" ? "bg-secondary text-muted-foreground" : "ring-[1.5px] ring-border ring-inset"
           }`}
         >
           {state === "done" ? <Check className="size-4" strokeWidth={3} /> : state === "now" ? <Loader2 className="size-4 animate-spin" /> : state === "off" ? <X className="size-4" strokeWidth={2.5} /> : null}
@@ -489,7 +489,7 @@ function History({ needs, focus, onPick }: { needs: LiveNeed[]; focus: string; o
   const [all, setAll] = useState(false);
   const shown = all ? needs : needs.slice(0, 6);
   return (
-    <section className="mt-12">
+    <section className="mt-(--gap-section)">
       <div className="flex items-baseline gap-2">
         <h2 className="text-base font-semibold text-foreground">Earlier hires</h2>
         <span className="text-sm text-muted-foreground/70 tabular-nums">{needs.length}</span>
@@ -512,7 +512,7 @@ function History({ needs, focus, onPick }: { needs: LiveNeed[]; focus: string; o
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
                 aria-current={n.id === focus}
-                className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-0.5 px-4 py-3 text-left transition-colors duration-200 ease-out hover:bg-muted sm:grid-cols-[3.25rem_8.5rem_minmax(0,1fr)_auto] sm:px-5 ${
+                className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-0.5 px-4 py-3 text-left transition-colors duration-(--dur-quick) ease-out hover:bg-muted sm:grid-cols-[3.25rem_8.5rem_minmax(0,1fr)_auto] sm:px-5 ${
                   n.id === focus ? "bg-(--hire-soft)/70" : ""
                 }`}
               >

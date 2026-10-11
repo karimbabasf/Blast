@@ -22,7 +22,7 @@ export function Header({ active, right }: { active?: string; right?: ReactNode }
               key={l.href}
               href={l.href}
               aria-current={active === l.href ? "page" : undefined}
-              className={`rounded-lg px-2.5 py-1.5 whitespace-nowrap transition-colors ${active === l.href ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              className={`rounded-full px-3 py-1.5 whitespace-nowrap transition-colors duration-(--dur-quick) ${active === l.href ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:text-foreground"}`}
             >
               {l.label}
             </Link>

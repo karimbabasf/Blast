@@ -78,24 +78,24 @@ export default function About() {
             Design and front end by <span className="font-medium text-foreground">Rakhatbek Zholdoshkanov</span>. Back end by <span className="font-medium text-foreground">Karim Baba</span>. Built in one day.
           </p>
           <div className="mt-7 flex flex-wrap gap-2">
-            <Link href="/" className="inline-flex h-10 items-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition-transform duration-150 ease-out active:scale-[0.97]">
+            <Link href="/" className="btn btn-lg ink">
               Open the live Dashboard <ArrowRight className="size-4" />
             </Link>
             <a
               href="https://github.com/karimbabasf/Blast"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex h-10 items-center gap-2 rounded-lg border bg-card px-4 text-sm font-medium text-foreground transition-[background-color,transform] duration-150 ease-out hover:bg-muted active:scale-[0.97]"
+              className="btn btn-lg btn-ghost"
             >
               Source on GitHub <ExternalLink className="size-4" />
             </a>
           </div>
         </header>
 
-        <section className="mt-14 grid gap-12" aria-label="Screens">
+        <section className="mt-(--gap-section) grid gap-(--gap-section)" aria-label="Screens">
           {SHOTS.map((s, i) => (
             <figure key={s.src} className="rise" style={{ "--i": i + 2 } as CSSProperties}>
-              <div className="overflow-hidden rounded-xl border bg-muted">
+              <div className="card overflow-hidden bg-muted">
                 <Image src={s.src} alt={s.alt} width={1440} height={800} priority={i === 0} sizes="(min-width: 1040px) 992px, 100vw" className="block h-auto w-full" />
               </div>
               <figcaption className="mt-4 grid gap-x-8 gap-y-1 sm:grid-cols-[12rem_minmax(0,1fr)]">
@@ -106,7 +106,7 @@ export default function About() {
           ))}
         </section>
 
-        <section className="mt-20">
+        <section className="mt-[calc(var(--gap-section)*1.5)]">
           <h2 className="text-2xl font-semibold tracking-[-0.025em] text-foreground">Four design decisions</h2>
           <ol className="mt-6 grid gap-x-10 gap-y-8 sm:grid-cols-2">
             {DECISIONS.map((d, i) => (
@@ -121,25 +121,25 @@ export default function About() {
           </ol>
         </section>
 
-        <section className="mt-20">
+        <section className="mt-[calc(var(--gap-section)*1.5)]">
           <h2 className="text-2xl font-semibold tracking-[-0.025em] text-foreground">What is real and what is staged</h2>
           <p className="mt-2 max-w-[60ch] text-base leading-relaxed text-pretty text-muted-foreground">It was a one-day build, so some parts are staged. Here is the honest list.</p>
-          <ul className="mt-6 divide-y divide-border overflow-hidden rounded-xl border bg-card">
+          <ul className="mt-6 divide-y divide-border overflow-hidden card">
             {REAL.map(([name, note, real]) => (
               <li key={name} className="grid items-baseline gap-x-6 gap-y-1 px-5 py-3.5 sm:grid-cols-[15rem_minmax(0,1fr)_auto]">
                 <span className="text-sm font-semibold text-foreground">{name}</span>
                 <span className="text-sm leading-relaxed text-pretty text-muted-foreground">{note}</span>
-                <span className={`justify-self-start rounded-md px-1.5 py-px text-xs font-medium sm:justify-self-end ${real ? "bg-pass/12 text-pass" : "border text-muted-foreground"}`}>{real ? "Real" : "Staged"}</span>
+                <span className={`justify-self-start rounded-full px-2 py-px text-xs font-medium sm:justify-self-end ${real ? "bg-pass/12 text-pass" : "border text-muted-foreground"}`}>{real ? "Real" : "Staged"}</span>
               </li>
             ))}
           </ul>
         </section>
 
-        <section className="mt-20">
+        <section className="mt-[calc(var(--gap-section)*1.5)]">
           <h2 className="text-2xl font-semibold tracking-[-0.025em] text-foreground">Built on</h2>
           <ul className="mt-6 grid gap-3 sm:grid-cols-2">
             {STACK.map(([brand, name, what]) => (
-              <li key={name} className="flex items-center gap-3.5 rounded-xl border bg-card px-4 py-3.5">
+              <li key={name} className="flex items-center gap-3.5 card px-4 py-3.5">
                 <Logo brand={brand} className={`size-6 shrink-0 ${brand === "vercel" ? "text-foreground" : ""}`} />
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground">{name}</p>

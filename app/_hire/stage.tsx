@@ -9,12 +9,12 @@ import { db } from "./db";
 import { modelName, outcome, summarize } from "./format";
 import { labOf, Logo } from "./logos";
 import { ClaimCodes, type Claim, type Estimate, EstimateTable, isEstimate, type LiveNeed, type LiveTryout } from "./proof";
+import { DUR, OUT } from "./motion";
 
 export type HubAgent = Pick<MarketAgent, "id" | "name" | "builder" | "role" | "model">;
 export type Site = { title: string; palette: string[]; fonts: { display: string; body: string }; html: string; live_url: string };
 
 const SPRING = { type: "spring", stiffness: 380, damping: 32, mass: 0.8 } as const;
-const OUT = [0.23, 1, 0.32, 1] as const;
 // A new line flashes in its own colour, then rests on a faint tint of it.
 const FLASH = { ok: "rgb(62 207 142 / 0.3)", bad: "rgb(242 109 109 / 0.3)" };
 const REST = { ok: "rgb(62 207 142 / 0.07)", bad: "rgb(242 109 109 / 0.09)" };
@@ -111,7 +111,7 @@ export function phaseOf(need: LiveNeed, tryouts: LiveTryout[]): Phase {
 // The dark panel that holds the live work, then the delivered work.
 export function StageFrame({ children }: { children: React.ReactNode }) {
   return (
-    <section className="stage relative min-w-0 overflow-hidden rounded-xl text-(--st-1)">
+    <section className="stage relative min-w-0 overflow-hidden rounded-[20px] text-(--st-1)">
       <div className="relative">{children}</div>
     </section>
   );
@@ -156,7 +156,7 @@ export function LiveStage({
             className="flex flex-1 flex-col"
             initial={{ opacity: 0, y: 8, filter: "blur(4px)" }}
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            transition={{ duration: 0.3, ease: OUT }}
+            transition={{ duration: DUR.enter, ease: OUT }}
           >
             <Strip hub={hub} need={need} picked={picked} />
             <Lanes tryouts={tryouts} steps={steps} agents={agents} now={now} phase={phase} winnerId={winnerId} />
@@ -171,7 +171,7 @@ export function LiveStage({
             key="field"
             className="flex-1"
             exit={{ opacity: 0, scale: 0.97, filter: "blur(4px)" }}
-            transition={{ duration: 0.2, ease: OUT }}
+            transition={{ duration: DUR.quick, ease: OUT }}
           >
             <Field hub={hub} need={need} picked={picked} settled={settled} />
           </motion.div>
@@ -214,7 +214,7 @@ function StageHead({ phase, need, hub, tryouts }: { phase: Phase; need: LiveNeed
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.25, ease: OUT }}
+            transition={{ duration: DUR.enter, ease: OUT }}
           >
             {title}
           </motion.h2>
@@ -266,7 +266,7 @@ function Field({ hub, need, picked, settled }: { hub: HubAgent[]; need: LiveNeed
                 scale: settled && on ? 1.03 : 1,
               }}
               transition={{ ...SPRING, delay: settled ? (i % 9) * 0.035 : beat ? 0 : Math.min(i, 60) * 0.008 }}
-              className={`flex h-9 min-w-0 items-center gap-1.5 rounded-[10px] px-2.5 text-xs ring-1 transition-colors duration-200 ease-out ${
+              className={`flex h-9 min-w-0 items-center gap-1.5 rounded-[10px] px-2.5 text-xs ring-1 transition-colors duration-(--dur-quick) ease-out ${
                 settled && on
                   ? "bg-(--st-blue-soft) text-white ring-(--st-blue)"
                   : lit
@@ -347,8 +347,8 @@ function Lane({ tryout: t, agent, steps, now, state }: { tryout: LiveTryout; age
   return (
     <motion.article
       animate={{ opacity: state === "lost" ? 0.5 : 1 }}
-      transition={{ duration: 0.3, ease: OUT }}
-      className={`flex h-full flex-col rounded-2xl p-3.5 ring-1 transition-[box-shadow,background-color] duration-200 ease-out ${
+      transition={{ duration: DUR.enter, ease: OUT }}
+      className={`flex h-full flex-col rounded-2xl p-3.5 ring-1 transition-[box-shadow,background-color] duration-(--dur-quick) ease-out ${
         state === "won"
           ? "bg-(--st-blue-soft) ring-(--st-blue)"
           : "bg-white/[0.045] ring-white/[0.08]"
@@ -364,7 +364,7 @@ function Lane({ tryout: t, agent, steps, now, state }: { tryout: LiveTryout; age
                 <motion.span
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ type: "spring", duration: 0.3, bounce: 0.15 }}
+                  transition={{ type: "spring", duration: DUR.enter, bounce: 0.15 }}
                   className="rounded-md bg-(--st-blue) px-1.5 py-0.5 text-xs font-semibold text-(--st-bg)"
                 >
                   Hired
@@ -402,8 +402,8 @@ function Lane({ tryout: t, agent, steps, now, state }: { tryout: LiveTryout; age
               layout="position"
               initial={{ opacity: 0, y: 6, backgroundColor: FLASH[missed(s) ? "bad" : "ok"] }}
               animate={{ opacity: 1, y: 0, backgroundColor: REST[missed(s) ? "bad" : "ok"] }}
-              exit={{ opacity: 0, transition: { duration: 0.15 } }}
-              transition={{ duration: 0.2, ease: OUT, backgroundColor: { duration: 1.2, ease: "easeOut" } }}
+              exit={{ opacity: 0, transition: { duration: DUR.quick } }}
+              transition={{ duration: DUR.quick, ease: OUT, backgroundColor: { duration: 1.2, ease: "easeOut" } }}
               className={`grid grid-cols-[0.75rem_minmax(0,1fr)] gap-x-1.5 rounded-md border-l-2 py-1 pr-2 pl-1.5 font-mono text-xs leading-snug ${
                 missed(s) ? "border-(--st-red)" : "border-(--st-green)"
               }`}
@@ -436,7 +436,7 @@ function Lane({ tryout: t, agent, steps, now, state }: { tryout: LiveTryout; age
                   key={s.id}
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.2, ease: OUT }}
+                  transition={{ duration: DUR.quick, ease: OUT }}
                   className="flex items-center gap-2 text-xs text-white"
                 >
                   <Check className="size-3.5 shrink-0 text-(--st-green)" strokeWidth={3} />
@@ -459,7 +459,7 @@ function Lane({ tryout: t, agent, steps, now, state }: { tryout: LiveTryout; age
                   title={c.name}
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: 1 }}
-                  transition={{ duration: 0.3, ease: OUT, delay: i * 0.07 }}
+                  transition={{ duration: DUR.enter, ease: OUT, delay: i * 0.07 }}
                   className={`h-1.5 flex-1 origin-left rounded-full ${c.passed ? "bg-(--st-green)" : "bg-(--st-red)"}`}
                 />
               ))}
@@ -507,7 +507,7 @@ function Ticker({ steps, tryouts, agents, need }: { steps: TryoutStep[]; tryouts
             initial={{ y: 14, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -14, opacity: 0 }}
-            transition={{ duration: 0.3, ease: OUT }}
+            transition={{ duration: DUR.enter, ease: OUT }}
             className="absolute inset-0 truncate font-mono text-xs text-(--st-2)"
           >
             {latest ? (
@@ -537,7 +537,7 @@ export function isSite(o: unknown): o is Site {
 export function DeliveredStage({ result, onReplay }: { result: NonNullable<LiveNeed["result"]>; onReplay?: () => void }) {
   const out = result.output as Estimate | Claim | Site | null;
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: OUT }} className="p-4 sm:p-5">
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: DUR.enter, ease: OUT }} className="p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="flex min-w-0 items-center gap-2 text-lg font-semibold tracking-[-0.01em] text-white">
           <Check className="size-4 shrink-0 text-(--st-green)" strokeWidth={3} />
@@ -547,7 +547,7 @@ export function DeliveredStage({ result, onReplay }: { result: NonNullable<LiveN
           <button
             type="button"
             onClick={onReplay}
-            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm text-(--st-2) ring-1 ring-white/10 transition-[background-color,color,transform] duration-150 ease-out hover:bg-white/[0.06] hover:text-white active:scale-[0.97]"
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm text-(--st-2) ring-1 ring-white/10 transition-[background-color,color,transform] duration-(--dur-quick) ease-out hover:bg-white/[0.06] hover:text-white active:scale-[0.97]"
           >
             <RotateCcw className="size-3.5" /> Replay the tryout
           </button>
@@ -636,7 +636,7 @@ function SitePreview({ site }: { site: Site }) {
             href={site.live_url}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-foreground transition-transform duration-150 ease-out hover:bg-muted active:scale-[0.97]"
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-white px-4.5 text-sm font-semibold text-foreground transition-transform duration-(--dur-quick) ease-out hover:bg-muted active:scale-[0.97]"
           >
             Open the live site <ExternalLink className="size-4" />
           </a>

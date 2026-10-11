@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 // A fixed set of agent colours, so a screen full of agents never looks random.
 const COLORS = ["#7f5e3c", "#ce383d", "#ed712e", "#f19d38", "#43975d", "#49a393", "#3472d9", "#ce3d86", "#777777"];
 
@@ -8,7 +10,7 @@ function colorOf(id: string) {
   return COLORS[h % COLORS.length];
 }
 
-// The agent's colour as a plain disc: the one thing that tells agents apart at a glance.
+// The agent's colour as a small lit tile: the one thing that tells agents apart at a glance.
 export function AgentDot({ id, className = "size-8" }: { id: string; className?: string }) {
-  return <span aria-hidden="true" style={{ backgroundColor: colorOf(id) }} className={`inline-block shrink-0 rounded-full ${className}`} />;
+  return <span aria-hidden="true" style={{ "--tile": colorOf(id) } as CSSProperties} className={`tile inline-block shrink-0 ${className}`} />;
 }

@@ -55,30 +55,49 @@
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #0a0b0d;
+  /* Warm off-white ground, so white cards and the black stage both stand out from it. */
+  --background: #faf9f6;
+  --foreground: #121210;
   --card: #ffffff;
-  --card-foreground: #0a0b0d;
+  --card-foreground: #121210;
   --popover: #ffffff;
-  --popover-foreground: #0a0b0d;
-  --primary: #0a0b0d;
+  --popover-foreground: #121210;
+  --primary: #121210;
   --primary-foreground: #ffffff;
-  --secondary: #dee1e6;
-  --secondary-foreground: #0a0b0d;
-  --muted: #eef0f3;
-  --muted-foreground: #5b616e;
-  --accent: #eef0f3;
-  --accent-foreground: #0a0b0d;
-  --destructive: #5b616e;
-  --border: #dee1e6;
-  --input: #dee1e6;
-  --ring: #7c828a;
+  --secondary: #e7e5df;
+  --secondary-foreground: #121210;
+  --muted: #f2f1ec;
+  --muted-foreground: #5f5c55;
+  --accent: #f2f1ec;
+  --accent-foreground: #121210;
+  --destructive: #5f5c55;
+  --border: #e7e5df;
+  --input: #e7e5df;
+  --ring: #827e75;
+
+  /* THE SPACING SCALE. Page rhythm uses these four gaps and nothing else.
+       --gap-label    a label and the thing it labels
+       --gap-block    sibling blocks: cards in a row, panels side by side
+       --gap-group    groups inside one page section
+       --gap-section  major sections of a page */
+  --gap-label: 0.5rem;
+  --gap-block: 1.25rem;
+  --gap-group: 2rem;
+  --gap-section: 3rem;
+
+  /* THE MOTION SCALE. Mirrors DUR in app/_hire/motion.ts.
+       --dur-press  a control giving under the finger
+       --dur-quick  hover, colour, a small swap
+       --dur-enter  something arriving on the page */
+  --dur-press: 120ms;
+  --dur-quick: 160ms;
+  --dur-enter: 280ms;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 0.75rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -148,7 +167,7 @@
 }
 
 ::selection {
-  background: rgb(10 11 13 / 0.14);
+  background: rgb(18 18 16 / 0.14);
 }
 
 :focus-visible {
@@ -167,7 +186,110 @@
   --st-blue-text: #ffffff;
   --st-green: #3ecf8e;
   --st-red: #f26d6d;
-  background: var(--st-bg);
+  /* Lit from above: a faint glow at the top edge, a hairline highlight, a soft drop below. */
+  background:
+    radial-gradient(120% 55% at 50% -12%, rgb(255 255 255 / 0.075), transparent 62%),
+    var(--st-bg);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.12),
+    0 1px 2px rgb(18 18 16 / 0.2),
+    0 28px 48px -30px rgb(18 18 16 / 0.6);
+}
+
+
+/* Shared surfaces. They sit in the components layer so a utility class can still override one. */
+@layer components {
+  /* Panels: white on the warm ground, a hairline, a wide radius and the faintest drop. */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: 0 1px 2px rgb(18 18 16 / 0.04);
+  }
+
+  /* Buttons are pills that give a little under the finger. Transform only, nothing reflows. */
+  .btn {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 2.25rem;
+    padding-inline: 1rem;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition:
+      transform var(--dur-press) var(--ease-out),
+      background-color var(--dur-quick) var(--ease-out),
+      box-shadow var(--dur-quick) var(--ease-out);
+  }
+  .btn:active {
+    transform: scale(0.97);
+  }
+  .btn-lg {
+    height: 2.5rem;
+    padding-inline: 1.125rem;
+  }
+  .btn-ghost {
+    color: var(--foreground);
+    background: var(--card);
+    box-shadow:
+      0 0 0 1px var(--border),
+      0 1px 2px rgb(18 18 16 / 0.05);
+  }
+
+  /* Black is never a flat fill. Each surface that carries it gets a lit top edge, a deeper base
+     and a soft drop underneath. */
+  .ink {
+    color: #fff;
+    background:
+      radial-gradient(120% 90% at 50% -25%, rgb(255 255 255 / 0.26), transparent 60%),
+      linear-gradient(180deg, #3a3a37 0%, #1c1c1a 55%, #0c0c0b 100%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.24),
+      inset 0 -1px 0 rgb(0 0 0 / 0.45),
+      0 1px 2px rgb(18 18 16 / 0.3),
+      0 8px 16px -10px rgb(18 18 16 / 0.6);
+  }
+  .ink:active {
+    box-shadow:
+      inset 0 2px 4px rgb(0 0 0 / 0.5),
+      0 1px 2px rgb(18 18 16 / 0.25);
+  }
+
+  /* The green of work that passed, lit the same way. */
+  .pass {
+    color: #fff;
+    background: linear-gradient(180deg, #17b873 0%, var(--color-pass) 100%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.4),
+      0 4px 8px -5px var(--color-pass);
+  }
+
+  /* An agent's colour as a small lit tile: two stops of its own colour, a bright top edge,
+     a soft drop in the same colour. Set --tile on the element. */
+  .tile {
+    border-radius: 30%;
+    background: linear-gradient(160deg, color-mix(in oklab, var(--tile) 58%, white), var(--tile));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.5),
+      inset 0 -1px 0 rgb(16 17 20 / 0.1),
+      0 5px 10px -7px var(--tile);
+  }
+}
+
+/* Only where there is a real pointer, so a tap does not leave a hover stuck. */
+@media (hover: hover) and (pointer: fine) {
+  .btn-ghost:hover {
+    background: var(--muted);
+  }
+  .ink:hover {
+    background:
+      radial-gradient(120% 90% at 50% -25%, rgb(255 255 255 / 0.32), transparent 60%),
+      linear-gradient(180deg, #454541 0%, #242422 55%, #121210 100%);
+  }
 }
 
 /* Cards and sections rise in once on load, each a beat after the one before (--i). */
@@ -178,7 +300,7 @@
   }
 }
 .rise {
-  animation: rise 280ms var(--ease-out) both;
+  animation: rise var(--dur-enter) var(--ease-out) both;
   animation-delay: calc(var(--i, 0) * 35ms);
 }
 

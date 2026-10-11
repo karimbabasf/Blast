@@ -80,7 +80,7 @@ export function Hires() {
               <Working key={n.id} need={n} />
             ))}
           {data.needs.some((n) => !ACTIVE.has(n.status)) ? (
-            <ul className="mt-6 divide-y rounded-xl border bg-card">
+            <ul className="mt-6 divide-y card">
               {data.needs
                 .filter((n) => !ACTIVE.has(n.status))
                 .map((n) => (
@@ -204,16 +204,16 @@ export function Policy({ compact = false }: { compact?: boolean }) {
           aria-label={`Auto-hire up to ${cap} per job`}
           disabled={busy || cents == null}
           onClick={flip}
-          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ease-out disabled:cursor-wait ${on ? "bg-(--hire)" : "bg-secondary"}`}
+          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-(--dur-quick) ease-out disabled:cursor-wait ${on ? "ink" : "bg-secondary"}`}
         >
-          <span className={`inline-block size-5 rounded-full bg-white  transition-transform duration-200 ease-out motion-reduce:transition-none ${on ? "translate-x-5.5" : "translate-x-0.5"}`} />
+          <span className={`inline-block size-5 rounded-full bg-white  transition-transform duration-(--dur-quick) ease-out motion-reduce:transition-none ${on ? "translate-x-5.5" : "translate-x-0.5"}`} />
         </button>
         {error ? <span className="text-destructive">{error}</span> : null}
       </div>
     );
 
   return (
-    <div className="mt-5 flex items-start gap-3 rounded-xl border bg-card p-4">
+    <div className="mt-5 flex items-start gap-3 card p-4">
       <button
         type="button"
         role="switch"
@@ -221,12 +221,12 @@ export function Policy({ compact = false }: { compact?: boolean }) {
         aria-labelledby="policy-label"
         disabled={busy || cents == null}
         onClick={flip}
-        className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ease-out disabled:opacity-60 ${
-          on ? "bg-(--hire)" : "bg-muted-foreground/30"
+        className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-(--dur-quick) ease-out disabled:opacity-60 ${
+          on ? "ink" : "bg-muted-foreground/30"
         }`}
       >
         <span
-          className={`inline-block size-5 rounded-full bg-white  transition-transform duration-200 ease-out motion-reduce:transition-none ${
+          className={`inline-block size-5 rounded-full bg-white  transition-transform duration-(--dur-quick) ease-out motion-reduce:transition-none ${
             on ? "translate-x-5.5" : "translate-x-0.5"
           }`}
         />
@@ -273,7 +273,7 @@ function Working({ need }: { need: Row }) {
           return (
             <li
               key={label}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors duration-300 ease-out ${
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors duration-(--dur-enter) ease-out ${
                 on ? "border-(--hire)/40 bg-(--hire-soft) text-(--hire)" : now ? "text-foreground" : "text-muted-foreground"
               }`}
             >
@@ -310,7 +310,7 @@ function Working({ need }: { need: Row }) {
                 </div>
                 <ol className="mt-2 space-y-1 font-mono text-sm leading-snug">
                   {lane.map((s) => (
-                    <li key={s.id} className="animate-in fade-in slide-in-from-bottom-1 duration-200 ease-out motion-reduce:animate-none">
+                    <li key={s.id} className="animate-in fade-in slide-in-from-bottom-1 duration-(--dur-quick) ease-out motion-reduce:animate-none">
                       <span className="text-(--hire)">{s.name}</span> {summarize(s.name, s.input)}
                       {outcome(s.name, s.output) ? <span className="text-muted-foreground"> -&gt; {outcome(s.name, s.output)}</span> : null}
                     </li>
