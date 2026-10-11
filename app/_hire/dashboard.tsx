@@ -428,7 +428,7 @@ function StepIcon({ state }: { state: StepState }) {
 function Scores({ tryouts, agents, winnerId }: { tryouts: LiveTryout[]; agents: Map<string, MarketAgent>; winnerId: string | null }) {
   const order = [...tryouts].sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
   return (
-    <span className="flex h-6 items-center gap-x-4 overflow-hidden tabular-nums">
+    <span className="flex flex-wrap items-center gap-x-4 gap-y-1 tabular-nums sm:h-6 sm:flex-nowrap sm:overflow-hidden">
       {order.map((t) => (
         <span key={t.id} className={`flex shrink-0 items-center gap-1.5 ${t.agent_id === winnerId ? "font-semibold text-foreground" : ""}`}>
           <AgentDot id={t.agent_id} className="size-3.5" />

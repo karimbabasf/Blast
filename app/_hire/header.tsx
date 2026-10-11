@@ -11,12 +11,12 @@ const LINKS = [
 export function Header({ active, right }: { active?: string; right?: ReactNode }) {
   return (
     <header className="border-b border-border">
-      <div className="mx-auto flex h-16 max-w-[1360px] items-center gap-5 px-4 sm:gap-8 sm:px-6">
+      <div className="mx-auto flex h-16 max-w-[1360px] items-center gap-3 px-4 sm:gap-8 sm:px-6">
         <Link href="/" className="flex shrink-0 items-center gap-2.5 text-lg font-semibold tracking-[-0.025em] text-foreground">
           <HeaderMark className="size-7" />
           Blast
         </Link>
-        <nav className="flex min-w-0 items-center gap-1 text-sm">
+        <nav className="flex min-w-0 items-center gap-1 overflow-x-auto text-sm [scrollbar-width:none]">
           {LINKS.map((l) => (
             <Link
               key={l.href}
