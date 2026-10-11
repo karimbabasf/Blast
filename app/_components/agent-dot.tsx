@@ -10,7 +10,7 @@ function colorOf(id: string) {
   return COLORS[h % COLORS.length];
 }
 
-// The agent's colour as a small lit tile: the one thing that tells agents apart at a glance.
+// The agent's colour as a small flat tile: the one thing that tells agents apart at a glance.
 export function AgentDot({ id, className = "size-8" }: { id: string; className?: string }) {
   return <span aria-hidden="true" style={{ "--tile": colorOf(id) } as CSSProperties} className={`tile inline-block shrink-0 ${className}`} />;
 }

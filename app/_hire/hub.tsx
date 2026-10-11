@@ -179,7 +179,7 @@ export function Card({
       id={`agent-${a.id}`}
       title={`${runsIn(a.runs_in)}, ${ago(a.created_at, now)}`}
       style={{ "--i": Math.min(index, 8) } as CSSProperties}
-      className={`card rise flex h-44 flex-col p-4 ${a.auditionable ? "" : "bg-muted/50 shadow-none"} ${isNew ? "h-auto ring-2 ring-(--hire)" : ""}`}
+      className={`card rise flex h-44 flex-col p-4 ${a.auditionable ? "" : "bg-muted/50"} ${isNew ? "h-auto ring-2 ring-(--hire)" : ""}`}
     >
       <div className="flex items-center gap-3">
         <span className="relative shrink-0">
