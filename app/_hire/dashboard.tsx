@@ -62,6 +62,8 @@ export function Dashboard({ initialNeed, since }: { initialNeed: string | null; 
   const newest = needs?.[0]?.id ?? null;
   const [seen, setSeen] = useState<string | null>(null);
   const [replayFrom, setReplayFrom] = useState<number | null>(null);
+  // Hires from before this visit are shown as examples; one that arrives while you watch is yours.
+  const [openedAt] = useState(() => Date.now());
 
   // A new hire always takes focus, even after a click on an older one.
   if (newest && newest !== seen) {
@@ -87,7 +89,7 @@ export function Dashboard({ initialNeed, since }: { initialNeed: string | null; 
       ) : (
         <>
           <Intro onWatch={finished ? watch : null} />
-          <Focus key={focus} id={focus} fallback={needs.find((n) => n.id === focus) ?? null} hub={hub} replayFrom={replayFrom} onReplay={setReplayFrom} />
+          <Focus key={focus} id={focus} fallback={needs.find((n) => n.id === focus) ?? null} hub={hub} openedAt={openedAt} replayFrom={replayFrom} onReplay={setReplayFrom} />
           {needs.length > 1 ? (
             <History
               needs={needs}
@@ -162,12 +164,14 @@ function Focus({
   id,
   fallback,
   hub,
+  openedAt,
   replayFrom,
   onReplay,
 }: {
   id: string;
   fallback: LiveNeed | null;
   hub: ReturnType<typeof useHubAgents>;
+  openedAt: number;
   replayFrom: number | null;
   onReplay: (at: number) => void;
 }) {
@@ -190,7 +194,7 @@ function Focus({
 
   return (
     <article id="hire" className="rise grid scroll-mt-4 items-start gap-(--gap-block) lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-      <Story need={need} tryouts={tryouts} steps={steps} agents={agents} phase={phase} winner={winner} winnerId={winnerId} />
+      <Story need={need} tryouts={tryouts} steps={steps} agents={agents} phase={phase} winner={winner} winnerId={winnerId} example={at(base.created_at) < openedAt} />
       <StageFrame>
         <AnimatePresence mode="wait" initial={false}>
           {phase === "done" && need.result ? (
@@ -216,12 +220,13 @@ function Focus({
   );
 }
 
-function headline(phase: Phase, need: LiveNeed, tryouts: LiveTryout[], winner?: string) {
+function headline(phase: Phase, need: LiveNeed, tryouts: LiveTryout[], winner: string | undefined, example: boolean) {
+  const whose = example ? "the" : "your";
   const [one, many, thing] = NOUN[need.role] ?? ["specialist", "specialists", "work"];
   if (phase === "search") return `Finding a ${one} for this job`;
   if (phase === "tryout") return tryouts.length === 1 ? `1 ${one} is trying out on the job` : `${tryouts.length} ${many} are trying out on the job`;
-  if (phase === "build") return winner ? `Hired ${winner}. Now building your ${thing}.` : "Scoring the tryouts";
-  if (phase === "done") return `${winner ?? "The winner"} delivered your ${thing}`;
+  if (phase === "build") return winner ? `Hired ${winner}. Now building ${whose} ${thing}.` : "Scoring the tryouts";
+  if (phase === "done") return `${winner ?? "The winner"} delivered ${whose} ${thing}`;
   return "Nobody passed, so nobody got paid";
 }
 
@@ -235,6 +240,7 @@ function Story({
   phase,
   winner,
   winnerId,
+  example,
 }: {
   need: LiveNeed;
   tryouts: LiveTryout[];
@@ -243,6 +249,8 @@ function Story({
   phase: Phase;
   winner?: MarketAgent;
   winnerId: string | null;
+  // A hire from before this visit: shown as an example, not as the visitor's own job.
+  example: boolean;
 }) {
   const [jobOpen, setJobOpen] = useState(false);
   const h = need.hold;
@@ -251,7 +259,7 @@ function Story({
   const calls = steps.filter((s) => s.kind === "tool" && !isDelivery(s)).length;
   const out = need.result?.output;
   const site = isSite(out) ? out : null;
-  const title = headline(phase, need, tryouts, winner?.name ?? need.result?.agent_name);
+  const title = headline(phase, need, tryouts, winner?.name ?? need.result?.agent_name, example);
 
   const search: StepState = need.search || tryouts.length ? "done" : "now";
   const tryout: StepState = !tryouts.length ? "todo" : running ? "now" : "done";
@@ -275,6 +283,7 @@ function Story({
       </AnimatePresence>
       </div>
       <p className="mt-2 text-sm text-muted-foreground">
+        {example ? <span className="mr-2 rounded-full border px-2 py-px text-xs font-medium text-foreground">Example hire</span> : null}
         {need.source === "claude-code" ? "Claude Code asked over MCP" : "Asked on the web"} at <span className="tabular-nums">{clock(need.created_at)}</span>
         <span className="mx-1.5 text-muted-foreground/70">/</span>
         {ROLE_LABEL[need.role] ?? need.role}
