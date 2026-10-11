@@ -44,20 +44,20 @@ export function labOf(model: string): Brand | null {
 }
 
 const MARK_CSS = `
-.bm-hex { stroke-dasharray: 1; stroke-dashoffset: 1; fill-opacity: 0; animation: bm-draw 380ms ease-out forwards, bm-fill 220ms ease-out 380ms forwards; }
-.bm-b { opacity: 0; animation: bm-fill 220ms ease-out 420ms forwards; }
+.bm-draw .bm-hex { stroke-dasharray: 1; stroke-dashoffset: 1; fill-opacity: 0; animation: bm-draw 380ms ease-out forwards, bm-fill 220ms ease-out 380ms forwards; }
+.bm-draw .bm-b { opacity: 0; animation: bm-fill 220ms ease-out 420ms forwards; }
 .bm-live { animation: bm-breathe 2.4s ease-in-out infinite; }
 @keyframes bm-draw { 99% { stroke-dashoffset: 0; stroke-dasharray: 1; } to { stroke-dashoffset: 0; stroke-dasharray: none; } }
 @keyframes bm-fill { to { fill-opacity: 1; opacity: 1; } }
 @keyframes bm-breathe { 0%, 100% { filter: drop-shadow(0 0 0 rgb(0 0 0 / 0)); } 50% { filter: drop-shadow(0 0 5px rgb(0 0 0 / 0.35)); } }
-@media (prefers-reduced-motion: reduce) { .bm-hex, .bm-b { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; fill-opacity: 1; opacity: 1; } .bm-live { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .bm-draw .bm-hex, .bm-draw .bm-b { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; fill-opacity: 1; opacity: 1; } .bm-live { animation: none; } }
 `;
 
-// The Blast mark (public/brand/mark.svg): draws in on load, breathes while a hire runs. The dash is dropped
+// The Blast mark (public/brand/mark.svg): draws in when asked to (draw), breathes while a hire runs. The dash is dropped
 // once drawn, or the stroke's start and end leave a notch at the top corner.
-export function BlastMark({ className = "size-6", live = false }: { className?: string; live?: boolean }) {
+export function BlastMark({ className = "size-6", live = false, draw = false }: { className?: string; live?: boolean; draw?: boolean }) {
   return (
-    <svg viewBox="0 0 100 100" role="img" aria-label="Blast" className={`${className} ${live ? "bm-live" : ""}`}>
+    <svg viewBox="0 0 100 100" role="img" aria-label="Blast" className={`${className} ${live ? "bm-live" : ""} ${draw ? "bm-draw" : ""}`}>
       <style>{MARK_CSS}</style>
       <polygon className="bm-hex" pathLength={1} points="50,10 84,30 84,70 50,90 16,70 16,30" fill="#000" stroke="#000" strokeWidth="12" strokeLinejoin="round" />
       <path

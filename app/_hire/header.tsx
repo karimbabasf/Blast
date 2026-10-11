@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BlastMark } from "./logos";
+import { HeaderMark } from "./mark";
 import type { CSSProperties, ReactNode } from "react";
 
 const LINKS = [
@@ -13,7 +13,7 @@ export function Header({ active, right }: { active?: string; right?: ReactNode }
     <header className="border-b border-border">
       <div className="mx-auto flex h-16 max-w-[1360px] items-center gap-5 px-4 sm:gap-8 sm:px-6">
         <Link href="/" className="flex shrink-0 items-center gap-2.5 text-lg font-semibold tracking-[-0.025em] text-foreground">
-          <BlastMark className="size-7" />
+          <HeaderMark className="size-7" />
           Blast
         </Link>
         <nav className="flex min-w-0 items-center gap-1 text-sm">

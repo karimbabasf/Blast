@@ -60,9 +60,9 @@ export function CopyLine({ text, label }: { text: string; label: string }) {
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.span
             key={copied ? "done" : "copy"}
-            initial={{ opacity: 0, scale: 0.8, filter: "blur(3px)" }}
+            initial={{ opacity: 0, scale: 0.9, filter: "blur(3px)" }}
             animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-            exit={{ opacity: 0, scale: 0.8, filter: "blur(3px)" }}
+            exit={{ opacity: 0, scale: 0.9, filter: "blur(3px)" }}
             transition={{ duration: DUR.quick, ease: OUT }}
           >
             {copied ? <Check className="size-4 text-pass" strokeWidth={2.5} /> : <Copy className="size-4" />}

@@ -76,7 +76,8 @@ export function Dashboard({ initialNeed, since }: { initialNeed: string | null; 
 
   function watch() {
     setReplayFrom(Date.now());
-    document.getElementById("hire")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    document.getElementById("hire")?.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "start" });
   }
 
   return (
@@ -188,7 +189,7 @@ function Focus({
   const winner = winnerId ? agents.get(winnerId) : undefined;
 
   return (
-    <article id="hire" className="grid scroll-mt-4 items-start gap-(--gap-block) lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+    <article id="hire" className="rise grid scroll-mt-4 items-start gap-(--gap-block) lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
       <Story need={need} tryouts={tryouts} steps={steps} agents={agents} phase={phase} winner={winner} winnerId={winnerId} />
       <StageFrame>
         <AnimatePresence mode="wait" initial={false}>
@@ -489,7 +490,7 @@ function History({ needs, focus, onPick }: { needs: LiveNeed[]; focus: string; o
   const [all, setAll] = useState(false);
   const shown = all ? needs : needs.slice(0, 6);
   return (
-    <section className="mt-(--gap-section)">
+    <section className="rise mt-(--gap-section)" style={{ "--i": 3 } as React.CSSProperties}>
       <div className="flex items-baseline gap-2">
         <h2 className="text-base font-semibold text-foreground">Earlier hires</h2>
         <span className="text-sm text-muted-foreground/70 tabular-nums">{needs.length}</span>
@@ -509,7 +510,7 @@ function History({ needs, focus, onPick }: { needs: LiveNeed[]; focus: string; o
                 type="button"
                 onClick={() => {
                   onPick(n.id);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
+                  window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
                 }}
                 aria-current={n.id === focus}
                 className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-0.5 px-4 py-3 text-left transition-colors duration-(--dur-quick) ease-out hover:bg-muted sm:grid-cols-[3.25rem_8.5rem_minmax(0,1fr)_auto] sm:px-5 ${
